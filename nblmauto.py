@@ -15,7 +15,7 @@ prompt = "Write a poem about physics"
 MAIL = os.environ["NBLM_EMAIL"]
 PASSWORD = os.environ["NBLM_PASS"]
 # print(prompt)
-PATH = "chromedriver-linux64/chromedriver"
+PATH = "drivers/chromedriver"
 # BROWSER = "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
 
 op = uc.ChromeOptions()
@@ -37,7 +37,7 @@ orig_window = driver.current_window_handle
 # Click on 'Try NotebookLM'
 elem = driver.find_element(By.LINK_TEXT, "Try NotebookLM")
 elem.click()
-sleep(5)
+sleep(8)
 
 # clicking on it opens second tab to login with google
 wait = WebDriverWait(driver, 10)
@@ -47,14 +47,14 @@ for window_handle in driver.window_handles:
     if window_handle != orig_window:
         driver.switch_to.window(window_handle)
         break
-sleep(5)
-print(driver.current_url)
+sleep(7)
 
 # now on login page
 # email page
 elem = driver.find_element(By.XPATH, "//input[@type='email']")
 elem.send_keys(MAIL)
 elem.send_keys(Keys.ENTER)
+sleep(5)
 
 # password page
 elem = driver.find_element(By.XPATH, "//input[@type='password']")
@@ -63,4 +63,12 @@ elem.send_keys(Keys.ENTER)
 sleep(5)
 
 # wait for user login confirmation
+if "/challenge/" in driver.current_url:
+    print("_"*80)
+    print("WAITING FOR USER ACCOUNT 2F AUTHENTICATION. ENTER Y/y/yes TO CONTINUE")
+    p = input("> ")
+    while 'y' not in p.lower().strip():
+        p = input("> ")
+
+
 

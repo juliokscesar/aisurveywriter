@@ -1,0 +1,43 @@
+base_prompt_format: |
+  Read the information that is provided in the papers attached and, BASED ON THEM, write the "{0}" section for a Review Paper on {1}.
+
+  For each of these papers, focus on the information that attends the expectation for the structure of the section "{0}" provided below. Look for information that is written by the authors and also for information that is cited from related works by the authors. Keep in memory where you are accessing the information and, in your text, cite authors' names and published year right after you write something that was taken from the paper, in the format '(AUTHORS,year)'; if this information is cited from another work, look in the references of the corresponding paper to gather the names and year. If some visual representation is relevant for this section, include them in text only by citing them as (Fig.X, AUTHOR, year) where 'X' is the number of the figure. If this visual item is not a Figure, change the 'Fig' accordingly (Tab. for table, etc)
+
+  Use the references from the papers attached also. If they're citing someone else's work, then remember to cite it too if you use the cited information.  Use as many references as you can
+
+  For the writing style, take inspiration from the papers you are reading.
+
+  In the end, you must also provide a list of the references you used in the text.
+
+  {2}
+
+  Provide at least a text size to cover two whole pages -- about 500 to 700 words, at least.
+
+ref_DOIS:
+  - "10.1021/acs.chemmater.3c01291"
+  - "10.1021/acsami.1c19064"
+
+subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
+sections:
+  - title: "Introduction"
+    description: |
+      -Definition and Importance
+        -Definition of Langmuir monolayers and LB films.
+        -Highlight the importance of these films in nanoscience and nanotechnology.
+        -Brief mention of applications in areas such as electronics, sensors, biomedicine, etc.
+      -Comparison with Similar Films
+        -Compare and contrast LB films with other thin-film techniques, such as self-assembled monolayers (SAMs) and layer-by-layer (LbL) films.
+        -Discussion of the advantages and disadvantages of each technique in relation to molecular precision, scalability, and versatility.
+        -llustration (Figure): Schematic comparison of LB, SAM, and LbL techniques. (Original artwork)
+
+  - title: "Historical Perspective"
+    description: |
+      -Origins and Early Development
+        -Discussion of the early research by Agnes Pockels and Irving Langmuir, which led to the development of the LB technique.
+        -Highlight historical milestones and key figures who contributed to the advancement of the field.
+        -Mention the development of key instruments and techniques, such as the Langmuir trough.
+      -Evolution and Progress
+        -Address the major developments in LB technique over time, including new materials, deposition techniques, and characterization methods.
+        -Discussion of the expansion of LB applications into diverse fields.
+
+
