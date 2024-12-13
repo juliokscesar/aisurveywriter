@@ -1,65 +1,46 @@
-import pandas as pd
-import selenium
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from time import sleep
+from typing import Union
+import os
+import chatbots as cb
 import undetected_chromedriver as uc
-from selenium.webdriver.support.ui import WebDriverWait
 from fake_useragent import UserAgent
-from selenium.webdriver.support import expected_conditions as EC
 
+def init_driver(browser_path: Union[str,None] = None, driver_path: Union[str,None] = None) -> uc.Chrome:
+    op = uc.ChromeOptions()
+    op.add_argument(f"user-agent={UserAgent.random}")
+    op.add_argument("user-data-dir=./")
+    op.add_experimental_option("detach", True)
+    op.add_experimental_option("excludeSwitches", ["enable-logging"])
+    driver = uc.Chrome(
+            chrome_options=op,
+            browser_executable_path=browser_path,
+            driver_executable_path=driver_path
+    )
+    return driver
 
-prompt = "Give your custom prompt here"
-# print(prompt)
-PATH = "driver/chromedriver.exe"
-BROWSER = "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+def main():
+    DRIVER_PATH = "drivers/chromedriver"
+    driver = init_driver(driver_path=DRIVER_PATH)
 
-op = uc.ChromeOptions()
-op.add_argument(f"user-agent={UserAgent.random}")
-op.add_argument("user-data-dir=./")
-op.add_experimental_option("detach", True)
-op.add_experimental_option("excludeSwitches", ["enable-logging"])
+    EMAIL = os.environ["GPTMAIL"]
+    PASS = os.environ["GPTPASS"]
 
-driver = uc.Chrome(chrome_options=op, browser_executable_path=BROWSER, driver_executable_path=PATH)
-driver.get('https://chatgpt.com/')
+    bot = cb.ChatGPTBot(EMAIL, PASS, driver)
+    if not bot.login():
+        print("Deu ruim")
+    
+    bot.wait(5)
+    
+    print("_"*80)
+    print("START SENDING PROMPTS NOW. SEND '!stop' TO STOP")
+    print("_"*80)
+    while True:
+        prompt = input("> ")
+        if "!stop" in prompt.lower().strip():
+            break
+        bot.send_prompt(prompt)
+        bot.wait(10)
+        print(bot.get_last_response(in_code_block=True))
 
-sleep(3)
+if __name__ == "__main__":
+    main()
 
-inputElements = driver.find_elements(By.TAG_NAME, "button")
-inputElements[0].click()
-
-sleep(3)
-
-mail = driver.find_elements(By.TAG_NAME,"input")[1]
-mail.send_keys(MAIL)
-
-btn=driver.find_elements(By.TAG_NAME,"button")[0]
-btn.click()
-
-password= driver.find_elements(By.TAG_NAME,"input")[2]
-password.send_keys(PASSWORD)
-
-sleep(3)
-
-wait = WebDriverWait(driver, 10)
-btn = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "_button-login-password")))
-btn.click()
-sleep(10)
-
-inputElements = driver.find_elements(By.TAG_NAME, "textarea")
-
-i = 0
-# while i<10:
-inputElements[0].send_keys(prompt)
-sleep(2)
-inputElements[0].send_keys(Keys.ENTER)
-sleep(10)
-inputElements = driver.find_elements(By.TAG_NAME, "p")
-sleep(5)
-results = []
-for element in inputElements:
-   results.append(element.text)
-print(results)
-i+=1
-sleep(5)
