@@ -13,43 +13,39 @@ from selenium.webdriver.support import expected_conditions as EC
 prompt = "Give your custom prompt here"
 # print(prompt)
 PATH = "driver/chromedriver.exe"
+BROWSER = "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
 
-op = webdriver.ChromeOptions()
+op = uc.ChromeOptions()
 op.add_argument(f"user-agent={UserAgent.random}")
 op.add_argument("user-data-dir=./")
 op.add_experimental_option("detach", True)
 op.add_experimental_option("excludeSwitches", ["enable-logging"])
-op.binary_location = PATH
 
-driver = uc.Chrome(chrome_options=op)
-
-MAIL = "*******************"
-PASSWORD = "***********"
-
+driver = uc.Chrome(chrome_options=op, browser_executable_path=BROWSER, driver_executable_path=PATH)
 driver.get('https://chatgpt.com/')
 
-# sleep(3)
+sleep(3)
 
-# inputElements = driver.find_elements(By.TAG_NAME, "button")
-# inputElements[0].click()
+inputElements = driver.find_elements(By.TAG_NAME, "button")
+inputElements[0].click()
 
-# sleep(3)
+sleep(3)
 
-# mail = driver.find_elements(By.TAG_NAME,"input")[1]
-# mail.send_keys(MAIL)
+mail = driver.find_elements(By.TAG_NAME,"input")[1]
+mail.send_keys(MAIL)
 
-# btn=driver.find_elements(By.TAG_NAME,"button")[0]
-# btn.click()
+btn=driver.find_elements(By.TAG_NAME,"button")[0]
+btn.click()
 
-# password= driver.find_elements(By.TAG_NAME,"input")[2]
-# password.send_keys(PASSWORD)
+password= driver.find_elements(By.TAG_NAME,"input")[2]
+password.send_keys(PASSWORD)
 
-# sleep(3)
+sleep(3)
 
-# wait = WebDriverWait(driver, 10)
-# btn = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "_button-login-password")))
-# btn.click()
-# sleep(10)
+wait = WebDriverWait(driver, 10)
+btn = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "_button-login-password")))
+btn.click()
+sleep(10)
 
 inputElements = driver.find_elements(By.TAG_NAME, "textarea")
 
