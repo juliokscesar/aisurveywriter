@@ -2,6 +2,8 @@ from typing import Union
 import os
 import chatbots as cb
 import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from fake_useragent import UserAgent
 
 import yaml
@@ -53,6 +55,13 @@ def main():
         print("Couldn't log in")
         return
 
+    elem = driver.find_element(By.XPATH, "//button[@aria-label='Attach files']")
+    elem.click()
+    bot.wait(5)
+    elem = driver.find_element(By.XPATH, "//div[text()='Upload file']")
+    elem.click()
+    bot.wait(120)
+
     # Tell bot to only give responses in latex format
     bot.send_prompt("For now on, every section I ask you to write, you must provide the answer in LaTeX and in a code block. There's no need to include the preamble of the document. Only include the '\\section...' on forward. Remember that if you want to include figures, draw them with the 'tickz' package if possible.")
     bot.wait(10)
@@ -67,7 +76,7 @@ def main():
 
     for section in sections["sections"]:
         struct = "The required structure for the section {section['title']} is:\n{section['description']}"
-        prompt = base_fmt.format(section["title"], subject, section["description"])
+        prompt = base_fmt.format(section["title"], subject, struct)
         bot.send_prompt(prompt)
         bot.wait(40)
 

@@ -1,0 +1,4 @@
+preparation_instructions: >
+  Please provide your outputs in the format of LaTeX. That is, use the appropriate sectioning commands
+  (\\section, \\subsection, etc) and also The 'tickz' package in case of figures drawing. There's no
+  need to include the preamble commands (like \\document, \\usepackage). In the beginning or ending.

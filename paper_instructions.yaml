@@ -1,23 +1,19 @@
-base_prompt_format: |
-  Read the information that is provided in the papers attached and, BASED ON THEM, write the "{0}" section for a Review Paper on {1}.
-
-  For each of these papers, focus on the information that attends the expectation for the structure of the section "{0}" provided below. Look for information that is written by the authors and also for information that is cited from related works by the authors. Keep in memory where you are accessing the information and, in your text, cite authors' names and published year right after you write something that was taken from the paper, in the format '(AUTHORS,year)'; if this information is cited from another work, look in the references of the corresponding paper to gather the names and year. If some visual representation is relevant for this section, include them in text only by citing them as (Fig.X, AUTHOR, year) where 'X' is the number of the figure. If this visual item is not a Figure, change the 'Fig' accordingly (Tab. for table, etc)
-
-  Use the references from the papers attached also. If they're citing someone else's work, then remember to cite it too if you use the cited information.  Use as many references as you can
-
-  For the writing style, take inspiration from the papers you are reading.
-
-  In the end, you must also provide a list of the references you used in the text.
-
-  {2}
-
-  Provide at least a text size to cover two whole pages -- about 500 to 700 words, at least.
-
-ref_DOIS:
-  - "10.1021/acs.chemmater.3c01291"
-  - "10.1021/acsami.1c19064"
-
 subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
+
+gen_struct_prompt: "Based on the sources provided to you, generate a structure for a survey scientific paper on the subject {subject}. Take inspiration from the structure of those papers, and also from relevant knowledge you have. Be formal and follow standards, that is, be sure to include structures such as Abstract,Introduction,Conclusions, etc. but don't be limited to those, add any sections and/or subsections wherever you judge relevant BASED ON THE RELATED WORKS."
+
+preparation_instructions: "Please provide your outputs in the format of LaTeX. That is, use the appropriate sectioning commands (\\section, \\subsection, etc) and also The 'tickz' package in case of figures drawing. There's no need to include the preamble commands (like \\document, \\usepackage). In the beginning or ending."
+base_prompt_format:
+  {preparation_instructions}
+
+  Read the information that is provided in the papers attached and, BASED ON THEM, write the "{title}" section for a Review Paper on {subject}.
+  For each of these papers, focus on the information that attends the expectation for the structure of the section "{title}" provided below. Look for information that is written by the authors and also for information that is cited from related works by the authors. Keep in memory where you are accessing the information and, in your text, cite authors' names and published year right after you write something that was taken from the paper, in the format '(AUTHORS,year)'; if this information is cited from another work, look in the references of the corresponding paper to gather the names and year. If some visual representation is relevant for this section, include them in text only by citing them as (Fig.X, AUTHOR, year) where 'X' is the number of the figure. If this visual item is not a Figure, change the 'Fig' accordingly (Tab. for table, etc)
+  Use the references from the papers attached also. If they're citing someone else's work, then remember to cite it too if you use the cited information.  Use as many references as you can
+  For the writing style, take inspiration from the papers you are reading.
+  In the end, you must also provide a list of the references you used in the text.
+  The structure for the section "{title}" is: {description}
+  ATTENTION: Provide at least a text content to cover two whole pages -- about 500 to 700 words, at least. Be formal, objetive, scientific and relevant in your information.
+
 sections:
   - title: "Introduction"
     description: |

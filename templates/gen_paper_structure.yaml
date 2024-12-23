@@ -1,0 +1,6 @@
+gen_struct_prompt: >
+  Based on the sources provided to you, generate a structure for a survey scientific paper on the subject {subject}.
+  Take inspiration from the structure of those papers, and also from relevant knowledge you have.
+  Be formal and follow standards, that is, be sure to include structures such as Abstract,Introduction,Conclusions, etc.
+  but don't be limited to those, add any sections and/or subsections wherever you judge relevant BASED ON THE RELATED WORKS.
+

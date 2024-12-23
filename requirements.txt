@@ -5,3 +5,8 @@ undetected-chromedriver
 fake-useragent
 pynvim
 setuptools
+langchain
+langchain-google-genai
+lagnchain-openai
+langchain-community
+pypdf
