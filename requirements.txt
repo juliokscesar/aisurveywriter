@@ -7,6 +7,8 @@ pynvim
 setuptools
 langchain
 langchain-google-genai
-lagnchain-openai
+langchain-openai
 langchain-community
 pypdf
+ipykernel
+jupyter

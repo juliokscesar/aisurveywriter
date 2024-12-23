@@ -4,9 +4,12 @@ base_prompt_format: |
   Use the references from the papers attached also. If they're citing someone else's work, then remember to cite it too if you use the cited information.  Use as many references as you can
   For the writing style, take inspiration from the papers you are reading.
   In the end, you must also provide a list of the references you used in the text.
+
+  Note: This structure is just a suggestion and can be modified to suit the specific focus of the paper.
+
   The structure for the section is:
-  **TITLE**: {title}
-  **DESCRIPTION**: {description}
+  TITLE: {title}
+  DESCRIPTION: {description}
 
 prompt_input_variables:
   - "title"
