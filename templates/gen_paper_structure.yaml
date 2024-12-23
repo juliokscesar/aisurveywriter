@@ -1,3 +1,5 @@
+subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
+
 gen_struct_prompt: >
   Based on the sources provided to you, generate a structure for a survey scientific paper on the subject {subject}.
   Take inspiration from the structure of those papers, and also from relevant knowledge you have.
