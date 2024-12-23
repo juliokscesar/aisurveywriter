@@ -1,5 +1,5 @@
 response_format: >
-  Please provide your outputs in the format of LaTeX. That is, use the appropriate sectioning commands
+  Please provide your outputs in LaTeX format. That is, use the appropriate sectioning commands
   (\\section, \\subsection, etc) and also The 'tickz' package in case of figures drawing. There's no
   need to include the preamble commands (like \\document, \\usepackage). In the beginning or ending.
   Use biblatex in your references citations. After writing the section, output the references used in
@@ -7,6 +7,6 @@ response_format: >
 
 response_size: >
   ATTENTION: Provide at least a text content to cover two whole pages -- about 500 to 700 words, at least. 
-  Be formal, objetive, scientific and relevant in your information.
+  Be formal, objetive, scientific and relevant in your information and writing.
 
 
