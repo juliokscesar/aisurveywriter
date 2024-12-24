@@ -33,7 +33,7 @@ response_format: |
   \end{filecontents*}
   ```
 
-  - Assign reference nicknames in the format author_year (e.g., smith_2024).
+  - Assign reference nicknames in the format authoryear (e.g., smith2024), and cite them with \cite{authoryear} (e.g. \cite{smith2024})
   - Include citations for all works explicitly referenced in the section and for works cited indirectly through other authors.
   - There's no need to include the field 'abstract' in biblatex format.
   - Don't use '\printbibliography' anywhere
