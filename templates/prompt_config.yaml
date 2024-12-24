@@ -1,0 +1,74 @@
+subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
+
+
+gen_struct_prompt: >
+  Based on the sources provided to you, generate a structure for a survey scientific paper on the subject {subject}.
+  Take inspiration from the structure of those papers, and also from relevant knowledge you have.
+  Be formal and follow standards, that is, be sure to include structures such as Abstract,Introduction,Conclusions, etc.
+  but don't be limited to those, add any sections and/or subsections wherever you judge relevant BASED ON THE RELATED WORKS.
+
+
+response_format: |
+  **Please provide your output in LaTeX format, using the following guidelines for structure and content:**
+
+  # LaTeX Sectioning:
+
+  - Use numbered sectioning commands (\section, \subsection, etc.).
+  - DO NOT use unnumbered commands (e.g., \section*, \subsection*).
+  - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage).
+  
+  # Figures and Tables:
+
+  - Use the TikZ package to include any figures that you think are relevant.
+  - Refer to figures and tables in the text using proper citations, such as (Fig. X, AUTHOR, YEAR) or (Tab. X, AUTHOR, YEAR), where X is the number of the figure/table.
+  
+  # Citations and References:
+
+  - Use the biblatex package for all references and citations.
+  - Cite references in the text using the \cite{nickname} command.
+  - Provide a bibliography section at the end of your response enclosed within the following environment:
+  ```
+  \begin{filecontents*}{mybib.bib}
+  (REFERENCES IN BIBLATEX FORMAT)
+  \end{filecontents*}
+  ```
+
+  - Assign reference nicknames in the format author_year (e.g., smith_2024).
+  - Include citations for all works explicitly referenced in the section and for works cited indirectly through other authors.
+  - There's no need to include the field 'abstract' in biblatex format.
+  - Don't use '\printbibliography' anywhere
+
+
+write_prompt: |
+  # Content Requirements:
+  - Write a complete section for a review paper on {subject} titled {title}.
+  - Base the section on the papers provided, incorporating:
+    - Direct insights from the authors.
+    - Insights from works cited by these authors.
+  - Where relevant, include visual or tabular elements and discuss them in the text.
+
+  # Writing Style
+  - Maintain a formal, scientific, and objective tone throughout.
+  - Structure your response to ensure the section is comprehensive and logically organized.
+  - Draw inspiration from the writing style and tone of the papers you are referencing.
+
+  # Length Requirements
+  - Ensure the section contains at least 500–700 words (~2 pages in length).
+  - Focus on detailed analysis, explanations, and discussions to achieve this length.
+
+  # Section Structure:
+  - TITLE: {title}
+  - DESCRIPTION: {description}
+
+  # Additional Notes:
+  - Use as many references as necessary to provide a robust and well-supported discussion.
+  - Ensure all references and citations are properly formatted and complete.
+
+  The final output should adhere to these guidelines, providing a self-contained LaTeX section that is ready for inclusion in a longer document.
+
+
+prompt_input_variables:
+  - "title"
+  - "description"
+  - "subject"
+
