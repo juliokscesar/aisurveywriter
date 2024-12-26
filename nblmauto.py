@@ -10,6 +10,13 @@ from selenium.webdriver.common.action_chains import ActionChains
 from fake_useragent import UserAgent
 from selenium.webdriver.support import expected_conditions as EC
 import os
+import yaml
+
+def read_yaml(fpath: str) -> dict:
+    with open(fpath, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return data
+
 
 MAIL = os.environ["NBLM_EMAIL"]
 PASSWORD = os.environ["NBLM_PASS"]
@@ -97,6 +104,41 @@ pdf_paths = [
 ]
 print("Sending PDFs:", ", ".join(pdf_paths))
 elem = driver.find_elements(By.XPATH, "//div[contains(@class, 'dropzone') and contains(@class, 'dropzone-3panel') and contains(@class, 'ng-star-inserted')]//input[@type='file' and @name='Filedata']")
-print(elem)
 elem[0].send_keys("\n".join([os.path.join(os.getcwd(), pdf) for pdf in pdf_paths]))
+print("Sleeping for 40 seconds to wait for documents to load...")
 sleep(40)
+
+# Get input prompt for generating structure
+prompt_cfg = read_yaml("templates/prompt_config.yaml")
+gen_struct_prompt = prompt_cfg["exp_gen_struct_prompt"].replace("{subject}", prompt_cfg["subject"])
+print("Sending prompt for generation of paper structure")
+
+# send to prompt text area
+elem = driver.find_element(By.XPATH, "//textarea[contains(@class, 'query-box-input')]")
+
+# have to send it block by block because newlines are interpreted as ENTER
+newline_action = ActionChains(driver).key_down(Keys.SHIFT).key_down(Keys.ENTER).key_up(Keys.SHIFT).key_up(Keys.ENTER)
+for block in gen_struct_prompt.split("\n"):
+    elem.send_keys(block)
+    ActionChains(driver).key_down(Keys.SHIFT).key_down(Keys.ENTER).key_up(Keys.SHIFT).key_up(Keys.ENTER).perform()
+
+elem.send_keys(Keys.ENTER)
+print("Sleeping for 40 seconds to wait for response...")
+sleep(40)
+
+elem = driver.find_elements(By.TAG_NAME, "chat-message")[-1]
+response = elem.get_property("outerText")
+
+# response comes with some text from other elements, so just cut it
+response = response[:response.find("\nkeep_pin")]
+print("Got response:\n",response)
+
+# format response and save to yaml
+result = "sections:\n"
+for line in response.split("\n"):
+    result += f"\t{line}\n"
+
+with open("last.yaml", "w", encoding="utf-8") as f:
+    f.write(result)
+
+input("Press enter to exit...")

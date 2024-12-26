@@ -1,11 +1,34 @@
 subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
 
 
-gen_struct_prompt: >
-  Based on the sources provided to you, generate a structure for a survey scientific paper on the subject {subject}.
-  Take inspiration from the structure of those papers, and also from relevant knowledge you have.
-  Be formal and follow standards, that is, be sure to include structures such as Abstract,Introduction,Conclusions, etc.
-  but don't be limited to those, add any sections and/or subsections wherever you judge relevant BASED ON THE RELATED WORKS.
+gen_struct_prompt: |
+  Using only the provided sources, generate a detailed structure for a scientific survey paper on the subject **{subject}**. Please provide your response in English.
+
+  1. **Goal**: Create a formal and comprehensive structure for a survey paper that organizes the subject logically and thoroughly, emphasizing clarity and coherence.  
+
+  2. **Instructions**:  
+    - Do **not** include sections such as **Abstract** or **References**; these will be added separately.  
+    - Include core sections and any additional sections/subsections inspired by the provided sources and your analysis of the subject. Be sure to include required sections for survey papers such as "Introduction", "Conclusions", and related.
+    - Each section and subsection must have a descriptive title and a detailed explanation of its purpose and scope.  
+
+  3. **Output Format**:  
+    - Provide the structure in YAML format for easy integration.  
+    - Format each section as follows:  
+      ```yaml
+      - title: "Section Title"
+        description: |
+          - Subsection Title
+            - Brief explanation of what this subsection will cover.
+            - Additional details as necessary.
+          - Another Subsection Title
+            - Explanation.
+            - More details.
+      ```  
+
+  4. **Additional Guidance**:  
+    - Ensure the structure reflects the patterns and insights from the sources while adhering to formal survey paper conventions.  
+    - Focus on clarity, logical flow, and comprehensiveness to aid understanding and readability.  
+    - Group related topics logically and ensure that the structure supports a cohesive narrative of the subject.
 
 
 response_format: |

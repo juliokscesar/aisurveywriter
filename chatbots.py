@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
+from typing import List
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
+import os
 
 class ChatBot(ABC):
     def __init__(self, username: str, password: str, main_url: str, driver: uc.Chrome):
@@ -86,3 +89,107 @@ class ChatGPTBot(ChatBot):
         print(response_elem)
         return response_elem[-1].text
 
+
+NBLM_MAIN_URL = "https://notebooklm.google/"
+class NotebookLMBot(ChatBot):
+    def __init__(self, user: str, password: str, driver: uc.Chrome, src_paths: List[str]):
+        super().__init__(user, password, NBLM_MAIN_URL, driver)
+        self._src_paths = src_paths
+        self._prompt_element = None
+    
+    def login(self) -> bool:
+        self._web_driver.get(self._main_url)
+        sleep(3)
+
+        # keep track of original tab
+        orig_window = self._web_driver.current_window_handle
+
+        # Click on "Try NotebookLM"
+        print("Clicking on 'Try NotebookLM'")
+        elem = self._web_driver.find_element(By.LINK_TEXT, "Try NotebookLM")
+        elem.click()
+        
+        # wait for the login tab to open and switch
+        WebDriverWait(self._web_driver, 10).until(EC.number_of_windows_to_be(2))
+        print("Changing to login tab")
+        for window_handle in self._web_driver.window_handles:
+            if window_handle != orig_window:
+                self._web_driver.switch_to.window(window_handle)
+                break
+        sleep(3)
+
+        # Now on login page
+        # Enter email
+        print("Entering email")
+        elem = self._web_driver.find_element(By.XPATH, "//input[@type='email']")
+        elem.send_keys(self._username)
+        elem.send_keys(Keys.ENTER)
+        sleep(5)
+
+        # Enter password
+        print("Entering password")
+        elem = self._web_driver.find_element(By.XPATH, "//input[@type='password']")
+        elem.send_keys(self._password)
+        elem.send_keys(Keys.ENTER)
+        sleep(5)
+
+        # wait for user authentication if detected
+        if "/challenge/" in self._web_driver.current_url:
+            print("*"*80)
+            print("WAITING FOR USER ACCOUNT 2F AUTHENTICATION. ENTER [y]es TO CONTINUE")
+            print("*"*80)
+            p = input("> ")
+            while 'y' not in p.lower().strip():
+                p = input("> ")
+
+        # Now on NotebookLM projects page
+        print("Creating new notebook")
+        elem = self._web_driver.find_element(By.XPATH, "//button[contains(@class,'create-new-button')]")
+        elem.click()
+        sleep(7)
+
+        # first need to hover on input button so that the input element appears
+        elem = self._web_driver.find_element(By.XPATH, "//div[contains(@class, 'dropzone') and contains(@class, 'dropzone-3panel') and contains(@class, 'ng-star-inserted')]//button[contains(@class, 'mat-mdc-icon-button') and contains(@class, 'dropzone-icon-3panel')]")
+        hover = ActionChains(self._web_driver).move_to_element(elem)
+        hover.perform()
+        sleep(5)
+
+        # Send sources
+        print("Sending sources:", ", ".join(self._src_paths))
+        elem = self._web_driver.find_elements(By.XPATH, "//div[contains(@class, 'dropzone') and contains(@class, 'dropzone-3panel') and contains(@class, 'ng-star-inserted')]//input[@type='file' and @name='Filedata']")
+        elem[0].send_keys("\n".join(
+            [os.path.abspath(os.path.join(os.getcwd(), src)) for src in self._src_paths]
+        ))
+        print("Sleeping for 40 seconds to wait for sources to load...")
+        sleep(40)
+
+        # get input textarea
+        self._prompt_element = self._web_driver.find_element(By.XPATH, "//textarea[contains(@class, 'query-box-input')]")
+        return (self._prompt_element is not None)
+
+
+    def send_prompt(self, prompt: str, sleep_for: int = 30):
+        if self._prompt_element is None:
+            print("NotebookLMBot prompt element is None")
+            return
+        
+        # since we probabily have newline characters, it's better to enter block by block
+        for block in prompt.split("\n"):
+            self._prompt_element.send_keys(block)
+            ActionChains(self._web_driver).key_down(Keys.SHIFT).key_down(Keys.ENTER).key_up(Keys.SHIFT).key_up(Keys.ENTER).perform()
+        self._prompt_element.send_keys(Keys.ENTER)
+
+        if sleep_for:
+            print(f"Sleeping for {sleep_for} seconds waiting for response...")
+            sleep(sleep_for)
+
+    def get_last_response(self) -> str:
+        elem = self._web_driver.find_elements(By.TAG_NAME, "chat-message")[-1]
+        if elem is None:
+            return ""
+        response = elem.get_property("outerText")
+
+        # response comes with some text from other elements, so just cut it
+        response = response[:response.find("\nkeep_pin")]
+        return response
+    
