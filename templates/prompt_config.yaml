@@ -38,7 +38,7 @@ response_format: |
 
   - Use numbered sectioning commands (\section, \subsection, etc.).
   - DO NOT use unnumbered commands (e.g., \section*, \subsection*).
-  - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage).
+  - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{document} and \end{document}).
   
   # Figures and Tables:
 
@@ -60,6 +60,7 @@ response_format: |
   - Include citations for all works explicitly referenced in the section and for works cited indirectly through other authors.
   - There's no need to include the field 'abstract' in biblatex format.
   - Don't use '\printbibliography' anywhere
+  - Don't use any other bibliography command besides \cite. 
 
 
 write_prompt: |
