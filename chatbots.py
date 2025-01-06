@@ -73,6 +73,19 @@ class ChatGPTBot(ChatBot):
         self._prompt_element = self._web_driver.find_element(By.ID, "prompt-textarea")
         return (self._prompt_element is not None)
 
+    def add_files(self, paths: List[str]):
+        if self._prompt_element is None:
+            print("CHATGPT BOT: not logged in (prompt element is None)")
+            return
+        
+        elem = self._web_driver.find_element(By.XPATH, "//input[@type='file']")
+        elem.send_keys("\n".join(
+            [os.path.abspath(os.path.join(os.getcwd(), path)) for path in paths]
+        ))
+        print("Sent files to ChatGPT. Now sleeping for 20 seconds...")
+        sleep(20)
+
+
     def send_prompt(self, prompt: str):
         if self._prompt_element is None:
             print("CHATGPT BOT: prompt element is None")

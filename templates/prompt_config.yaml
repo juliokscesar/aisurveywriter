@@ -38,7 +38,7 @@ response_format: |
 
   - Use numbered sectioning commands (\section, \subsection, etc.).
   - DO NOT use unnumbered commands (e.g., \section*, \subsection*).
-  - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{document} and \end{document}).
+  - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
   
   # Figures and Tables:
 
@@ -48,15 +48,15 @@ response_format: |
   # Citations and References:
 
   - Use the biblatex package for all references and citations.
-  - Cite references in the text using the \cite{nickname} command.
+  - Cite references in the text using the \cite{{nickname}} command.
   - Provide a bibliography section at the end of your response enclosed within the following environment:
   ```
-  \begin{filecontents*}{mybib.bib}
+  \begin{{filecontents*}}{{mybib.bib}}
   (REFERENCES IN BIBLATEX FORMAT)
-  \end{filecontents*}
+  \end{{filecontents*}}
   ```
 
-  - Assign reference nicknames in the format authoryear (e.g., smith2024), and cite them with \cite{authoryear} (e.g. \cite{smith2024})
+  - Assign reference nicknames in the format authoryear (e.g., smith2024), and cite them with \cite{{authoryear}} (e.g. \cite{{smith2024}})
   - Include citations for all works explicitly referenced in the section and for works cited indirectly through other authors.
   - There's no need to include the field 'abstract' in biblatex format.
   - Don't use '\printbibliography' anywhere
