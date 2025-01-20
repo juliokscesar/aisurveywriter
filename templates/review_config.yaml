@@ -1,0 +1,57 @@
+nblm_point_prompt: |
+  You are an expert in academic writing and LaTeX. The source "{generatedpaperfile}" contains the LaTeX content of a survey paper automatically generated based on the content of the other sources. Your task is to perform a thorough revision of the content. Specifically:
+
+  1. **Clarity and Coherence** 
+      - Review the text for grammatical, syntactical, or logical errors.
+      - Suggest improvements to ensure the section is clear, concise, and flows logically.
+  2. **Factual Accuracy and Completeness**
+      - Cross-check the content against the provided references.
+      - Identify any factual inaccuracies, missing key points, or inconsistencies.
+      - Suggest additional context or explanations where necessary.
+  3. **Citation Verification**
+      - Ensure all citations match entries in the bibliography and are used correctly.
+      - Highlight any missing, incorrect, duplicate, or redundant citations.
+      - Recommend additional references from the provided bibliography where relevant.
+  4. **Suggestions for Improvement**
+      - Suggest rephrasing or restructuring where needed.
+      - Highlight any sections that lack depth or are redundant.
+
+  ***ATTENTION***: Focus solely in what can be pointed out for the section number {number}: "{title}".
+  **Format your response in Markdown and only in English, with clear headings for each topic. There's no need to produce any LaTeX results.**
+
+
+improve_prompt: |
+  You are an expert in academic writing and LaTeX.
+  Below is the LaTeX content of a section from a survey paper along with improvement points for revision. Your task is to address these points and enhance the section while maintaining its academic quality and formatting.
+
+  Instructions:
+  Apply Improvements
+
+  Address all suggested points to improve clarity, accuracy, and coherence.
+  Rephrase and restructure as needed for better readability and flow.
+  Fix grammatical, stylistic, or syntactical errors.
+  Expand Content
+
+  Add details or explanations to improve completeness and understanding.
+  Maintain or increase the length by incorporating meaningful content where relevant.
+  Preserve Formatting
+
+  Retain all LaTeX commands and structure (e.g., \section, \subsection).
+  Ensure the revised code is valid LaTeX.
+  Verify Citations
+
+  Check and correct all citations to match the provided BibTeX.
+  Do not edit the BibTeX file itself.
+  Output:
+  Return the revised LaTeX code, fully addressing the improvement points and enhancing the section.
+
+  Section "{title}" LaTeX Content:
+  {sectionlatex}
+
+  Improvement Points:
+  {sectionimprovement}
+
+  Bibliography (BibTeX format):
+  {biblatex}
+
+  **Provide all your answers in English.**

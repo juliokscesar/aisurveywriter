@@ -34,6 +34,8 @@ gen_struct_prompt: |
 response_format: |
   **Please provide your output in LaTeX format, using the following guidelines for structure and content:**
 
+  **You are an expert in academic writing and LaTeX, especially in the field {subject}**
+
   # LaTeX Sectioning:
 
   - Use numbered sectioning commands (\section, \subsection, etc.).
@@ -59,8 +61,7 @@ response_format: |
   - Assign reference nicknames in the format authoryear (e.g., smith2024), and cite them with \cite{{authoryear}} (e.g. \cite{{smith2024}})
   - Include citations for all works explicitly referenced in the section and for works cited indirectly through other authors.
   - There's no need to include the field 'abstract' in biblatex format.
-  - Don't use '\printbibliography' anywhere
-  - Don't use any other bibliography command besides \cite. 
+  - Don't use '\printbibliography' outside the mybib.bib environment or any other bibliography command besides \cite.
 
 
 write_prompt: |
