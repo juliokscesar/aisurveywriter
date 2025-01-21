@@ -39,6 +39,6 @@ class PDFProcessor:
         
         return "\n".join(summaries)
         
-    def vector_store(self, embeddings: Embeddings):
+    def vector_store(self, embeddings: Embeddings) -> FAISS:
         vector_store = FAISS.from_documents(self.pdf_documents, embeddings)
         return vector_store

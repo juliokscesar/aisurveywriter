@@ -13,9 +13,9 @@ class ConfigManager:
             prompt_cfg_path: str,
             review_cfg_path: str,
             out_dir: str,
-            out_structure_path: str,
-            out_tex_path: str,
-            out_dump_path: str,
+            out_structure_filename: str,
+            out_tex_filename: str,
+            out_dump_filename: str,
         ):
         # Selenium configurations
         self.browser_path = browser_path
@@ -29,11 +29,11 @@ class ConfigManager:
         # Output paths
         self.cwd = os.getcwd()
         self.out_dir = abs_join(self.cwd, out_dir)
-        self.out_structure_path = abs_join(self.out_dir, out_structure_path)
-        self.out_tex_path = abs_join(self.out_dir, out_tex_path)
-        self.out_dump_path = abs_join(self.out_dir, out_dump_path)
-        self.out_reviewed_tex_path = abs_join(self.out_dir, "reviwed-"+os.path.basename(out_tex_path))
-        self.out_reviewed_dump_path = abs_join(self.out_dir, "reviewed-"+os.path.basename(out_dump_path))
+        self.out_structure_path = abs_join(self.out_dir, out_structure_filename)
+        self.out_tex_path = abs_join(self.out_dir, out_tex_filename)
+        self.out_dump_path = abs_join(self.out_dir, out_dump_filename)
+        self.out_reviewed_tex_path = abs_join(self.out_dir, "reviwed-"+os.path.basename(out_tex_filename))
+        self.out_reviewed_dump_path = abs_join(self.out_dir, "reviewed-"+os.path.basename(out_dump_filename))
 
         # Prompt configurations
         cfg = FileHandler.read_yaml(self.prompt_config_path)

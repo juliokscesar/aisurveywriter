@@ -17,6 +17,7 @@ nblm_point_prompt: |
       - Highlight any sections that lack depth or are redundant.
 
   ***ATTENTION***: Focus solely in what can be pointed out for the section number {number}: "{title}".
+
   **Format your response in Markdown and only in English, with clear headings for each topic. There's no need to produce any LaTeX results.**
 
 

@@ -73,6 +73,9 @@ class ChatGPTBot(ChatBot):
         self._prompt_element = self._web_driver.find_element(By.ID, "prompt-textarea")
         return (self._prompt_element is not None)
 
+    def is_logged_in(self):
+        return (self._prompt_element is not None)
+
     def add_files(self, paths: List[str]):
         if self._prompt_element is None:
             print("CHATGPT BOT: not logged in (prompt element is None)")
@@ -165,6 +168,9 @@ class NotebookLMBot(ChatBot):
 
         # get input textarea
         self._prompt_element = self._web_driver.find_element(By.XPATH, "//textarea[contains(@class, 'query-box-input')]")
+        return (self._prompt_element is not None)
+
+    def is_logged_in(self):
         return (self._prompt_element is not None)
 
     def add_sources(self, src_paths: List[str], sleep_for: int = 40):
