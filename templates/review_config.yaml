@@ -34,7 +34,8 @@ improve_prompt: |
   Expand Content
 
   Add details or explanations to improve completeness and understanding.
-  Maintain or increase the length by incorporating meaningful content where relevant.
+  **Maintain or increase the length by incorporating meaningful content where relevant.**
+  **Ensure the section contains at least 500–700 words** (~2 pages in length). COUNT YOUR WORDS.
   Preserve Formatting
 
   Retain all LaTeX commands and structure (e.g., \section, \subsection).
@@ -43,8 +44,8 @@ improve_prompt: |
 
   Check and correct all citations to match the provided BibTeX.
   Do not edit the BibTeX file itself.
-  Output:
-  Return the revised LaTeX code, fully addressing the improvement points and enhancing the section.
+  
+  **Output**: Return the revised LaTeX code, fully addressing the improvement points and enhancing the section.
 
   Section "{title}" LaTeX Content:
   {sectionlatex}

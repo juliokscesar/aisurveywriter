@@ -2,6 +2,7 @@ from typing import Union, List
 from time import sleep
 import os
 from pathlib import Path
+import yaml
 import undetected_chromedriver as uc
 from fake_useragent import UserAgent
 
@@ -52,3 +53,25 @@ def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False)
     if stem_sort:
         files = sorted(files, key=sort_stem)
     return files
+
+
+def validate_credentials(llmtype: str, credentials: dict):
+    REQUIRED_KEYS = [
+        "nblm_email",
+        "nblm_password",
+    ]
+    LLM_API_KEYS = {
+        "google": "google_key",
+        "openai": "openai_key",
+    }
+
+    # First check if required keys are present
+    diff = [i for i in REQUIRED_KEYS if i not in list(credentials.keys())]
+    if len(diff) > 0:
+        raise ValueError(f"Credentials are missing keys: {", ".join(diff)}")
+
+    # Now check if the llm type is present
+    llm = llmtype.strip().lower()
+    if llm not in LLM_API_KEYS:
+        raise ValueError(f"No API key provided for llm of type {llm!r}")
+

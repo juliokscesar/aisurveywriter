@@ -3,6 +3,8 @@ import yaml
 import re
 import os
 
+from utils.helpers import validate_credentials
+
 class FileHandler:
     @staticmethod
     def read_yaml(file_path: str) -> dict:
@@ -37,11 +39,11 @@ class FileHandler:
             paper_content += section_text
 
         bib_content = bib_content.replace("{mybib.bib}", "")
-        bib_file = file_path.replace(".tex", "")+"bib.bib"
+        bib_file = file_path.replace(".tex", ".bib")
 
         # Replace variables in template
         tex_content = template.replace("{content}", paper_content)
-        tex_content = tex_content.replace("{bibresourcefile}", bib_file)
+        tex_content = tex_content.replace("{bibresourcefile}", os.path.basename(bib_file))
 
         # Save files
         with open(file_path, "w", encoding="utf-8") as tex_f:
@@ -49,4 +51,13 @@ class FileHandler:
         with open(bib_file, "w", encoding="utf-8") as bib_f:
             bib_f.write(bib_content)
 
+    @staticmethod
+    def read_credentials(llm_type: str, file_path: str):
+        if not os.path.isfile(file_path):
+            raise FileExistsError(f"The file {file_path!r} does not exist and is required")
+        with open(file_path, "r", encoding="utf-8") as f:
+            credentials = yaml.safe_load(f)
+        
+        validate_credentials(llm_type, credentials)
 
+        return credentials

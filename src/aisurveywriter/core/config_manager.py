@@ -7,6 +7,7 @@ def abs_join(par: str, path: str) -> str:
 class ConfigManager:
     def __init__(
             self,
+            credentials_path: str,
             browser_path: str,
             driver_path: str,
             tex_template_path: str,
@@ -17,6 +18,9 @@ class ConfigManager:
             out_tex_filename: str,
             out_dump_filename: str,
         ):
+        # YAML file containing NBLM login info, API keys, etc
+        self.credentials_path = credentials_path
+
         # Selenium configurations
         self.browser_path = browser_path
         self.driver_path = driver_path
@@ -53,6 +57,17 @@ class ConfigManager:
         else:
             raise ValueError(f"Missing configuration items in {self.review_config_path}")
 
+    @staticmethod
+    def from_file(file_path: str):
+        cfg = FileHandler.read_yaml(file_path)
+        # make all paths absolute
+        for key in cfg:
+            if "path" not in key:
+                continue
+            cfg[key] = os.path.abspath(cfg[key])
+
+        print(cfg)
+        return ConfigManager(**cfg)
 
     def _print(self, *msgs):
         print(f"({self.__class__.__name__})", *msgs)

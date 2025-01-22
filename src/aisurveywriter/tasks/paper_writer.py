@@ -72,14 +72,14 @@ class PaperWriter:
         """
         Write a specific section given the paper subject, and the section's title and description.
         """
-        airesponse = self.llm.write({
+        airesponse = self.llm.invoke({
             "subject": subject,
             "title": title,
             "description": description,
         })
         return airesponse
 
-    def write_all_sections(self, show_metadata = False, sleep_between: int = 60, save_latex = True) -> List[dict[str,str]]:
+    def write_all_sections(self, show_metadata = False, sleep_between: int = 60) -> List[dict[str,str]]:
         if not self.is_llm_initialized:
             raise RuntimeError("LLM context was not initialized")
     
@@ -103,11 +103,4 @@ class PaperWriter:
             self._print("Initiating cooldown because of request limitations...")
             countdown_print("Countdown:", int(sleep_between))
         
-        if save_latex:
-            FileHandler.write_latex(
-                template_path=self.config.tex_template_path,
-                sections=sections_content,
-                file_path=self.config.out_tex_path,
-            )
-
         return sections_content

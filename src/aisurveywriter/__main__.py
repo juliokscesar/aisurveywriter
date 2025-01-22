@@ -15,32 +15,22 @@ from utils.helpers import init_driver, get_all_files_from_paths
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("references_dir", help="Path to directory containg all PDF references")
-    parser.add_argument("--llm", choices=["openai", "google"], default="google", help="Specify LLM to use. Either 'google' (gemini-1.5-pro) (default) or 'openai' (o1)")
-    parser.add_argument("--llm-model", dest="llm_model", default="gemini-1.5-pro", help="Specific LLM model to use.")
+    parser.add_argument("--llm", "-l", choices=["openai", "google"], default="google", help="Specify LLM to use. Either 'google' (gemini-1.5-pro by default) or 'openai' (o1 by default)")
+    parser.add_argument("--llm-model", "-m", dest="llm_model", default="gemini-1.5-pro", help="Specific LLM model to use.")
     parser.add_argument("--summarize", action="store_true", help="Use a summary of references instead of their whole content.")
     parser.add_argument("--faiss", action="store_true", help="Use FAISS vector store to retrieve information from references instead of their whole content. If this and 'summarize' are enabled, this will be ignored.")
+    parser.add_argument("-c", "--config", default=os.path.abspath("config.yaml"), help="YAML file containg your configuration parameters")
     return parser.parse_args()
 
 def main():
-    # Setup common configuration
-    config = ConfigManager(
-        browser_path="C:/Users/jcmcs/AppData/Local/BraveSoftware/Brave-Browser/Application/brave.exe",
-        driver_path="../../drivers/chromedriver.exe",
-        tex_template_path="../../templates/paper_template.tex",
-        prompt_cfg_path="../../templates/prompt_config.yaml",
-        review_cfg_path="../../templates/review_config.yaml",
-        out_dir="../../out",
-        out_structure_filename="laststrucutre.yaml",
-        out_tex_filename="lastpaper.tex",
-        out_dump_filename="lastpaper.dump",
-    )
-    os.makedirs("../../out", exist_ok=True)
     args = parse_args()
 
+    # Setup common configuration
+    config = ConfigManager.from_file(args.config)
+    os.makedirs(config.out_dir, exist_ok=True)
+
     # Read credentials
-    if not os.path.isfile("../../credentials.yaml"):
-        raise FileExistsError("File 'credentials.yaml' must exist with your credentials")
-    credentials = FileHandler.read_yaml("../../credentials.yaml")
+    credentials = FileHandler.read_credentials(args.llm, config.credentials_path)
     os.environ["GOOGLE_API_KEY"] = credentials["google_key"]
     os.environ["OPENAI_API_KEY"] = credentials["openai_key"]
 
@@ -92,7 +82,11 @@ def main():
     sections = writer.write_all_sections(
         show_metadata=True,
         sleep_between=int(60 * 1.3),
-        save_latex=True
+    )
+    FileHandler.write_latex(
+        template_path=config.tex_template_path,
+        sections=sections,
+        file_path=config.out_tex_path,
     )
 
     # Review paper sections
@@ -105,12 +99,16 @@ def main():
         config=config,
     )
     reviewed = reviewer.improve_all_sections(
-        save_latex=True,
         summarize_ref=args.summarize,
         use_faiss=args.faiss,
         faiss_embeddings=args.llm,
         show_metadata=True,
         sleep_between=int(60 * 1.3)
+    )
+    FileHandler.write_latex(
+        template_path=config.tex_template_path,
+        sections=reviewed,
+        file_path=config.out_reviewed_tex_path,
     )
 
     driver.quit()

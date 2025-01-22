@@ -67,7 +67,7 @@ class PaperReviewer:
         """
         Ask NotebookLM to point what must be improved for the section 'title'
         """
-        prompt = self.config.review_nblm_prompt.replace("{generatedpaperfile}", self.config.out_tex_path).replace("{title}", title).replace("{number}", number)
+        prompt = self.config.review_nblm_prompt.replace("{generatedpaperfile}", self.config.out_tex_path).replace("{title}", title).replace("{number}", str(number))
         self.nblm.send_prompt(prompt, sleep_for=40)
         improv_points = self.nblm.get_last_response()
         improv_points = improv_points[improv_points.find("Clarity and Coherence"):]
@@ -77,7 +77,7 @@ class PaperReviewer:
         """
         Use LLM to apply the improvements to the section 'title' based on the output of NotebookLM's review.
         """
-        response = self.llm.write({
+        response = self.llm.invoke({
             "title": title,
             "sectionlatex": content,
             "sectionimprovement": nblm_review,
@@ -87,7 +87,6 @@ class PaperReviewer:
 
     def improve_all_sections(
         self, 
-        save_latex = True,
         summarize_ref=False,
         use_faiss=False,
         faiss_embeddings: str = "google",
@@ -136,10 +135,4 @@ class PaperReviewer:
             self._print("Initiating cooldown because of request limitations...")
             countdown_print("Countdown:", int(sleep_between))
         
-        if save_latex:
-            FileHandler.write_latex(
-                template_path=self.config.tex_template_path,
-                sections=reviewed,
-                file_path=self.config.out_reviewed_tex_path,
-            )
         return reviewed

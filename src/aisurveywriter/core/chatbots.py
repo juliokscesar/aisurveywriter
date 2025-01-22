@@ -112,54 +112,58 @@ class NotebookLMBot(ChatBot):
         super().__init__(user, password, NBLM_MAIN_URL, driver)
         self._src_paths = src_paths.copy()
         self._prompt_element = None
+
+    def _print(self, *msgs):
+        print(f"({self.__class__.__name__})", *msgs)
     
     def login(self) -> bool:
         self._web_driver.get(self._main_url)
-        sleep(3)
+        sleep(5)
 
         # keep track of original tab
         orig_window = self._web_driver.current_window_handle
 
         # Click on "Try NotebookLM"
-        print("Clicking on 'Try NotebookLM'")
+        self._print("Clicking on 'Try NotebookLM'")
         elem = self._web_driver.find_element(By.LINK_TEXT, "Try NotebookLM")
         elem.click()
         
         # wait for the login tab to open and switch
         WebDriverWait(self._web_driver, 10).until(EC.number_of_windows_to_be(2))
-        print("Changing to login tab")
+        self._print("Changing to login tab")
         for window_handle in self._web_driver.window_handles:
             if window_handle != orig_window:
                 self._web_driver.switch_to.window(window_handle)
                 break
-        sleep(3)
 
         # Now on login page
         # Enter email
-        print("Entering email")
-        elem = self._web_driver.find_element(By.XPATH, "//input[@type='email']")
+        elem = WebDriverWait(self._web_driver, 10).until(EC.presence_of_element_located((By.XPATH, "//input[@type='email']")))
+        self._print("Entering email")
         elem.send_keys(self._username)
         elem.send_keys(Keys.ENTER)
-        sleep(5)
 
         # Enter password
-        print("Entering password")
-        elem = self._web_driver.find_element(By.XPATH, "//input[@type='password']")
+        elem = WebDriverWait(self._web_driver, 10).until(EC.presence_of_element_located((By.XPATH, "//input[@type='password']")))
+        self._print("Entering password")
         elem.send_keys(self._password)
         elem.send_keys(Keys.ENTER)
-        sleep(5)
+        sleep(7)
 
         # wait for user authentication if detected
-        if "/challenge/" in self._web_driver.current_url:
-            print("*"*80)
-            print("WAITING FOR USER ACCOUNT 2F AUTHENTICATION. ENTER [y]es TO CONTINUE")
-            print("*"*80)
-            p = input("> ")
-            while 'y' not in p.lower().strip():
-                p = input("> ")
-
+        if NBLM_MAIN_URL not in self._web_driver.current_url:
+            self._print("*"*80)
+            self._print("DETECTED URL OUT OF PLANS. PROBABLY 2FA.")
+            self._print("WAITING FOR USER ACCOUNT 2F AUTHENTICATION.")
+            while "/challenge/" in self._web_driver.current_url:
+                for _ in range(3):
+                    print(".", end='', flush=True)
+                    sleep(1)
+                print('\r',end='')
+            sleep(5)
+                
         # Now on NotebookLM projects page
-        print("Creating new notebook")
+        self._print("Creating new notebook")
         elem = self._web_driver.find_element(By.XPATH, "//button[contains(@class,'create-new-button')]")
         elem.click()
         sleep(7)
@@ -181,12 +185,12 @@ class NotebookLMBot(ChatBot):
         sleep(5)
 
         # Send sources
-        print("Sending sources:", ", ".join(src_paths))
+        self._print("Sending sources:", ", ".join(src_paths))
         elem = self._web_driver.find_elements(By.XPATH, "//div[contains(@class, 'dropzone') and contains(@class, 'dropzone-3panel') and contains(@class, 'ng-star-inserted')]//input[@type='file' and @name='Filedata']")
         elem[0].send_keys("\n".join(
             [os.path.abspath(os.path.join(os.getcwd(), src)) for src in src_paths]
         ))
-        print(f"Sleeping for {sleep_for} seconds to wait for sources to load...")
+        self._print(f"Sleeping for {sleep_for} seconds to wait for sources to load...")
         sleep(sleep_for)
         self._src_paths.extend(src_paths)
 
@@ -203,7 +207,7 @@ class NotebookLMBot(ChatBot):
         self._prompt_element.send_keys(Keys.ENTER)
 
         if sleep_for:
-            print(f"Sleeping for {sleep_for} seconds waiting for response...")
+            self._print(f"Sleeping for {sleep_for} seconds waiting for response...")
             sleep(sleep_for)
 
     def get_last_response(self) -> str:
