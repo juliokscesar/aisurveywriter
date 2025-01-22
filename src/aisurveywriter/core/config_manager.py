@@ -65,7 +65,7 @@ class ConfigManager:
             "write_prompt",
             "prompt_input_variables",
         ]
-        diff = list(set(cfg.keys()) - PROMPT_KEYS)
+        diff = list(set(cfg.keys()) - set(PROMPT_KEYS))
         if len(diff) != 0:
             self._print("Missing keys in prompt config:", ", ".join(diff))
             return False
@@ -76,7 +76,7 @@ class ConfigManager:
             "nblm_point_prompt",
             "improve_prompt",
         ]
-        diff = list(set(cfg.keys()) - REVIEW_KEYS)
+        diff = list(set(cfg.keys()) - set(REVIEW_KEYS))
         if len(diff) != 0:
             self._print("Missing keys in review config:", ", ".join(diff))
             return False

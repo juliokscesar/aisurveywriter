@@ -3,14 +3,14 @@ import argparse
 
 import undetected_chromedriver as uc
 
-from .core.config_manager import ConfigManager
-from .core.file_handler import FileHandler
-from .core.chatbots import NotebookLMBot
-from .core.llm_handler import LLMHandler
-from .tasks.paper_generator import PaperStructureGenerator
-from .tasks.paper_writer import PaperWriter
-from .tasks.paper_reviewer import PaperReviewer
-from .utils.helpers import init_driver, get_all_files_from_paths
+from core.config_manager import ConfigManager
+from core.file_handler import FileHandler
+from core.chatbots import NotebookLMBot
+from core.llm_handler import LLMHandler
+from tasks.paper_generator import PaperStructureGenerator
+from tasks.paper_writer import PaperWriter
+from tasks.paper_reviewer import PaperReviewer
+from utils.helpers import init_driver, get_all_files_from_paths
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -45,7 +45,7 @@ def main():
     os.environ["OPENAI_API_KEY"] = credentials["openai_key"]
 
     # Get PDF paths for the references
-    ref_pdf_paths = get_all_files_from_paths(args["references_dir"])
+    ref_pdf_paths = get_all_files_from_paths(args.references_dir)
 
     # Initialize NotebookLM
     driver = init_driver(config.browser_path, config.driver_path)
@@ -59,7 +59,7 @@ def main():
     nblm.login()
 
     # Generate paper structure
-    structgen = PaperStructureGenerator(nblm)
+    structgen = PaperStructureGenerator(nblm, config)
     structure = structgen.generate_structure(
         prompt=config.prompt_structure,
         sleep_wait_response=40,
@@ -68,8 +68,8 @@ def main():
     )
 
     llm = LLMHandler(
-        model=args["llm_model"],
-        model_type=args["llm"],
+        model=args.llm_model,
+        model_type=args.llm,
     )
 
     # Write paper sections
@@ -82,10 +82,10 @@ def main():
     )
     ctx_msg = writer.create_context_sysmsg(
         header_prompt=config.prompt_response_format,
-        summarize_references=args["summarize"],
+        summarize_references=args.summarize,
         alternate_summarizer_llm=None,
-        use_faiss=args["faiss"],
-        faiss_embeddings=args["llm"],
+        use_faiss=args.faiss,
+        faiss_embeddings=args.llm,
         show_metadata=True,
     )
     writer.init_llm_context(ctx_msg, config.prompt_write)
@@ -106,9 +106,9 @@ def main():
     )
     reviewed = reviewer.improve_all_sections(
         save_latex=True,
-        summarize_ref=args["summarize"],
-        use_faiss=args["faiss"],
-        faiss_embeddings=args["llm"],
+        summarize_ref=args.summarize,
+        use_faiss=args.faiss,
+        faiss_embeddings=args.llm,
         show_metadata=True,
         sleep_between=int(60 * 1.3)
     )

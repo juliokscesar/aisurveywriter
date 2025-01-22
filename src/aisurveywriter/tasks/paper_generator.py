@@ -1,12 +1,13 @@
 from typing import List
 import yaml
 
-from ..core.config_manager import ConfigManager
-from ..core.chatbots import NotebookLMBot
+from core.config_manager import ConfigManager
+from core.chatbots import NotebookLMBot
 
 class PaperStructureGenerator:
-    def __init__(self, nblm_bot: NotebookLMBot):
+    def __init__(self, nblm_bot: NotebookLMBot, config: ConfigManager):
         self.nblm = nblm_bot
+        self.config = config
 
         if not self.nblm.is_logged_in():
             self.nblm.login()
@@ -35,4 +36,4 @@ class PaperStructureGenerator:
         
         result = yaml.safe_load(result)
         self._print(f"Finished generating paper structure. Got a structure with {len(result['sections'])} sections.\n")
-        return result
+        return result["sections"]

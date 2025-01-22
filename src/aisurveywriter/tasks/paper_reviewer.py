@@ -5,12 +5,12 @@ from langchain_core.messages import SystemMessage
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
-from ..core.chatbots import NotebookLMBot
-from ..core.llm_handler import LLMHandler
-from ..core.config_manager import ConfigManager
-from ..core.pdf_processor import PDFProcessor
-from ..core.file_handler import FileHandler
-from ..utils.helpers import countdown_print
+from core.chatbots import NotebookLMBot
+from core.llm_handler import LLMHandler
+from core.config_manager import ConfigManager
+from core.pdf_processor import PDFProcessor
+from core.file_handler import FileHandler
+from utils.helpers import countdown_print
 
 class PaperReviewer:
     def __init__(self, subject: str, sections_content: List[dict[str,str]], pdf_references: List[str], nblm: NotebookLMBot, llm: LLMHandler, config: ConfigManager):
@@ -77,7 +77,7 @@ class PaperReviewer:
         """
         Use LLM to apply the improvements to the section 'title' based on the output of NotebookLM's review.
         """
-        response = self.llm.invoke({
+        response = self.llm.write({
             "title": title,
             "sectionlatex": content,
             "sectionimprovement": nblm_review,

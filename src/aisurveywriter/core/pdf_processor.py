@@ -1,8 +1,7 @@
 from typing import List
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import Embeddings
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 
 class PDFProcessor:
     def __init__(self, pdf_paths: List[str]):
@@ -20,7 +19,7 @@ class PDFProcessor:
     def extract_content(self) -> List[str]:
         contents = [""] * len(self.pdf_documents)
         for i, doc in enumerate(self.pdf_documents):
-            contents[i] = doc.page_content
+            contents[i] = "\n".join([d.page_content for d in doc])
         return contents
 
     def summarize_content(self, summarizer, chunk_size: int = 2000, chunk_overlap: int = 200, show_metadata = False) -> List[str]:
@@ -39,6 +38,6 @@ class PDFProcessor:
         
         return "\n".join(summaries)
         
-    def vector_store(self, embeddings: Embeddings) -> FAISS:
+    def vector_store(self, embeddings) -> FAISS:
         vector_store = FAISS.from_documents(self.pdf_documents, embeddings)
         return vector_store

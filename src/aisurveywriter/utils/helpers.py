@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 from time import sleep
 import os
 from pathlib import Path

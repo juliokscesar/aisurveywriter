@@ -4,12 +4,12 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.messages import SystemMessage
 
-from ..core.config_manager import ConfigManager
-from ..core.llm_handler import LLMHandler
-from ..core.pdf_processor import PDFProcessor
-from ..core.file_handler import FileHandler
+from core.config_manager import ConfigManager
+from core.llm_handler import LLMHandler
+from core.pdf_processor import PDFProcessor
+from core.file_handler import FileHandler
 
-from ..utils.helpers import countdown_print
+from utils.helpers import countdown_print
 
 class PaperWriter:
     def __init__(self, subject: str, sections_structure: List[dict[str,str]], llm: LLMHandler, pdf_refrences: List[str], config: ConfigManager):
@@ -72,7 +72,7 @@ class PaperWriter:
         """
         Write a specific section given the paper subject, and the section's title and description.
         """
-        airesponse = self.llm.invoke({
+        airesponse = self.llm.write({
             "subject": subject,
             "title": title,
             "description": description,
@@ -85,12 +85,13 @@ class PaperWriter:
     
         sections_content = []
         for i, section in enumerate(self.sections_structure):
+            self._print(f"===> STARTED WRITING SECTION ({i+1}/{len(self.sections_structure)}): {section['title']!r}")
             response = self.write_section(
                 subject=self.subject,
                 title=section["title"],
                 description=section["description"],
             )
-            self._print(f"===> FINISHED WRITING SECTION ({i+1}/{len(self.sections_structure)}): {section["title"]!r}")
+            self._print(f"===> FINISHED WRITING SECTION ({i+1}/{len(self.sections_structure)}): {section['title']!r}")
             if show_metadata:
                 self._print("===> RESPONSE METADATA:", response.usage_metadata)
 
