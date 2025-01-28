@@ -142,13 +142,14 @@ class NotebookLMBot(ChatBot):
         self._print("Entering email")
         elem.send_keys(self._username)
         elem.send_keys(Keys.ENTER)
+        sleep(3)
 
         # Enter password
         elem = WebDriverWait(self._web_driver, 10).until(EC.presence_of_element_located((By.XPATH, "//input[@type='password']")))
         self._print("Entering password")
         elem.send_keys(self._password)
         elem.send_keys(Keys.ENTER)
-        sleep(7)
+        sleep(6)
 
         # wait for user authentication if detected
         if NBLM_MAIN_URL not in self._web_driver.current_url:
@@ -179,14 +180,14 @@ class NotebookLMBot(ChatBot):
 
     def add_sources(self, src_paths: List[str], sleep_for: int = 40):
         # first need to hover on input button so that the input element appears
-        elem = self._web_driver.find_element(By.XPATH, "//div[contains(@class, 'dropzone') and contains(@class, 'dropzone-3panel') and contains(@class, 'ng-star-inserted')]//button[contains(@class, 'mat-mdc-icon-button') and contains(@class, 'dropzone-icon-3panel')]")
+        elem = self._web_driver.find_element(By.XPATH, "//button[contains(@class, 'dropzone__icon') and contains(@class, 'mat-mdc-icon-button') and contains(@class, 'mdc-icon-button')]")
         hover = ActionChains(self._web_driver).move_to_element(elem)
         hover.perform()
         sleep(5)
 
         # Send sources
         self._print("Sending sources:", ", ".join(src_paths))
-        elem = self._web_driver.find_elements(By.XPATH, "//div[contains(@class, 'dropzone') and contains(@class, 'dropzone-3panel') and contains(@class, 'ng-star-inserted')]//input[@type='file' and @name='Filedata']")
+        elem = self._web_driver.find_elements(By.XPATH, "//input[@type='file' and @name='Filedata']")
         elem[0].send_keys("\n".join(
             [os.path.abspath(os.path.join(os.getcwd(), src)) for src in src_paths]
         ))

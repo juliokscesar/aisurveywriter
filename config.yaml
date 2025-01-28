@@ -1,5 +1,5 @@
 credentials_path: "credentials.yaml"
-browser_path: "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+browser_path: "C:/Users/jcmcs/AppData/Local/BraveSoftware/Brave-Browser/Application/brave.exe"
 driver_path: "drivers/chromedriver.exe"
 tex_template_path: "templates/paper_template.tex"
 prompt_cfg_path: "templates/prompt_config.yaml"

@@ -1,19 +1,17 @@
 subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
 
-
 gen_struct_prompt: |
-  Using only the provided sources, generate a detailed structure for a scientific survey paper on the subject **{subject}**. Please provide your response in English.
+  You are an expert in academic writing, specially in the field of **{subject}**.
 
-  1. **Goal**: Create a formal and comprehensive structure for a survey paper that organizes the subject logically and thoroughly, emphasizing clarity and coherence.  
-
-  2. **Instructions**:  
-    - Do **not** include sections such as **Abstract** or **References**; these will be added separately.  
-    - Include core sections and any additional sections/subsections inspired by the provided sources and your analysis of the subject. Be sure to include required sections for survey papers such as "Introduction", "Conclusions", and related.
-    - Each section and subsection must have a descriptive title and a detailed explanation of its purpose and scope.  
-
-  3. **Output Format**:  
-    - Provide the structure in YAML format for easy integration.  
-    - Format each section as follows:  
+  1. **GOAL**: generate a detailed structure for a scientific survey paper on the subject "{subject}". Be formal, comprehensive and organize the subject logically and thoroughly.
+  
+  2. **INSTRUCTIONS**:
+    - Do not include sections such as **Abstract** or **References**;
+    - Include core (Introductions, conclusions,...) sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
+  
+  3. **OUTPUT FORMAT**:
+    - Provide the structure in YAML format
+    - Do it as follows:
       ```yaml
       - title: "Section Title"
         description: |
@@ -23,77 +21,55 @@ gen_struct_prompt: |
           - Another Subsection Title
             - Explanation.
             - More details.
-      ```  
+      ``` 
 
-  4. **Additional Guidance**:  
-    - Ensure the structure reflects the patterns and insights from the sources while adhering to formal survey paper conventions.  
-    - Focus on clarity, logical flow, and comprehensiveness to aid understanding and readability.  
-    - Group related topics logically and ensure that the structure supports a cohesive narrative of the subject.
+    **Provide your answer in English only**.
 
 
 response_format: |
   **Please provide your output in LaTeX format, using the following guidelines for structure and content:**
 
-  **You are an expert in academic writing and LaTeX, especially in the field {subject}**
-
   # LaTeX Sectioning:
 
-  - Use numbered sectioning commands (\section, \subsection, etc.).
-  - DO NOT use unnumbered commands (e.g., \section*, \subsection*).
+  - Use only numbered sectioning commands (\section, \subsection, etc.) (don't use unnumbered such as \section*).
   - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
-  
-  # Figures and Tables:
 
-  - Use the TikZ package to include any figures that you think are relevant.
-  - Refer to figures and tables in the text using proper citations, such as (Fig. X, AUTHOR, YEAR) or (Tab. X, AUTHOR, YEAR), where X is the number of the figure/table.
-  
   # Citations and References:
 
   - Use the biblatex package for all references and citations.
-  - Cite references in the text using the \cite{{nickname}} command.
-  - Provide a bibliography section at the end of your response enclosed within the following environment:
+  - Cite references using the command \cite{{nickname}}.
+  - Provide a bibliography section at the end of your response enclosed with:
   ```
   \begin{{filecontents*}}{{mybib.bib}}
   (REFERENCES IN BIBLATEX FORMAT)
   \end{{filecontents*}}
   ```
 
-  - Assign reference nicknames in the format authoryear (e.g., smith2024), and cite them with \cite{{authoryear}} (e.g. \cite{{smith2024}})
-  - Include citations for all works explicitly referenced in the section and for works cited indirectly through other authors.
-  - There's no need to include the field 'abstract' in biblatex format.
-  - Don't use '\printbibliography' outside the mybib.bib environment or any other bibliography command besides \cite.
+  - Assign reference nicknames in the format authoryear (e.g, smith2024)
+  - Include citations for all works explicitly referenced in the section
+  - Don't use '\printbibliography' anywhere.
+
+  **Provide your answer in English only**.
 
 
 write_prompt: |
-  # Content Requirements:
-  - Write a complete section for a review paper on {subject} titled {title}.
-  - Base the section on the papers provided, incorporating:
-    - Direct insights from the authors.
-    - Insights from works cited by these authors.
-  - Where relevant, include visual or tabular elements and discuss them in the text.
+  **You are an expert in academic writing, specially in the field of {subject}.**
 
-  # Writing Style
+  ## Content requirements
+  - Write a complete section titled "{title}" for a survey paper on the subject {subject}.
+  - Base the section on the references providaded, incorporating:
+    - Direct insights from the authors
+    - Insights from works cited by these authors
+    - Insights gathered from your analysis
+  - Include visual or tabular elements where relevant
+  - Your output must contain at least 600 words (~2 pages in lentgh).
+  - Use as many references as possible to provide a robust and well-supported discussion.
+
+  ## Writing style
   - Maintain a formal, scientific, and objective tone throughout.
-  - Structure your response to ensure the section is comprehensive and logically organized.
-  - Draw inspiration from the writing style and tone of the papers you are referencing.
-
-  # Length Requirements
-  - **Ensure the section contains at least 500–700 words** (~2 pages in length). COUNT YOUR WORDS.
-  - Focus on detailed analysis, explanations, and discussions to achieve this length.
+  - Gather inspiration from the writing style and tone of the papers referenced.
 
   # Section Structure:
   - TITLE: {title}
-  - DESCRIPTION: {description}
-
-  # Additional Notes:
-  - Use as many references as necessary to provide a robust and well-supported discussion.
-  - Ensure all references and citations are properly formatted and complete.
-
-  The final output should adhere to these guidelines, providing a self-contained LaTeX section that is ready for inclusion in a longer document.
-
-
-prompt_input_variables:
-  - "title"
-  - "description"
-  - "subject"
+  - DESCRIPTION {description}
 

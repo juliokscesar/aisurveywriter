@@ -67,7 +67,7 @@ class PaperReviewer:
         """
         Ask NotebookLM to point what must be improved for the section 'title'
         """
-        prompt = self.config.review_nblm_prompt.replace("{generatedpaperfile}", self.config.out_tex_path).replace("{title}", title).replace("{number}", str(number))
+        prompt = self.config.review_nblm_prompt.replace("{paperfilename}", self.config.out_tex_path).replace("{title}", title).replace("{number}", str(number)).replace("{subject}", self.config.paper_subject)
         self.nblm.send_prompt(prompt, sleep_for=40)
         improv_points = self.nblm.get_last_response()
         improv_points = improv_points[improv_points.find("Clarity and Coherence"):]
@@ -78,6 +78,7 @@ class PaperReviewer:
         Use LLM to apply the improvements to the section 'title' based on the output of NotebookLM's review.
         """
         response = self.llm.invoke({
+            "subject": self.config.paper_subject,
             "title": title,
             "sectionlatex": content,
             "sectionimprovement": nblm_review,
@@ -102,7 +103,7 @@ class PaperReviewer:
             bib_content = f.read()
 
         # Add as source to NotebookLM
-        self.nblm.append_sources([tex_file, bib_file], sleep_for=20)
+        self.nblm.append_sources([tex_file, bib_file], sleep_for=25)
 
         # First setup LLM context message
         ctx = self.create_context_sysmsg(

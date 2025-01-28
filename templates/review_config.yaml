@@ -1,5 +1,9 @@
 nblm_point_prompt: |
-  You are an expert in academic writing and LaTeX. The source "{generatedpaperfile}" contains the LaTeX content of a survey paper automatically generated based on the content of the other sources. Your task is to perform a thorough revision of the content. Specifically:
+  You are an expert in academic writing, specially in the field of "{subject}".
+
+  The source "{paperfilename}" contains the LaTeX content of a survey paper based on the content of the other sources.
+
+  **Your task**: perform a thorough revision of this content. Specifically:
 
   1. **Clarity and Coherence** 
       - Review the text for grammatical, syntactical, or logical errors.
@@ -22,38 +26,42 @@ nblm_point_prompt: |
 
 
 improve_prompt: |
-  You are an expert in academic writing and LaTeX.
-  Below is the LaTeX content of a section from a survey paper along with improvement points for revision. Your task is to address these points and enhance the section while maintaining its academic quality and formatting.
+  You are an expert in academic writing, specially in the field of "{subject}".
 
-  Instructions:
-  Apply Improvements
+  Below is the LaTex content of a section from a survey paper titled "{title}", along with points that must be improved.
 
-  Address all suggested points to improve clarity, accuracy, and coherence.
-  Rephrase and restructure as needed for better readability and flow.
-  Fix grammatical, stylistic, or syntactical errors.
-  Expand Content
+  **TASK**: Apply these improvements to the given section.
 
-  Add details or explanations to improve completeness and understanding.
-  **Maintain or increase the length by incorporating meaningful content where relevant.**
-  **Ensure the section contains at least 500–700 words** (~2 pages in length). COUNT YOUR WORDS.
-  Preserve Formatting
+  ## Requirements
+  - Address all points to improve clarity, accuracy and coherence.
+  - Add details or explanations to improve completeness and understanding.
+  - **Maintain or increase the length by incorporating meaningful content.**
+  - **Preserve formatting**
+  - **Preserve all sections (\section) and subsections (\subsection)
+  - Verify citations, check and correct them to match the provided BibTex.
 
-  Retain all LaTeX commands and structure (e.g., \section, \subsection).
-  Ensure the revised code is valid LaTeX.
-  Verify Citations
+  ## Output format
+  **Provide all your answers in English**.
+  Just as the LaTeX text with the section's content, your answer should be formatted as follows:
 
-  Check and correct all citations to match the provided BibTeX.
-  Do not edit the BibTeX file itself.
-  
-  **Output**: Return the revised LaTeX code, fully addressing the improvement points and enhancing the section.
+  ```latex
+  \section{{(*section title*)}}
+  ...
+  \subsection{{...}}
+  ...
 
-  Section "{title}" LaTeX Content:
+  \begin{{filecontents*}}{{mybib.bib}}
+  (SECTION REFERENCES IN BIBLATEX FORMAT)
+  \end{{filecontents*}}
+  ```
+
+  ## Section LaTeX content:
+  ```latex
   {sectionlatex}
+  ```
 
-  Improvement Points:
+  ## Improvement points:
   {sectionimprovement}
 
-  Bibliography (BibTeX format):
+  ## BibLaTeX content:
   {biblatex}
-
-  **Provide all your answers in English.**

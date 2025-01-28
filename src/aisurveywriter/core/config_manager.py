@@ -46,7 +46,6 @@ class ConfigManager:
             self.prompt_structure = cfg["gen_struct_prompt"]
             self.prompt_response_format = cfg["response_format"]
             self.prompt_write = cfg["write_prompt"]
-            self.prompt_input_variables = cfg["prompt_input_variables"]
         else:
             raise ValueError(f"Missing configuration items in {self.prompt_config_path}")
         
@@ -78,7 +77,6 @@ class ConfigManager:
             "gen_struct_prompt",
             "response_format",
             "write_prompt",
-            "prompt_input_variables",
         ]
         diff = list(set(cfg.keys()) - set(PROMPT_KEYS))
         if len(diff) != 0:
