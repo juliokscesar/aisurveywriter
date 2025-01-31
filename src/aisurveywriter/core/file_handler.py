@@ -3,7 +3,7 @@ import yaml
 import re
 import os
 
-from utils.helpers import validate_credentials
+from aisurveywriter.utils.helpers import validate_credentials
 
 class FileHandler:
     @staticmethod

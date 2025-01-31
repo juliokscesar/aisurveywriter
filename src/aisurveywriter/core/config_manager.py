@@ -1,5 +1,6 @@
 import os
-from .file_handler import FileHandler
+
+from aisurveywriter.core.file_handler import FileHandler
 
 def abs_join(par: str, path: str) -> str:
     return os.path.abspath(os.path.join(par, path))

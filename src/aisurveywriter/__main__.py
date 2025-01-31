@@ -1,16 +1,14 @@
 import os
 import argparse
 
-import undetected_chromedriver as uc
-
-from core.config_manager import ConfigManager
-from core.file_handler import FileHandler
-from core.chatbots import NotebookLMBot
-from core.llm_handler import LLMHandler
-from tasks.paper_generator import PaperStructureGenerator
-from tasks.paper_writer import PaperWriter
-from tasks.paper_reviewer import PaperReviewer
-from utils.helpers import init_driver, get_all_files_from_paths
+from aisurveywriter.core.config_manager import ConfigManager
+from aisurveywriter.core.file_handler import FileHandler
+from aisurveywriter.core.chatbots import NotebookLMBot
+from aisurveywriter.core.llm_handler import LLMHandler
+from aisurveywriter.tasks.paper_generator import PaperStructureGenerator
+from aisurveywriter.tasks.paper_writer import PaperWriter
+from aisurveywriter.tasks.paper_reviewer import PaperReviewer
+from aisurveywriter.utils.helpers import init_driver, get_all_files_from_paths
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -20,6 +18,10 @@ def parse_args():
     parser.add_argument("--summarize", action="store_true", help="Use a summary of references instead of their whole content.")
     parser.add_argument("--faiss", action="store_true", help="Use FAISS vector store to retrieve information from references instead of their whole content. If this and 'summarize' are enabled, this will be ignored.")
     parser.add_argument("-c", "--config", default=os.path.abspath("config.yaml"), help="YAML file containg your configuration parameters")
+    # TODO: review step depends on NBLM, so right now it will only work if structure and no-review are provided
+    parser.add_argument("--structure", "-s", default=None, type=str, help="YAML file containing the structure to use. If provided, this will skip the structure generation process.")
+    parser.add_argument("--no-review", dest="no_review", action="store_true", help="Disable the review step.")
+
     return parser.parse_args()
 
 def main():

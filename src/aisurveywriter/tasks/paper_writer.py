@@ -4,12 +4,11 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.messages import SystemMessage
 
-from core.config_manager import ConfigManager
-from core.llm_handler import LLMHandler
-from core.pdf_processor import PDFProcessor
-from core.file_handler import FileHandler
-
-from utils.helpers import countdown_print
+from aisurveywriter.core.config_manager import ConfigManager
+from aisurveywriter.core.llm_handler import LLMHandler
+from aisurveywriter.core.pdf_processor import PDFProcessor
+from aisurveywriter.core.file_handler import FileHandler
+from aisurveywriter.utils.helpers import countdown_print
 
 class PaperWriter:
     def __init__(self, subject: str, sections_structure: List[dict[str,str]], llm: LLMHandler, pdf_refrences: List[str], config: ConfigManager):

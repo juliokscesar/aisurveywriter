@@ -27,29 +27,27 @@ gen_struct_prompt: |
 
 
 response_format: |
-  **Please provide your output in LaTeX format, using the following guidelines for structure and content:**
+  **ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO:**
 
-  # LaTeX Sectioning:
+  **You must use only LaTeX format, using the following guidelines for structure and content:**
+  - LaTeX Sectioning:
+    - Use only numbered sectioning commands (\section, \subsection, etc.) (don't use unnumbered such as \section*).
+    - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
 
-  - Use only numbered sectioning commands (\section, \subsection, etc.) (don't use unnumbered such as \section*).
-  - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
+  - Citations and References:
+    - Use the biblatex package for all references and citations.
+    - Cite references using the command \cite{{nickname}}.
+    - Provide a bibliography section at the end of your response enclosed with:
+    ```
+    \begin{{filecontents*}}{{mybib.bib}}
+    (REFERENCES IN BIBLATEX FORMAT)
+    \end{{filecontents*}}
+    ```
+    - Assign reference nicknames in the format authoryear (e.g, smith2024)
+    - Include citations for all works explicitly referenced in the section
+    - Don't use '\printbibliography' anywhere.
 
-  # Citations and References:
-
-  - Use the biblatex package for all references and citations.
-  - Cite references using the command \cite{{nickname}}.
-  - Provide a bibliography section at the end of your response enclosed with:
-  ```
-  \begin{{filecontents*}}{{mybib.bib}}
-  (REFERENCES IN BIBLATEX FORMAT)
-  \end{{filecontents*}}
-  ```
-
-  - Assign reference nicknames in the format authoryear (e.g, smith2024)
-  - Include citations for all works explicitly referenced in the section
-  - Don't use '\printbibliography' anywhere.
-
-  **Provide your answer in English only**.
+  **Write in English only**.
 
 
 write_prompt: |
