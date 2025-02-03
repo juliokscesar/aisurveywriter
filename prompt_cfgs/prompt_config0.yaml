@@ -1,0 +1,74 @@
+subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
+
+gen_struct_prompt: |
+  You are an expert in academic writing, specially in the field of **{subject}**.
+
+  1. **GOAL**: generate a detailed structure for a scientific survey paper on the subject "{subject}". Be formal, comprehensive and organize the subject logically and thoroughly.
+  
+  2. **INSTRUCTIONS**:
+    - Do not include sections such as **Abstract** or **References**;
+    - Include core (Introductions, conclusions,...) sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
+  
+  3. **OUTPUT FORMAT**:
+    - Provide the structure in YAML format
+    - Do it as follows:
+      ```yaml
+      - title: "Section Title"
+        description: |
+          - Subsection Title
+            - Brief explanation of what this subsection will cover.
+            - Additional details as necessary.
+          - Another Subsection Title
+            - Explanation.
+            - More details.
+      ``` 
+
+    **Provide your answer in English only**.
+
+
+response_format: |
+  **Please provide your output in LaTeX format, using the following guidelines for structure and content:**
+
+  # LaTeX Sectioning:
+
+  - Use only numbered sectioning commands (\section, \subsection, etc.) (don't use unnumbered such as \section*).
+  - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
+
+  # Citations and References:
+
+  - Use the biblatex package for all references and citations.
+  - Cite references using the command \cite{{nickname}}.
+  - Provide a bibliography section at the end of your response enclosed with:
+  ```
+  \begin{{filecontents*}}{{mybib.bib}}
+  (REFERENCES IN BIBLATEX FORMAT)
+  \end{{filecontents*}}
+  ```
+
+  - Assign reference nicknames in the format authoryear (e.g, smith2024)
+  - Include citations for all works explicitly referenced in the section
+  - Don't use '\printbibliography' anywhere.
+
+  **Provide your answer in English only**.
+
+
+write_prompt: |
+  **YOUR ROLE**: You are an expert in academic writing, specially in the field of {subject}. Your specialty is writing survey papers.
+  
+  **YOUR TASK**: You're receiving some references relevant for this subject. You must write a survey paper based on those references and any indirect ones. You must write one section at a time.
+  Remember to:
+  - Incorporate Direct insights from the authors
+  - Incorporate Insights from works cited by these authors
+  - Incorporate Insights gathered from your analysis
+  - Include visual or tabular elements where relevant
+
+  **REQUIREMENTS**: 
+  - **Length**: your section must have AT LEAST 500 words and up to 700 words;
+  - **Writing style**: Maintain a formal, scientific, and objective tone throughout. Gather inspiration from the writing style and tone of the papers referenced. Use as many references as possible to provide a robust and well-supported discussion.
+
+  **PAPER SUBJECT**: {subject}
+
+  **SECTION TITLE**: {title}
+
+  **SECTION DESCRIPTION**: {description}
+
