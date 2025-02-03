@@ -1,5 +1,6 @@
 from typing import List, Union
 import os
+import shutil
 
 from langchain_core.messages import SystemMessage
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -67,11 +68,15 @@ class PaperReviewer:
         """
         Ask NotebookLM to point what must be improved for the section 'title'
         """
-        prompt = self.config.review_nblm_prompt.replace("{paperfilename}", self.config.out_tex_path).replace("{title}", title).replace("{number}", str(number)).replace("{subject}", self.config.paper_subject)
+        prompt = self.config.review_nblm_prompt.replace("{paperfilename}", os.path.basename(self.config.out_tex_path)).replace("{title}", title).replace("{number}", str(number)).replace("{subject}", self.config.paper_subject)
         self.nblm.send_prompt(prompt, sleep_for=40)
         improv_points = self.nblm.get_last_response()
         improv_points = improv_points[improv_points.find("Clarity and Coherence"):]
         return improv_points
+
+    # TODO!!!
+    def filter_section(self, content: str) -> str:
+        pass
 
     def apply_improvement_section(self, nblm_review: str, title: str, content: str, bib_content: str):
         """
@@ -102,8 +107,18 @@ class PaperReviewer:
         with open(bib_file, "r", encoding="utf-8") as f:
             bib_content = f.read()
 
-        # Add as source to NotebookLM
-        self.nblm.append_sources([tex_file, bib_file], sleep_for=25)
+        # Add as source to NotebookLM. First have to generate .txt file
+        try:
+            tmp_tex = tex_file + ".txt"
+            tmp_bib = bib_file + ".txt"
+            shutil.copyfile(tex_file, tmp_tex)
+            shutil.copyfile(bib_file, tmp_bib)
+            self.nblm.append_sources([tmp_tex, tmp_bib], sleep_for=25)
+            os.remove(tmp_tex)
+            os.remove(tmp_bib)
+        except:
+            raise RuntimeError("Unable to add tex and bib file as sources to NotebookLM")
+
 
         # First setup LLM context message
         ctx = self.create_context_sysmsg(

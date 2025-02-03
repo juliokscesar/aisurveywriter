@@ -67,6 +67,10 @@ class PaperWriter:
     def _print(self, *msgs):
         print(f"({self.__class__.__name__})", *msgs)
 
+    # TODO!!!
+    def filter_section(self, content: str) -> str:
+        pass
+
     def write_section(self, subject: str, title: str, description: str):
         """
         Write a specific section given the paper subject, and the section's title and description.
