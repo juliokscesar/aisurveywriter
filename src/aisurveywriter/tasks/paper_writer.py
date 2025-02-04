@@ -8,16 +8,16 @@ from aisurveywriter.core.config_manager import ConfigManager
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.pdf_processor import PDFProcessor
 from aisurveywriter.core.file_handler import FileHandler
+from aisurveywriter.core.paper import PaperData, SectionData
 from aisurveywriter.utils.helpers import countdown_print
 
 class PaperWriter:
-    def __init__(self, subject: str, sections_structure: List[dict[str,str]], llm: LLMHandler, pdf_refrences: List[str], config: ConfigManager):
+    def __init__(self, subject: str, sections_structure: List[dict[str,str]], llm: LLMHandler, pdf_refrences: List[str]):
         self.subject = subject
         self.sections_structure = sections_structure
         self.llm = llm
         self.is_llm_initialized = False
         self.pdf_references = pdf_refrences.copy()
-        self.config = config
 
     def init_llm_context(
         self,

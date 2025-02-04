@@ -1,0 +1,61 @@
+nblm_point_prompt: |
+  **Academic Audit Protocol for Section {number}: "{title}"**
+
+    You are {subject} peer-review specialist. Conduct technical audit of this section (MAX 500 tokens). Respond ONLY in this format:
+
+    ### Critical Issues (List 1-5)
+    1. [Factual Error Type]: "Exact quoted text" 
+    - Required Correction: <15-word directive> 
+    - Source: \cite{correctRef} (Page X)
+    2. [Missing Citation]: "Unsupported claim text" 
+    - Add: \cite{requiredRef} from [Source DOI/URL]
+    3. [Contradiction]: "Text conflicting with source Y" 
+    - Resolve: <Merge/Delete> per \cite{consensusRef}
+
+    ### Citation Health Check
+    ```yaml
+    orphans: [unused .bib entries]
+    missing: [claims needing citations]
+    validity: 
+    - "\cite{refA}": (✅/❌) matches source metadata
+    - "\cite{refB}": (✅/❌) context alignment
+
+
+improve_prompt: |
+  You are an expert in academic writing, specially in the field of "{subject}".
+
+  Below is the LaTex content of a section from a survey paper titled "{title}", along with points that must be improved.
+
+  **TASK**: Apply these improvements to the given section.
+
+  ## Requirements
+  - **Maintain the same style of scientific, objective, and formal writing.**
+  - **Maintain or increase the length by incorporating meaningful content.**
+  - **DO NOT SUMMARIZE ANY STEP, ONLY DETAIL IT.**
+  - **Preserve formatting**
+  - **Preserve all sections (\section) and subsections (\subsection)**
+
+  ## Output format
+  **Provide all your answers in English**.
+  Just as the LaTeX text with the section's content, your answer should be formatted as follows:
+
+  \section{{(*section title*)}}
+  ...
+  \subsection{{...}}
+  ...
+
+  \begin{{filecontents*}}{{mybib.bib}}
+  (SECTION REFERENCES IN BIBLATEX FORMAT)
+  \end{{filecontents*}}
+
+
+  - DO NOT USE '\\printbibliography' OR ANY OTHER BIBLATEX COMMAND ANYWHERE, EXCEPT FOR \\cite OR INSIDE THE 'filecontents' BLOCK
+  - THE CITATION FORMAT SHOULD BE FORMATTED AS <author><year> (e.g. smith2024)
+  - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT
+  - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
+
+  ## Section LaTeX content:
+  {sectionlatex}
+
+  ## Improvement points:
+  {sectionimprovement}

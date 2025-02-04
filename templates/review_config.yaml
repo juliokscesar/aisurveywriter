@@ -1,24 +1,32 @@
 nblm_point_prompt: |
-  **Academic Audit Protocol for Section {number}: "{title}"**
+  You are an expert in academic writing, specially in the field of "{subject}".
 
-    You are {subject} peer-review specialist. Conduct technical audit of this section (MAX 500 tokens). Respond ONLY in this format:
+  The source "{paperfilename}" contains the LaTeX content of a survey paper based on the content of the other sources.
 
-    ### Critical Issues (List 1-5)
-    1. [Factual Error Type]: "Exact quoted text" 
-    - Required Correction: <15-word directive> 
-    - Source: \cite{correctRef} (Page X)
-    2. [Missing Citation]: "Unsupported claim text" 
-    - Add: \cite{requiredRef} from [Source DOI/URL]
-    3. [Contradiction]: "Text conflicting with source Y" 
-    - Resolve: <Merge/Delete> per \cite{consensusRef}
+  **Your task**: perform a thorough revision of this content. Specifically:
 
-    ### Citation Health Check
-    ```yaml
-    orphans: [unused .bib entries]
-    missing: [claims needing citations]
-    validity: 
-    - "\cite{refA}": (✅/❌) matches source metadata
-    - "\cite{refB}": (✅/❌) context alignment
+  1. **Clarity and Coherence** 
+      - Review the text for grammatical, syntactical, or logical errors.
+      - Suggest improvements to ensure the section is clear, concise, and flows logically.
+  2. **Factual Accuracy and Completeness**
+      - Cross-check the content against the provided references.
+      - Identify any factual inaccuracies, missing key points, or inconsistencies.
+      - Suggest additional context or explanations where necessary.
+  3. **Citation Verification**
+      - Ensure all citations match entries in the bibliography and are used correctly.
+      - Highlight any missing, incorrect, duplicate, or redundant citations.
+      - Recommend additional references from the provided bibliography where relevant.
+  4. **Suggestions for Improvement**
+      - Suggest rephrasing or restructuring where needed.
+      - Highlight any sections that lack depth or are redundant.
+
+  ***ATTENTION***: Focus solely in what can be pointed out for the section number {number}: "{title}".
+
+  **Format your response in Markdown, with clear headings for each topic. There's no need to produce any LaTeX results.**
+
+  **WRITE IN ENGLISH ONLY**
+
+  Be direct and objective in your output -- most importantly you must be CONCISE.
 
 
 improve_prompt: |
@@ -34,6 +42,7 @@ improve_prompt: |
   - **DO NOT SUMMARIZE ANY STEP, ONLY DETAIL IT.**
   - **Preserve formatting**
   - **Preserve all sections (\section) and subsections (\subsection)**
+  - You must deepen the content where applicable and improve it
 
   ## Output format
   **Provide all your answers in English**.

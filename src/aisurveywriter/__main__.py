@@ -71,7 +71,6 @@ def main():
         sections_structure=structure,
         llm=llm,
         pdf_refrences=ref_pdf_paths,
-        config=config,
     )
     ctx_msg = writer.create_context_sysmsg(
         header_prompt=config.prompt_response_format,
@@ -93,55 +92,55 @@ def main():
     )
 
     # Add a step in between to correct the biblatex file
-    tex_file = config.out_tex_path
-    bib_file = tex_file.replace(".tex", ".bib")
-    with open(tex_file, "r", encoding="utf-8") as tf, open(bib_file, "r", encoding="utf-8") as bf:
-        tex_content = tf.read()
-        bib_content = bf.read()
-    latex_review = llm.send_prompt(f"""The following is the content of a .tex and a .bib file. 
+    # tex_file = config.out_tex_path
+    # bib_file = tex_file.replace(".tex", ".bib")
+    # with open(tex_file, "r", encoding="utf-8") as tf, open(bib_file, "r", encoding="utf-8") as bf:
+    #     tex_content = tf.read()
+    #     bib_content = bf.read()
+    # latex_review = llm.send_prompt(f"""The following is the content of a .tex and a .bib file. 
                                    
-                                   # FOR THE .tex FILE:
-                                   - You must read it and check for any duplicates and invalid citations, cross-checking them with the entries from the .bib file
-                                   - Check for any latex syntax errors, and if you find any BibLatex entries in the .tex file, remove it and put it in the .bib block
+    #                                # FOR THE .tex FILE:
+    #                                - You must read it and check for any duplicates and invalid citations, cross-checking them with the entries from the .bib file
+    #                                - Check for any latex syntax errors, and if you find any BibLatex entries in the .tex file, remove it and put it in the .bib block
                                    
-                                   - Change if find any:
-                                    - \\subsection* or \\section* -> \\subsection or \\section
-                                    - Remove any \\title, \\author, \\date
+    #                                - Change if find any:
+    #                                 - \\subsection* or \\section* -> \\subsection or \\section
+    #                                 - Remove any \\title, \\author, \\date
 
-                                   # FOR THE .bib FILE:
-                                   - Double check for duplicate citation entries and invalid ones
-                                   - If the DOI or any ther method of accessing the work in the entry is provided, check the veracity of the Bibtex entry
+    #                                # FOR THE .bib FILE:
+    #                                - Double check for duplicate citation entries and invalid ones
+    #                                - If the DOI or any ther method of accessing the work in the entry is provided, check the veracity of the Bibtex entry
                                    
-                                   **You must keep a correct LaTeX syntax and formatting. Do not modify any part of the document preamble, only within the sections and subsections.**
+    #                                **You must keep a correct LaTeX syntax and formatting. Do not modify any part of the document preamble, only within the sections and subsections.**
                                    
-                                   **OUTPUT FORMAT**: you must output your response exactly as follows, knowing that "<texfilecontent>" and "<bibfilecontent>" are placeholders. It is essential that you follow this format.
-                                   >BEGINTEXFILE()
-                                   <texfilecontent>
-                                   >ENDTEXFILE()
+    #                                **OUTPUT FORMAT**: you must output your response exactly as follows, knowing that "<texfilecontent>" and "<bibfilecontent>" are placeholders. It is essential that you follow this format.
+    #                                >BEGINTEXFILE()
+    #                                <texfilecontent>
+    #                                >ENDTEXFILE()
 
-                                   >BEGINBIBFILE()
-                                   <bibfilecontent>
-                                   >ENDBIBFILE()
+    #                                >BEGINBIBFILE()
+    #                                <bibfilecontent>
+    #                                >ENDBIBFILE()
 
-                                   Here are the file contents:
-                                   > .tex:
-                                   {tex_content}
+    #                                Here are the file contents:
+    #                                > .tex:
+    #                                {tex_content}
                                    
-                                   > .bib:
-                                   {bib_content}
-                                   """)
-    print("LATEX REVIEW:", latex_review)
-    print('\n'*3)
-    tex_content = re.search(r'>BEGINTEXFILE\(\)\n(.*?)\n>ENDTEXFILE\(\)', latex_review.content, re.DOTALL).group(1)
-    bib_content = re.search(r'>BEGINBIBFILE\(\)\n(.*?)\n>ENDBIBFILE\(\)', latex_review.content, re.DOTALL).group(1)
+    #                                > .bib:
+    #                                {bib_content}
+    #                                """)
+    # print("LATEX REVIEW:", latex_review)
+    # print('\n'*3)
+    # tex_content = re.search(r'>BEGINTEXFILE\(\)\n(.*?)\n>ENDTEXFILE\(\)', latex_review.content, re.DOTALL).group(1)
+    # bib_content = re.search(r'>BEGINBIBFILE\(\)\n(.*?)\n>ENDBIBFILE\(\)', latex_review.content, re.DOTALL).group(1)
 
-    new_tex_file = "last-techrev.tex"
-    new_bib_file = new_tex_file.replace(".tex", ".bib")
-    tex_content = re.sub(r'\\usebibresource\{.*?\}', f'\\usebibresource{{{new_bib_file}}}', tex_content)
-    with open(new_tex_file, "w", encoding="utf-8") as tf, open(new_bib_file, "w", encoding="utf-8") as bf:
-        tf.write(tex_content)
-        bf.write(bib_content)
-    return
+    # new_tex_file = "last-techrev.tex"
+    # new_bib_file = new_tex_file.replace(".tex", ".bib")
+    # tex_content = re.sub(r'\\usebibresource\{.*?\}', f'\\usebibresource{{{new_bib_file}}}', tex_content)
+    # with open(new_tex_file, "w", encoding="utf-8") as tf, open(new_bib_file, "w", encoding="utf-8") as bf:
+    #     tf.write(tex_content)
+    #     bf.write(bib_content)
+    # return
 
     # Review paper sections
     reviewer = PaperReviewer(

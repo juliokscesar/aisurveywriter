@@ -26,9 +26,9 @@ class LLMHandler:
             model_type = LLMType.from_str(model_type)
         match model_type:
             case LLMType.OpenAI:
-                self.llm = ChatOpenAI(model=model)
+                self.llm = ChatOpenAI(model=model, temperature=0.3)
             case LLMType.Google:
-                self.llm = ChatGoogleGenerativeAI(model=model)
+                self.llm = ChatGoogleGenerativeAI(model=model, temperature=0.3)
             case _:
                 raise ValueError(f"Invalid model type: {model_type}")
 
