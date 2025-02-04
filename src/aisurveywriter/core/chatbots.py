@@ -160,7 +160,7 @@ class NotebookLMBot(ChatBot):
                 for _ in range(3):
                     print(".", end='', flush=True)
                     sleep(1)
-                print('\r',end='')
+                print('\r' + ' '*3 + '\r',end='')
             sleep(5)
                 
         # Now on NotebookLM projects page
@@ -180,10 +180,14 @@ class NotebookLMBot(ChatBot):
 
     def add_sources(self, src_paths: List[str], sleep_for: int = 40):
         # first need to hover on input button so that the input element appears
-        elem = self._web_driver.find_element(By.XPATH, "//button[contains(@class, 'dropzone__icon') and contains(@class, 'mat-mdc-icon-button') and contains(@class, 'mdc-icon-button')]")
-        hover = ActionChains(self._web_driver).move_to_element(elem)
-        hover.perform()
-        sleep(5)
+        try:
+            elem = self._web_driver.find_element(By.XPATH, "//button[contains(@class, 'dropzone__icon') and contains(@class, 'mat-mdc-icon-button') and contains(@class, 'mdc-icon-button')]")
+            hover = ActionChains(self._web_driver).move_to_element(elem)
+            hover.perform()
+            sleep(5)
+        except:
+            self.append_sources(src_paths, sleep_for=sleep_for)
+            return
 
         # Send sources
         self._print("Sending sources:", ", ".join(src_paths))

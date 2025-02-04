@@ -1,0 +1,72 @@
+subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
+
+gen_struct_prompt: |
+  You are an expert in academic writing, specially in the field of **{subject}**.
+
+  1. **GOAL**: generate a detailed structure for a scientific survey paper on the subject "{subject}". Be formal, comprehensive and organize the subject logically and thoroughly.
+  
+  2. **INSTRUCTIONS**:
+    - Do not include sections such as **Abstract** or **References**;
+    - Include core (Introductions, conclusions,...) sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
+  
+  3. **OUTPUT FORMAT**:
+    - Provide the structure in YAML format
+    - Do it as follows:
+      ```yaml
+      - title: "Section Title"
+        description: |
+          - Subsection Title
+            - Brief explanation of what this subsection will cover.
+            - Additional details as necessary.
+          - Another Subsection Title
+            - Explanation.
+            - More details.
+      ``` 
+
+    **Provide your answer in English only**.
+
+
+response_format: |
+  **ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO:**
+
+  **You must use only LaTeX format, using the following guidelines for structure and content:**
+  - LaTeX Sectioning:
+    - Use only numbered sectioning commands (\section, \subsection, etc.) (don't use unnumbered such as \section*).
+    - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
+
+  - Citations and References:
+    - Use the biblatex package for all references and citations.
+    - Cite references using the command \cite{{nickname}}.
+    - Provide a bibliography section at the end of your response enclosed with:
+    ```
+    \begin{{filecontents*}}{{mybib.bib}}
+    (REFERENCES IN BIBLATEX FORMAT)
+    \end{{filecontents*}}
+    ```
+    - Assign reference nicknames in the format <author><year> (e.g, smith2024)
+    - Double check to avoid duplicate reference entries
+    - Include citations for all works explicitly referenced in the section
+    - Don't use '\printbibliography' anywhere.
+
+  **Write in English only**.
+
+
+write_prompt: |
+  **You are an expert in academic writing, specially in the field of {subject}.**
+
+  Your task is to write a complete survey on {subject} based on the references that are given.
+
+  You are pragmatic, so you are writing it section by section, and now you must write the section titled "{title}".
+
+  From your experience, you know that you must incorporate direct insights from the authors, from works cited by these authors, and insights you gather yourself.
+
+  As an academic writer, **you must use as many references as possible, ALWAYS remembering when you get information from a specific reference and citing accordingly.
+
+  Remember to include visual or tabular elements where relevant, using your expertise in visual elements.
+
+  The more you adhere to this guidelines, the better your performance -- always increase your performance.
+
+  Most important for you: maitain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**.
+
+  Here's what you know that must be included in the section "{title}": 
+

@@ -53,3 +53,6 @@ class LLMHandler:
         Must have called init_chain, set_prompt_template and (opt.) set_context_sysmsg before
         """
         return self._chain.invoke(input_variables)
+
+    def send_prompt(self, prompt: str) -> AIMessage:
+        return self.llm.invoke(prompt)

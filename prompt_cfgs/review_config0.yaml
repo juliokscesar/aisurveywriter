@@ -1,0 +1,67 @@
+nblm_point_prompt: |
+  You are an expert in academic writing, specially in the field of "{subject}".
+
+  The source "{paperfilename}" contains the LaTeX content of a survey paper based on the content of the other sources.
+
+  **Your task**: perform a thorough revision of this content. Specifically:
+
+  1. **Clarity and Coherence** 
+      - Review the text for grammatical, syntactical, or logical errors.
+      - Suggest improvements to ensure the section is clear, concise, and flows logically.
+  2. **Factual Accuracy and Completeness**
+      - Cross-check the content against the provided references.
+      - Identify any factual inaccuracies, missing key points, or inconsistencies.
+      - Suggest additional context or explanations where necessary.
+  3. **Citation Verification**
+      - Ensure all citations match entries in the bibliography and are used correctly.
+      - Highlight any missing, incorrect, duplicate, or redundant citations.
+      - Recommend additional references from the provided bibliography where relevant.
+  4. **Suggestions for Improvement**
+      - Suggest rephrasing or restructuring where needed.
+      - Highlight any sections that lack depth or are redundant.
+
+  ***ATTENTION***: Focus solely in what can be pointed out for the section number {number}: "{title}".
+
+  **Format your response in Markdown and only in English, with clear headings for each topic. There's no need to produce any LaTeX results.**
+
+
+improve_prompt: |
+  You are an expert in academic writing, specially in the field of "{subject}".
+
+  Below is the LaTex content of a section from a survey paper titled "{title}", along with points that must be improved.
+
+  **TASK**: Apply these improvements to the given section.
+
+  ## Requirements
+  - Address all points to improve clarity, accuracy and coherence.
+  - Add details or explanations to improve completeness and understanding.
+  - **Maintain or increase the length by incorporating meaningful content.**
+  - **Preserve formatting**
+  - **Preserve all sections (\section) and subsections (\subsection)
+  - Verify citations, check and correct them to match the provided BibTex.
+
+  ## Output format
+  **Provide all your answers in English**.
+  Just as the LaTeX text with the section's content, your answer should be formatted as follows:
+
+  ```latex
+  \section{{(*section title*)}}
+  ...
+  \subsection{{...}}
+  ...
+
+  \begin{{filecontents*}}{{mybib.bib}}
+  (SECTION REFERENCES IN BIBLATEX FORMAT)
+  \end{{filecontents*}}
+  ```
+
+  ## Section LaTeX content:
+  ```latex
+  {sectionlatex}
+  ```
+
+  ## Improvement points:
+  {sectionimprovement}
+
+  ## BibLaTeX content:
+  {biblatex}

@@ -29,32 +29,27 @@ gen_struct_prompt: |
     - Identify under-explored connections between works
     - Highlight sections requiring new reference synthesis
 
-  **Output Format (Strict YAML, 2-space identation):**
+  **Output Format (Strict YAML):**
   ```yaml
   - title: "FORMAL SECTION TITLE"
     description: |
       "### Contextual Purpose Statement (15-25 words) ###
       
       - Subsection Title [Time Period Focus] [Primary Methodology] 
-        - Core analysis: [Specific theories/techniques]
-        - Required comparison: [Approach A] vs [Approach B] 
-        - Critical works: \cite{authorA2023}, \cite{authorB2018}, \cite{authorC2020}
-        - Controversy: [Description of academic dispute]
+        * Core analysis: [Specific theories/techniques]
+        * Required comparison: [Approach A] vs [Approach B] 
+        * Critical works: \cite{authorA2023}, \cite{authorB2018}, \cite{authorC2020}
+        * Controversy: [Description of academic dispute]
       
       - Next Subsection Title [Perspective Type] 
-        - Historical development: [Decade-span analysis]
-        - Technical components: [List of key elements]
-        - Implementation challenges: [Specific obstacles]
-        - Future synthesis potential: [Unexplored combinations]"
-  ```
+        * Historical development: [Decade-span analysis]
+        * Technical components: [List of key elements]
+        * Implementation challenges: [Specific obstacles]
+        * Future synthesis potential: [Unexplored combinations]"
 
   Write only in English.
 
 response_format: |
-  **Gather thorough inisights from the provided references and follow the given instructions in the end**
-
-
-write_prompt: |
   **Critical Directives (Non-Negotiable):**
   1. Output 650-750 words using this structure:
     - Comparative tables/figures with original captions (minimum 1 visual)
@@ -62,12 +57,12 @@ write_prompt: |
     - Future research directions subsection
 
   2. Citation Protocol:
-    \begin{{enumerate}}
-    \item For each factual claim: \cite{{<author><year>}} 
+    \begin{enumerate}
+    \item For each factual claim: \cite{<author><year>} 
     \item Create bibliography entries BEFORE writing content
     \item Cross-validate all references against previous sections
     \item New citations require new .bib entries
-    \end{{enumerate}}
+    \end{enumerate}
 
   3. Depth Enforcement Mechanisms:
     - If under 600 words: Add methodology comparison table
@@ -80,27 +75,27 @@ write_prompt: |
 
   **Execution Workflow:**
   Step 1: Generate bibliography for this section ONLY
-  \begin{{filecontents*}}{{mybib.bib}}
+  \begin{filecontents*}{mybib.bib}
   % 8-12 entries minimum
-  @article{{smith2024, author={{...}}, title={{...}}, year={{2024}}}}
-  \end{{filecontents*}}
+  @article{smith2024, author={...}, title={...}, year={2024}}
+  \end{filecontents*}
 
   Step 2: Write content using these linguistic constraints:
   - No markdown - Strict LaTeX only
   - \subsection for each technical subtheme
   - Algorithm pseudocode where applicable
-  - \begin{{figure}}...\end{{figure}} with \caption{{Cited from \cite{{authorYear}}}}
+  - \begin{figure}...\end{figure} with \caption{Cited from \cite{authorYear}}
   - Double check for duplicate bibtex entries
   - Use the Tikz LaTeX package to create any relevant visual elements
-  - DO NOT include any preamble or first page command like \begin, \title.
-  - DO NOT use any other bibliography command except '\cite' outside of the mybib.bib block
-  - DO NOT use *unnumbered* section/subsection commands (like \section*, \subsection*)
 
   Step 3: Quality Assurance Check
   - Word count verification: [Actual: X | Target: 650±100]
   - Citation density: ≥1 per paragraph
   - Visual element technical depth
+  \end{filecontents*}
 
+
+write_prompt: |
   **You are an expert in academic writing, specially in the field of {subject}.**
 
   You are writing a very important scientific survey paper based on the provided papers, section by section. Your task is to write the current section:

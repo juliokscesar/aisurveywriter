@@ -87,7 +87,7 @@ class PaperReviewer:
             "title": title,
             "sectionlatex": content,
             "sectionimprovement": nblm_review,
-            "biblatex": bib_content,
+            #"biblatex": bib_content,
         })
         return response
 
