@@ -4,10 +4,12 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, AIMessage
 from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_ollama import ChatOllama
 
 class LLMType(Enum):
     OpenAI = auto()
     Google = auto()
+    Ollama = auto()
 
     @staticmethod
     def from_str(s: str):
@@ -16,6 +18,8 @@ class LLMType(Enum):
                 return LLMType.OpenAI
             case "google":
                 return LLMType.Google
+            case "ollama":
+                return LLMType.Ollama
             case _:
                 raise ValueError(f"{s!r} is not a valid LLMType")
 
@@ -29,6 +33,8 @@ class LLMHandler:
                 self.llm = ChatOpenAI(model=model, temperature=0.3)
             case LLMType.Google:
                 self.llm = ChatGoogleGenerativeAI(model=model, temperature=0.3)
+            case LLMType.Ollama:
+                self.llm = ChatOllama(model=model, temperature=0.3)
             case _:
                 raise ValueError(f"Invalid model type: {model_type}")
 

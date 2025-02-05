@@ -37,7 +37,14 @@ class ReferenceExtractor(PipelineTask):
             
         with open(save_path, "w", encoding="utf-8") as f:
             f.write(references)
-        
+    
+    def remove_duplicates(self, refs_path: str):
+        """
+        Remove any duplicate entries on references
+        """
+        refs = fh.read_yaml(refs_path)
+        #TODO
+     
     def refs_to_bib(self, ref_path: str):
         """
         Get BibTex entries from title,author references

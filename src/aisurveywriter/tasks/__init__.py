@@ -1,3 +1,4 @@
+from .pipeline_task import *
 from .paper_generator import *
 from .writer import *
 from .reviewer import *

@@ -17,6 +17,7 @@ dependencies = [
     "langchain",
     "langchain-google-genai",
     "langchain-openai",
+    "langchain-ollama",
     "langchain-community",
     "pypdf",
     "gradio",

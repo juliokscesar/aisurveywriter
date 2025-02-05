@@ -22,3 +22,12 @@ class PaperReferencer(PipelineTask):
         paper = self.reference(paper, self.bibdb_path, self.prompt)
         return paper
     
+    def reference(self, paper: PaperData = None, bibdb_path: str = None, prompt: str = None):
+        if paper is not None:
+            self.paper = paper
+        if bibdb_path is not None:
+            self.bibdb_path = bibdb_path
+        if prompt:
+            self.prompt = prompt
+            
+        

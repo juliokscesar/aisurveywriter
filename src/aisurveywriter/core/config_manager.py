@@ -78,6 +78,7 @@ class ConfigManager:
             "subject",
             "gen_struct_prompt",
             "write_prompt",
+            "reference_extract_prompt",
         ]
         diff = list(set(cfg.keys()) - set(PROMPT_KEYS))
         if len(diff) != 0:
