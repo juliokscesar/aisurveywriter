@@ -6,12 +6,11 @@ import yaml
 import undetected_chromedriver as uc
 from fake_useragent import UserAgent
 
-def countdown_print(msg: str, sec: int):
-    print()
-    for t in range(1, sec+1):
-        sleep(1)
-        print(f"\r{msg} {t} s", end='')
-    print()
+def diff_keys(keys: list, d: dict):
+    diff = set(keys - list(d.keys()))
+    return None if len(diff) == 0 else diff
+
+
 
 def init_driver(browser_path: Union[str,None] = None, driver_path: Union[str,None] = None) -> uc.Chrome:
     op = uc.ChromeOptions()

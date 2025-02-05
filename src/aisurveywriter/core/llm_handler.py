@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Union
+from typing import Optional, Union
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, AIMessage
 from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
@@ -52,6 +52,8 @@ class LLMHandler:
         Invokes langchain LLM object and changes all the "input_variables" in the prompt template.
         Must have called init_chain, set_prompt_template and (opt.) set_context_sysmsg before
         """
+        if self._chain is None:
+            raise RuntimeError("To call LLMHandler.invoke, the chain has to be initialized")
         return self._chain.invoke(input_variables)
 
     def send_prompt(self, prompt: str) -> AIMessage:

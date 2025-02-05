@@ -5,7 +5,7 @@ from typing import Union, List
 class SectionData:
     title: str
     description: str
-    content: str
+    content: Union[None, str] = None
     bib: Union[None, str] = None
     
 @dataclass
