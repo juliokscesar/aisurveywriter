@@ -1,6 +1,6 @@
 import os
 
-from aisurveywriter.core.file_handler import FileHandler
+import aisurveywriter.core.file_handler as fh
 
 def abs_join(par: str, path: str) -> str:
     return os.path.abspath(os.path.join(par, path))
@@ -41,25 +41,26 @@ class ConfigManager:
         self.out_reviewed_dump_path = abs_join(self.out_dir, "reviewed-"+os.path.basename(out_dump_filename))
 
         # Prompt configurations
-        cfg = FileHandler.read_yaml(self.prompt_config_path)
+        cfg = fh.read_yaml(self.prompt_config_path)
         if self._validate_prompt_cfg(cfg):
             self.paper_subject = cfg["subject"]
             self.prompt_structure = cfg["gen_struct_prompt"]
-            self.prompt_response_format = cfg["response_format"]
             self.prompt_write = cfg["write_prompt"]
         else:
             raise ValueError(f"Missing configuration items in {self.prompt_config_path}")
         
-        cfg = FileHandler.read_yaml(self.review_config_path)
+        cfg = fh.read_yaml(self.review_config_path)
         if self._validate_review_cfg(cfg):
-            self.review_nblm_prompt = cfg["nblm_point_prompt"]
-            self.review_improve_prompt = cfg["improve_prompt"]
+            self.prompt_review = cfg["review_prompt"]
+            self.prompt_apply_review = cfg["apply_prompt"]
+            self.prompt_tex_review = cfg["tex_review_prompt"]
+            self.prompt_bib_review = cfg["bib_review_prompt"]
         else:
             raise ValueError(f"Missing configuration items in {self.review_config_path}")
 
     @staticmethod
     def from_file(file_path: str):
-        cfg = FileHandler.read_yaml(file_path)
+        cfg = fh.read_yaml(file_path)
         # make all paths absolute
         for key in cfg:
             if "path" not in key:
@@ -76,7 +77,6 @@ class ConfigManager:
         PROMPT_KEYS = [
             "subject",
             "gen_struct_prompt",
-            "response_format",
             "write_prompt",
         ]
         diff = list(set(cfg.keys()) - set(PROMPT_KEYS))
@@ -87,8 +87,10 @@ class ConfigManager:
 
     def _validate_review_cfg(self, cfg: dict) -> bool:
         REVIEW_KEYS = [
-            "nblm_point_prompt",
-            "improve_prompt",
+            "review_prompt",
+            "apply_prompt",
+            "tex_review_prompt",
+            "bib_review_prompt"
         ]
         diff = list(set(cfg.keys()) - set(REVIEW_KEYS))
         if len(diff) != 0:

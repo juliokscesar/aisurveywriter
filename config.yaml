@@ -1,6 +1,6 @@
 credentials_path: "credentials.yaml"
-browser_path: "/usr/bin/chromium"
-driver_path: "drivers/chromedriver"
+browser_path: "D:/Programs/chromium/chrome.exe"
+driver_path: "drivers/chromedriver.exe"
 tex_template_path: "templates/paper_template.tex"
 prompt_cfg_path: "templates/prompt_config.yaml"
 review_cfg_path: "templates/review_config.yaml"

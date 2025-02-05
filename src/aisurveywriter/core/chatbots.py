@@ -139,6 +139,7 @@ class NotebookLMBot(ChatBot):
         # Now on login page
         # Enter email
         elem = WebDriverWait(self._web_driver, 10).until(EC.presence_of_element_located((By.XPATH, "//input[@type='email']")))
+        sleep(2)
         self._print("Entering email")
         elem.send_keys(self._username)
         elem.send_keys(Keys.ENTER)
@@ -146,6 +147,7 @@ class NotebookLMBot(ChatBot):
 
         # Enter password
         elem = WebDriverWait(self._web_driver, 10).until(EC.presence_of_element_located((By.XPATH, "//input[@type='password']")))
+        sleep(2)
         self._print("Entering password")
         elem.send_keys(self._password)
         elem.send_keys(Keys.ENTER)
@@ -169,7 +171,7 @@ class NotebookLMBot(ChatBot):
         elem.click()
         sleep(7)
 
-        self.add_sources(src_paths=self._src_paths, sleep_for=40)
+        self.add_sources(src_paths=self._src_paths, sleep_for=int(len(self._src_paths) * 10))
 
         # get input textarea
         self._prompt_element = self._web_driver.find_element(By.XPATH, "//textarea[contains(@class, 'query-box-input')]")

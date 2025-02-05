@@ -36,13 +36,18 @@ class LLMHandler:
         self._chain = None
     
     def init_chain(self, ctxmsg: SystemMessage, prompt: str):
-        input_prompt = ChatPromptTemplate.from_messages([
-            ctxmsg, 
-            HumanMessagePromptTemplate.from_template(prompt),
-        ])
+        if ctxmsg is not None:
+            input_prompt = ChatPromptTemplate.from_messages([
+                ctxmsg, 
+                HumanMessagePromptTemplate.from_template(prompt),
+            ])
 
-        self.prompt = input_prompt
-        self._chain = input_prompt | self.llm
+            self.prompt = input_prompt
+            self._chain = input_prompt | self.llm
+        else:
+            input_prompt = ChatPromptTemplate.from_messages([HumanMessagePromptTemplate.from_template(prompt)])
+            self.prompt = input_prompt
+            self._chain = input_prompt | self.llm
     
     def set_prompt_template(self, prompt: str):
         self.prompt = prompt

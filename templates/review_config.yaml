@@ -1,9 +1,42 @@
-nblm_point_prompt: |
+tex_review_prompt: |
+  You are an AI specialized in reviewing LaTeX syntax. Your task is to analyze a given LaTeX section and ensure that it is syntactically correct. Follow these directives:
+
+  1. **Focus Exclusively on Syntax**: Do not alter, critique, or summarize the content of the section in any way. Your role is purely technical.
+
+  2. **Remove Preamble Commands**: Eliminate any commands related to the document preamble, including:
+    - `\documentclass`
+    - `\usepackage`
+    - `\title`
+    - `\author`
+    - `\date`
+    - `\begin{document}`
+    - `\end{document}`
+    - Any other preamble-related commands.
+
+  3. **Eliminate Non-\cite BibTeX Commands**: Remove any bibliography-related commands except for `\cite`. Examples of commands to eliminate:
+    - `\bibliographystyle`
+    - `\bibliography`
+    - `\printbibliography`
+
+  4. **Preserve the Section Content**: Do not modify, rephrase, or summarize the textual content in any way. Only adjust syntax-related issues.
+
+  ### Output Format:
+  - If the section is syntactically correct after the necessary removals, return the cleaned-up LaTeX section as is.
+  - If there are syntax errors, correct them preserving the original content.
+  - Your output must only be composed by the corrected LaTeX section
+
+  Here is the LaTeX section for review:
+  """
+  {content}
+  """
+
+bib_review_prompt: |
+  nada
+
+review_prompt: |
   You are an expert in academic writing, specially in the field of "{subject}".
 
-  The source "{paperfilename}" contains the LaTeX content of a survey paper based on the content of the other sources.
-
-  **Your task**: perform a thorough revision of this content. Specifically:
+  **Your task**: perform a thorough revision of this section. Specifically:
 
   1. **Clarity and Coherence** 
       - Review the text for grammatical, syntactical, or logical errors.
@@ -20,19 +53,20 @@ nblm_point_prompt: |
       - Suggest rephrasing or restructuring where needed.
       - Highlight any sections that lack depth or are redundant.
 
-  ***ATTENTION***: Focus solely in what can be pointed out for the section number {number}: "{title}".
-
-  **Format your response in Markdown, with clear headings for each topic. There's no need to produce any LaTeX results.**
-
   **WRITE IN ENGLISH ONLY**
 
-  Be direct and objective in your output -- most importantly you must be CONCISE.
+  - Be direct and objective in your output -- most importantly you must be CONCISE.
+  - Use markdown formatting
+
+  - Section title: {title}
+  - Secion content: 
+    {content}
 
 
-improve_prompt: |
+apply_prompt: |
   You are an expert in academic writing, specially in the field of "{subject}".
 
-  Below is the LaTex content of a section from a survey paper titled "{title}", along with points that must be improved.
+  Below is the LaTex content of the section "{title}" from a survey paper on the subject {subject}, along with points that must be improved.
 
   **TASK**: Apply these improvements to the given section.
 
@@ -42,7 +76,6 @@ improve_prompt: |
   - **DO NOT SUMMARIZE ANY STEP, ONLY DETAIL IT.**
   - **Preserve formatting**
   - **Preserve all sections (\section) and subsections (\subsection)**
-  - You must deepen the content where applicable and improve it
 
   ## Output format
   **Provide all your answers in English**.
@@ -64,7 +97,7 @@ improve_prompt: |
   - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
 
   ## Section LaTeX content:
-  {sectionlatex}
+  {content}
 
   ## Improvement points:
-  {sectionimprovement}
+  {review_points}

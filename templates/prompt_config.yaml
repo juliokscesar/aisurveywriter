@@ -1,5 +1,20 @@
 subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
 
+reference_extract_prompt: |
+  """
+  {pdfcontent}
+  """
+
+  - The text above is from a scientific paper.
+  - Read the last pages, specifically the section "References"
+  
+  - For every reference entry, you must take the Title and Author and output in a YAML format (2-space identation):
+  """
+  - references:
+    - title: "REFERENCE_TITLE"
+    - author: "REFERENCE_AUTHOR"
+  """
+
 gen_struct_prompt: |
   You are an expert in academic writing, specially in the field of **{subject}**.
 
@@ -11,7 +26,6 @@ gen_struct_prompt: |
   
   3. **OUTPUT FORMAT**:
     - Provide the structure in YAML format
-    - Use 2 spaces for identation
     - Do it as follows:
       ```yaml
       - title: "Section Title"
@@ -27,7 +41,7 @@ gen_struct_prompt: |
     **Provide your answer in English only**.
 
 
-response_format: |
+write_prompt: |
   **ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO:**
 
   **You must use only LaTeX format, using the following guidelines for structure and content:**
@@ -49,27 +63,23 @@ response_format: |
     - Include citations for all works explicitly referenced in the section
     - Don't use '\printbibliography' anywhere.
 
-  **Write in English only**.
+  - **Write in English only**.
 
+  - **You are an expert in academic writing, specially in the field of {subject}.**
 
-write_prompt: |
-  **You are an expert in academic writing, specially in the field of {subject}.**
+  - Your task is to write a complete survey on {subject} based on the references that are given.
 
-  Your task is to write a complete survey on {subject} based on the references that are given.
+  - You are pragmatic, so you are writing it section by section, and now you must write the section titled "{title}".
 
-  You are pragmatic, so you are writing it section by section, and now you must write the section titled "{title}".
+  - From your experience, you know that you must incorporate direct insights from the authors, from works cited by these authors, and insights you gather yourself.
 
-  From your experience, you know that you must incorporate direct insights from the authors, from works cited by these authors, and insights you gather yourself.
+  - As an academic writer, **you must use as many references as possible, ALWAYS remembering when you get information from a specific reference and citing accordingly.
 
-  As an academic writer, **you must use as many references as possible, ALWAYS remembering when you get information from a specific reference and citing accordingly.
+  - Remember to include visual or tabular elements where relevant, using your expertise in visual elements.
 
-  Remember to include visual or tabular elements where relevant, using your expertise in visual elements.
+  - The more you adhere to this guidelines, the better your performance -- always increase your performance.
 
-  The more you adhere to this guidelines, the better your performance -- always increase your performance.
+  - Most important: maintain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**.
 
-  Most important for you: maitain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**.
-
-  Avoid bullet points and vague descriptions. If there's too little content, add relevant tabular or visual elements in general.
-
-  Here's what you know that must be included in the section "{title}": 
-
+  - Here's what you know that must be included in the section "{title}":
+  {description}
