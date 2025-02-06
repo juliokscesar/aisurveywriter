@@ -1,5 +1,6 @@
 from typing import List, Optional
 import os
+import psutil
 
 import aisurveywriter.core.file_handler as fh
 from aisurveywriter.core.config_manager import ConfigManager
@@ -32,10 +33,14 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
     )
     
     # LLM used on LaTeX syntax review (deepseek is local)
-    tex_review_llm = LLMHandler(
-        model="deepseek-coder-v2:16b",
-        model_type="ollama",
-    )
+    # use deepseek only if there's enough memory
+    if psutil.virtual_memory().available < 9*1024:
+        tex_review_llm = LLMHandler(
+            model="deepseek-coder-v2:16b",
+            model_type="ollama",
+        )
+    else:
+        tex_review_llm = writer_llm
     
     save_path = os.path.abspath(save_path)
     if not os.path.basename(save_path).endswith(".tex"):
