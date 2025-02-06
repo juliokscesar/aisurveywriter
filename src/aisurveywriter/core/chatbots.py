@@ -192,6 +192,9 @@ class NotebookLMBot(ChatBot):
             return
 
         # Send sources
+        src_paths = [src for src in src_paths if src not in self._src_paths]
+        if len(src_paths) == 0:
+            return
         self._print("Sending sources:", ", ".join(src_paths))
         elem = self._web_driver.find_elements(By.XPATH, "//input[@type='file' and @name='Filedata']")
         elem[0].send_keys("\n".join(

@@ -31,7 +31,7 @@ class PDFProcessor:
         size = len(chunks)
         summaries = [None] * size
         for i, chunk in enumerate(chunks):
-            summary = summarizer.invoke(f"Summarize this text: {chunk}")
+            summary = summarizer.invoke(f"Summarize the content of the following text:\n\n{chunk}")
             if show_metadata:
                 self._print(f"Summary response metadata (chunk {i+1}/{size}):", summary.usage_metadata)
             summaries[i] = summary.content

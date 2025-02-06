@@ -46,6 +46,8 @@ class ConfigManager:
             self.paper_subject = cfg["subject"]
             self.prompt_structure = cfg["gen_struct_prompt"]
             self.prompt_write = cfg["write_prompt"]
+            self.prompt_ref_extract = cfg["reference_extract_prompt"]
+            self.prompt_ref_add = cfg["add_reference_prompt"]
         else:
             raise ValueError(f"Missing configuration items in {self.prompt_config_path}")
         
@@ -60,10 +62,13 @@ class ConfigManager:
 
     @staticmethod
     def from_file(file_path: str):
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(f"Configuration file is inexistent of invalid: {file_path}")
+        
         cfg = fh.read_yaml(file_path)
         # make all paths absolute
         for key in cfg:
-            if "path" not in key:
+            if ("path" not in key) or (cfg[key] is None):
                 continue
             cfg[key] = os.path.abspath(cfg[key])
 
@@ -79,6 +84,7 @@ class ConfigManager:
             "gen_struct_prompt",
             "write_prompt",
             "reference_extract_prompt",
+            "add_reference_prompt",
         ]
         diff = list(set(cfg.keys()) - set(PROMPT_KEYS))
         if len(diff) != 0:

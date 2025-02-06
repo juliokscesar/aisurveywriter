@@ -11,7 +11,7 @@ from aisurveywriter.core.pdf_processor import PDFProcessor
 from aisurveywriter.utils import named_log, countdown_log, get_bibtex_entry, bib_entries_to_str, time_func
 
 class ReferenceExtractor(PipelineTask):
-    def __init__(self, llm: LLMHandler, ref_paths: List[str], prompt: str, raw_save_path: Optional[str] = None, rawbib_save_path: Optional[str] = None, bib_save_path: Optional[str] = None, cooldown_sec: int = 30):
+    def __init__(self, llm: LLMHandler, ref_paths: List[str], prompt: str, raw_save_path: Optional[str] = None, rawbib_save_path: Optional[str] = None, bib_save_path: Optional[str] = None, cooldown_sec: int = 30, batches: int = 3):
         self.llm = llm
         self.ref_paths = ref_paths
         self.prompt = prompt
@@ -21,13 +21,14 @@ class ReferenceExtractor(PipelineTask):
         self.rawbib_save_path = rawbib_save_path
         self.bib_save_path = bib_save_path
 
-        self._cooldown_sec = cooldown_sec
+        self._cooldown_sec = int(cooldown_sec)
+        self._batches = int(batches) if batches >= 1 else 1
     
     def pipeline_entry(self, input_data=None):
         refs = self.extract_references(save_path=self.raw_save_path)
         refs = self.refs_to_bib(refs, self.rawbib_save_path)
         refs = self.remove_duplicates(refs, self.bib_save_path)
-        return self.bib_save_path
+        return input_data
     
     def __call__(self, raw_save_path: Optional[str] = None, rawbib_save_path: Optional[str] = None, bib_save_path: Optional[str] = None):
         if raw_save_path:
@@ -51,17 +52,25 @@ class ReferenceExtractor(PipelineTask):
         references = ""
         pdfs = PDFProcessor(self.ref_paths).extract_content()
         for path,pdf in zip(self.ref_paths,pdfs):
+            # get only the "references" section if possible
+            ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", pdf, re.IGNORECASE)
+            if ref_match:
+                start_idx = ref_match.start()
+                pdf = pdf[start_idx:].strip()
+            else:
+                named_log(self, f"couldn't match references regex for pdf {os.path.basename(path)}, using entire content")
+            
             named_log(self, f"==> started extracting references from pdf {os.path.basename(path)}")
-            # response = self.llm.invoke({
-            #     "pdfcontent": pdf,
-            # })
-            # elapsed = int(time() - start)
-            elapsed, response = time_func(self.llm.invoke, {"pdfcontent": pdf})
-            elapsed = int(elapsed)
+            total_elapsed = 0
             
-            references += response.content + '\n'
+            # Send the PDF in batches because if it has too many references, some llms might truncate their output
+            batch_contents = self._split_content(pdf, self._batches)
+            for batch in batch_contents:
+                elapsed, response = time_func(self.llm.invoke, {"pdfcontent": batch})
+                references += response.content + '\n'
+                total_elapsed += int(elapsed)
             
-            named_log(self, f"==> finished extracting references from pdf {os.path.basename(path)} | time elapsed: {elapsed}")
+            named_log(self, f"==> finished extracting references from pdf {os.path.basename(path)} | time elapsed: {total_elapsed}")
  
             try:
                 named_log(self, f"==> response metadata:", response.usage_metadata)
@@ -69,13 +78,46 @@ class ReferenceExtractor(PipelineTask):
                 named_log(self, f"==> (debug) reponse object:", response)
 
             if self._cooldown_sec:
-                countdown_log("Cooldown:", max(0, self._cooldown_sec - elapsed))
+                cooldown = max(0, self._cooldown_sec - total_elapsed)
+                named_log(self, f"==> initiating  cooldown of {cooldown} s (request limitations)")
+                countdown_log("", cooldown)
         
         references = re.sub(r"[`]+[\w]*", "", references)
+        
+        # format to save yaml
+        res = "references:\n"
+        for line in references.split("\n"):
+            res += f"  {line}\n"
+        references = res
+        
         if save_path is not None:
             with open(save_path, "w", encoding="utf-8") as f:
                 f.write(references)
+                
         return yaml.safe_load(references)
+    
+    def _split_content(self, content: str, n_batches: int):
+        """
+        Split the content while making sure that every line remains intact
+        """
+        
+        lines = content.strip().split("\n")
+        nlines = len(lines)
+        
+        if n_batches <= 0:
+            return content
+
+        batch_sz = nlines // n_batches
+        remainder = nlines % n_batches
+        
+        batches = []
+        start = 0
+        for i in range(n_batches):
+            extra = 1 if i < remainder else 0
+            end = start + batch_sz + extra
+            batches.append("\n".join(lines[start:end]))
+            start = end
+        return batches
     
     def remove_duplicates(self, bib_entries: list, save_path: Optional[str] = None):
         """
@@ -97,7 +139,7 @@ class ReferenceExtractor(PipelineTask):
         to_remove.sort(reverse=True)
         no_duplicates = bib_entries.copy()
         for rem in to_remove:
-            no_duplicates.remove(rem)
+            no_duplicates.pop(rem)
         
         if save_path is not None:
             bibs = "\n".join([bib_entries_to_str([entry]) for entry in no_duplicates])
@@ -111,12 +153,19 @@ class ReferenceExtractor(PipelineTask):
         Get BibTex entries from title,author references
         """
         
-        bibs = ""
+        bibs = []
         for ref in refs["references"]:
             try:
                 entry = get_bibtex_entry(ref["title"], ref["author"])
-                bibs += bib_entries_to_str([entry]) + '\n'
+                if not entry:
+                    continue
+                bibs.append(entry)
             except Exception as e:
                 named_log(self, f"Bibtex entry failed for: {ref}")
+        
+        if save_path:
+            bibstr = "\n".join([bib_entries_to_str([entry]) for entry in bibs])
+            with open(save_path, "w", encoding="utf-8") as f:
+                f.write(bibstr)
         
         return bibs

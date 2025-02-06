@@ -6,14 +6,21 @@ reference_extract_prompt: |
   """
 
   - The text above is from a scientific paper.
-  - Read the last pages, specifically the section "References"
+  - Read and focus your attention on the section "References"
   
-  - For every reference entry, you must take the Title and Author and output in a YAML format (2-space identation):
+  - For every reference entry, you must take the Title and Author
+  - DO NOT SKIP ANY REFERENCE
+  - **Output in THIS FORMAT STRICTLY (yaml format, each item is an item from a list):**
   """
-  - references:
-    - title: "REFERENCE_TITLE"
-    - author: "REFERENCE_AUTHOR"
+  - title: "REFERENCE_TITLE"
+    author: "REFERENCE_AUTHOR"
   """
+  - Make sure every variable value (REFERENCE_TITLE and REFERENCE_AUTHOR) are enclosed in double-quotes
+  - If there is no apparent reference entry, ignore and do nothing
+  - Examples of common Reference formats (X: a number, LN: last name, FA: first name abbreviation):
+    - "(X) Author1LN, Author1F.; Author2LN, Author2F; ... AuthorNLN, AuthorNF. Some multiple words title finished by a dot. The rest"
+      => This becomes: "title: 'Some multiple words title finished by a dot', author: "Author1LN, Author1F.; Author2LN, Author2F; ... AuthorNLN, AuthorNF"
+
 
 gen_struct_prompt: |
   You are an expert in academic writing, specially in the field of **{subject}**.
@@ -50,18 +57,15 @@ write_prompt: |
     - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
 
   - Citations and References:
-    - Use the biblatex package for all references and citations.
-    - Cite references using the command \cite{{nickname}}.
-    - Provide a bibliography section at the end of your response enclosed with:
-    ```
-    \begin{{filecontents*}}{{mybib.bib}}
-    (REFERENCES IN BIBLATEX FORMAT)
-    \end{{filecontents*}}
-    ```
-    - Assign reference nicknames in the format <author><year> (e.g, smith2024)
-    - Double check to avoid duplicate reference entries
-    - Include citations for all works explicitly referenced in the section
-    - Don't use '\printbibliography' anywhere.
+    - DO NOT focus on citing anywhere. Focus only in writing.
+    - DO NOT use any kind of BibTex or bibliography-related commands (\printbibliography, etc)
+
+  - Figures and Tables:
+    - If the section is too short (less than 500 words), you must include at least one visual element:
+      - Include Figures by either using the TikZ package to create your own, or citing Figures from other works (and pointing it out)
+      - Include tables that are adequate for the explanation of a topic
+    - Else, acquire insights from the content of the section and judge if a Figure would be beneficial:
+      - If there is some visual topic to be explained, consider using TikZ package to create a visual explanation
 
   - **Write in English only**.
 
@@ -73,7 +77,7 @@ write_prompt: |
 
   - From your experience, you know that you must incorporate direct insights from the authors, from works cited by these authors, and insights you gather yourself.
 
-  - As an academic writer, **you must use as many references as possible, ALWAYS remembering when you get information from a specific reference and citing accordingly.
+  - As an academic writer, **you must inspire yourself with as many references as possible**
 
   - Remember to include visual or tabular elements where relevant, using your expertise in visual elements.
 
@@ -83,3 +87,32 @@ write_prompt: |
 
   - Here's what you know that must be included in the section "{title}":
   {description}
+
+
+add_reference_prompt: |
+  """
+  {bibdatabase}
+  """
+
+  - The text above is a database of BibTex entries available
+
+  - **You are an expert in academic writing, specially in the field of {subject}.**
+
+  - You are writing survey paper on the subject. You have it written alread, and now you only need to include as many references as you can.
+
+  - The text below is a section of the paper, in LaTeX. The title of the section is: {title}
+
+  - Given the section, you must go through the bibdatabse and add the references to this section:
+    - ONLY use the command "\cite{{nickname}}", where "nickname" is the article ID to reference using bibtex (in bibtex, the nickname is given by: "@article{{nickname, ...}}")
+    - DO NOT use any BibTex or bibliography commands in general, except for "\cite"
+    - DO NOT alter the content of the section, focus only in adding RELEVANT references
+    - To judge a reference relevant, you must:
+      - If there is an "abstract" key available in the entry, read that abstract to check for the relevance in the current section
+      - Else, use the other keys to extract as much information from the entry as possible (title, journal, authors) and check if they must be added or not.
+    
+  - Your output should only contain the section with "\cite" commands inserted, and nothing more.
+
+  - Add AT LEAST 10 references PER SECTION
+
+  - Section "{title}" content:
+  {content}

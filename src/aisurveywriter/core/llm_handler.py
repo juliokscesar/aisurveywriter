@@ -26,18 +26,18 @@ class LLMType(Enum):
                 raise ValueError(f"{s!r} is not a valid LLMType")
 
 class LLMHandler:
-    def __init__(self, model: str, model_type: Union[LLMType, str]):
+    def __init__(self, model: str, model_type: Union[LLMType, str], temperature: float = 0.3):
         self.model = model
         if isinstance(model_type, str):
             model_type = LLMType.from_str(model_type)
         self.model_type = model_type
         match model_type:
             case LLMType.OpenAI:
-                self.llm = ChatOpenAI(model=model, temperature=0.3)
+                self.llm = ChatOpenAI(model=model, temperature=temperature)
             case LLMType.Google:
-                self.llm = ChatGoogleGenerativeAI(model=model, temperature=0.3)
+                self.llm = ChatGoogleGenerativeAI(model=model, temperature=temperature)
             case LLMType.Ollama:
-                self.llm = ChatOllama(model=model, temperature=0.3)
+                self.llm = ChatOllama(model=model, temperature=temperature)
             case _:
                 raise ValueError(f"Invalid model type: {model_type}")
 
@@ -61,7 +61,7 @@ class LLMHandler:
     def set_prompt_template(self, prompt: str):
         self.prompt = prompt
 
-    def invoke(self, input_variables: dict) -> AIMessage:
+    def invoke(self, input_variables: dict = None) -> AIMessage:
         """
         Invokes langchain LLM object and changes all the "input_variables" in the prompt template.
         Must have called init_chain, set_prompt_template and (opt.) set_context_sysmsg before
@@ -73,7 +73,11 @@ class LLMHandler:
         if self.model_type == LLMType.Ollama:
             resp.content = re.sub(r"<think>[\s\S]*<\/think>", "", resp.content) # remove 'think' from deepseek
         
-        return self._chain.invoke(input_variables)
+        return resp
 
     def send_prompt(self, prompt: str) -> AIMessage:
-        return self.llm.invoke(prompt)
+        resp = self.llm.invoke(prompt)
+        if self.model_type == LLMType.Ollama:
+            resp.content = re.sub(r"<think>[\s\S]*<\/think>", "", resp.content) # remove 'think' from deepseek
+
+        return resp

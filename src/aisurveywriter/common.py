@@ -13,19 +13,25 @@ from aisurveywriter.core.paper import PaperData
 
 def get_credentials(config: ConfigManager):
     credentials = fh.read_credentials(config.credentials_path)
-    os.environ["GOOGLE_API_KEY"] = credentials["google_key"]
-    os.environ["OPENAI_API_KEY"] = credentials["openai_key"]
+    if credentials["google_key"]:
+        os.environ["GOOGLE_API_KEY"] = credentials["google_key"]
+    if credentials["openai_key"]:
+        os.environ["OPENAI_API_KEY"] = credentials["openai_key"]
     return credentials
 
-def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, model: str = "gemini-1.5-flash", model_type: str = "google", pregen_struct_yaml: Optional[str] = None, config_path: Optional[str] = None):
-    if config_path is None:
+def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, model: str = "gemini-1.5-flash", model_type: str = "google", pregen_struct_yaml: Optional[str] = None, config_path: Optional[str] = None, use_nblm_generation=False):
+    if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
-    config = ConfigManager.from_file(config_path)
+    try:
+        config = ConfigManager.from_file(config_path)
+    except Exception as e:
+        print("==> Exception on reading config:", e)
+        raise e
 
     credentials = get_credentials(config)
     if save_path is None or save_path == "":
         save_path = config.out_tex_path
-    
+
     # LLM used to write the paper
     writer_llm = LLMHandler(
         model=model,
@@ -34,7 +40,7 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
     
     # LLM used on LaTeX syntax review (deepseek is local)
     # use deepseek only if there's enough memory
-    if psutil.virtual_memory().available < 9*1024:
+    if psutil.virtual_memory().available >= 9*1024:
         tex_review_llm = LLMHandler(
             model="deepseek-coder-v2:16b",
             model_type="ollama",
@@ -50,16 +56,20 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
     if pregen_struct_yaml:
         first = tks.DeliverTask(PaperData.from_structure_yaml(subject=subject, path=pregen_struct_yaml))
     else:
-        driver = init_driver(config.browser_path, config.driver_path)
-        nblm = NotebookLMBot(
-            user=credentials["nblm_email"],
-            password=credentials["nblm_password"],
-            driver=driver,
-            src_paths=ref_paths,
-        )
-        nblm.login()
-        first = tks.PaperStructureGenerator(nblm, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
-    
+        if use_nblm_generation:
+            driver = init_driver(config.browser_path, config.driver_path)
+            nblm = NotebookLMBot(
+                user=credentials["nblm_email"],
+                password=credentials["nblm_password"],
+                driver=driver,
+                src_paths=ref_paths,
+            )
+            nblm.login()
+            gen_llm = nblm
+        else:
+            gen_llm = writer_llm
+        first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
+
     pipe = PaperPipeline([
         first,
         
@@ -71,6 +81,15 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
         
         tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths),
         tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path),
+        
+        tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_add,
+                               raw_save_path=save_path.replace(".tex", "-raw.ref"),
+                               rawbib_save_path=save_path.replace(".tex", "-raw.bib"),
+                               bib_save_path=save_path.replace(".tex", "-bibdb.bib"),
+                               cooldown_sec=60, batches=2),
+        
+        tks.PaperReferencer(writer_llm, bibdb_path=save_path.replace(".tex", "-bibdb.bib"),
+                            prompt=config.prompt_ref_add, cooldown_sec=60),
         
         tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
         tks.PaperSaver(save_path, config.tex_template_path)
