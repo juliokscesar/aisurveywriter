@@ -30,6 +30,7 @@ gen_struct_prompt: |
   2. **INSTRUCTIONS**:
     - Do not include sections such as **Abstract** or **References**;
     - Include core (Introductions, conclusions,...) sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
+    - Do not include the number of the section along with its title (e.g. 1. introduction, 2. methods...)
   
   3. **OUTPUT FORMAT**:
     - Provide the structure in YAML format

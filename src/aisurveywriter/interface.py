@@ -60,4 +60,4 @@ class GradioInterface:
 
 if __name__ == "__main__":
     interface = GradioInterface()
-    interface.launch(share=True)
+    interface.launch(share=False)
