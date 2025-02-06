@@ -10,7 +10,7 @@ from aisurveywriter.core.llm_handler import LLMHandler
 import aisurveywriter.core.file_handler as fh
 from aisurveywriter.core.pdf_processor import PDFProcessor
 from aisurveywriter.core.paper import PaperData, SectionData
-from aisurveywriter.utils import named_log
+from aisurveywriter.utils import named_log, countdown_log
 
 from .pipeline_task import PipelineTask
 
@@ -59,6 +59,8 @@ class PaperStructureGenerator(PipelineTask):
             response = self._llm_gen_structure(return_metadata=True)
             named_log(self, "LLM generation metadata:", response.usage_metadata)
             response = response.content
+            named_log(self, "==> initiating cooldown of 40 s because of request limitations")
+            countdown_log("", 40)
         response = re.sub(r"[`]+[\w]*", "", response)
         named_log(self, f"==> finished generating paper structure")
 

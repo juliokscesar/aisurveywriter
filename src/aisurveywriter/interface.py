@@ -20,7 +20,6 @@ class GradioInterface:
             additional_inputs=[
                 gr.File(label="Upload reference PDFs", file_types=[".pdf"], file_count="multiple"),
                 gr.Textbox(label="Save path and name", placeholder="Enter the full path to save the paper (including its filename)", value=os.path.join(os.getcwd(), "out")),
-                # gr.Textbox(label="Writer LLM model", placeholder="Enter the name of the model to use to write and review the paper", value="gemini-2.0-flash-exp"),
                 gr.Dropdown(label="Writer LLM model", choices=list(self.supported_models.keys())),
                 gr.Textbox(label="Pre-generated YAML structure", placeholder="Full path to pre-generated structure"),
                 gr.Textbox(label="Path to YAML configuration file", placeholder="Full path to configuration", value = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))),
