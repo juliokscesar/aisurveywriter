@@ -45,11 +45,7 @@ review_prompt: |
       - Cross-check the content against the provided references.
       - Identify any factual inaccuracies, missing key points, or inconsistencies.
       - Suggest additional context or explanations where necessary.
-  3. **Citation Verification**
-      - Ensure all citations match entries in the bibliography and are used correctly.
-      - Highlight any missing, incorrect, duplicate, or redundant citations.
-      - Recommend additional references from the provided bibliography where relevant.
-  4. **Suggestions for Improvement**
+  3. **Suggestions for Improvement**
       - Suggest rephrasing or restructuring where needed.
       - Highlight any sections that lack depth or are redundant.
 
@@ -86,13 +82,10 @@ apply_prompt: |
   \subsection{{...}}
   ...
 
-  \begin{{filecontents*}}{{mybib.bib}}
-  (SECTION REFERENCES IN BIBLATEX FORMAT)
-  \end{{filecontents*}}
-
-  - DO NOT USE '\\printbibliography' OR ANY OTHER BIBLATEX COMMAND ANYWHERE, EXCEPT FOR \\cite OR INSIDE THE 'filecontents' BLOCK
-  - THE CITATION FORMAT SHOULD BE FORMATTED AS <author><year> (e.g. smith2024)
-  - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT
+  - DO NOT USE '\\printbibliography' OR ANY OTHER BIBLATEX COMMAND ANYWHERE (including \cite, \bibliography, etc)
+  - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT:
+    - It is relevant to include figures where a topic can be easily explained visually
+    - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
   - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
 
   ## Section LaTeX content:

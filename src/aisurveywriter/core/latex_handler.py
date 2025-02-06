@@ -30,10 +30,12 @@ def write_latex(template_path: str, paper: PaperData, file_path: str, find_bib_p
         bib_file = file_path.replace(".tex", ".bib")
         with open(bib_file, "w", encoding="utf-8") as bib_f:
             bib_f.write(bib_content)
+        tex_content = template.replace("{bibresourcefile}", os.path.basename(bib_file))
+    else:
+        paper_content = "\n".join([s.content for s in paper.sections if s.content is not None])
 
     # Replace variables in template
     tex_content = template.replace("{content}", paper_content)
-    tex_content = tex_content.replace("{bibresourcefile}", os.path.basename(bib_file))
     if tex_filter_fn is not None:
         tex_content = tex_filter_fn(tex_content)
 

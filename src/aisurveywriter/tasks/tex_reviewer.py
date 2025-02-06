@@ -1,4 +1,5 @@
 from typing import Optional
+import re
 
 from .pipeline_task import PipelineTask
 from aisurveywriter.core.llm_handler import LLMHandler
@@ -54,6 +55,7 @@ class TexReviewer(PipelineTask):
             except:
                 named_log(self, f"==> (debug) reponse object:", response)
 
+            section.content = re.sub(r"[`]+[\w]*", "", section.content)
             if self._cooldown_sec:
                 cooldown = max(0, self._cooldown_sec - elapsed)
                 named_log(self, f"==> initiating cooldown of {cooldown} s (request limitations)")

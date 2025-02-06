@@ -17,7 +17,7 @@ class PaperWriter(PipelineTask):
     """
     A class abstraction for the process of writing a survey paper
     """
-    def __init__(self, llm: LLMHandler, prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, request_cooldown_sec: int = 60 * 1.4, summarize_refs=False, use_faiss=False, faiss_embeddings: str = "google"):
+    def __init__(self, llm: LLMHandler, prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, discard_ref_section=True, request_cooldown_sec: int = 60 * 1.4, summarize_refs=False, use_faiss=False, faiss_embeddings: str = "google"):
         """
         Intializes a PaperWriter
         
@@ -31,6 +31,8 @@ class PaperWriter(PipelineTask):
             
             ref_paths (List[str]): a List of the path of every PDF reference for this paper.
             
+            discard_ref_section (bool): discard the "References" section from every PDF
+            
             request_cooldown_sec (int): cooldown time in seconds between two requests to the LLM API.
             summarize_refs (bool): summarize references before sending to the LLM (using the LLM itself to first summarize it)
             use_faiss (bool): use FAISS vector store to retrieve "similar" information from the references
@@ -41,6 +43,7 @@ class PaperWriter(PipelineTask):
         self.prompt = prompt
         self.ref_paths = ref_paths.copy()
         
+        self._discard_ref_section = discard_ref_section
         self._cooldown_sec = int(request_cooldown_sec)
         self._summarize = summarize_refs
         self._use_faiss = use_faiss
@@ -87,7 +90,7 @@ class PaperWriter(PipelineTask):
             self.prompt = prompt
         
         # read reference content and initialize llm chain
-        sysmsg = SystemMessage(content=self._get_ref_content(self._summarize, self._use_faiss, self._faiss_embeddings))
+        sysmsg = SystemMessage(content=self._get_ref_content(self._discard_ref_section, self._summarize, self._use_faiss, self._faiss_embeddings))
         self.llm.init_chain(sysmsg, self.prompt)
         
         sz = len(self.paper.sections)
@@ -119,7 +122,7 @@ class PaperWriter(PipelineTask):
         return self.paper
 
 
-    def _get_ref_content(self, summarize=False, use_faiss=False, faiss_embeddings: str ="google") -> Union[str,None]:
+    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, faiss_embeddings: str ="google") -> Union[str,None]:
         """
         Returns the content of all PDF references in a single string
         If the references weren't set in the constructor, return None
@@ -146,6 +149,17 @@ class PaperWriter(PipelineTask):
             relevant = vec.similarity_search(f"Get useful, techinal, and analytical information on the subject {self.paper.subject}")
             content = "\n".join([doc.page_content for doc in relevant])
         else:
-            content = "\n".join(pdfs.extract_content())
+            if discard_ref_section:
+                pdf_contents = pdfs.extract_content()
+                content = ""
+                for pdf_content in pdf_contents:
+                    ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", pdf_content, re.IGNORECASE)
+                    if ref_match:
+                        content += pdf_content[:ref_match.start()].strip()
+                    else:
+                        content += pdf_content.strip()
+                    content += "\n"
+            else:
+                content = "\n".join(pdfs.extract_content())
         
         return content

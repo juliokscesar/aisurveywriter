@@ -40,13 +40,13 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
     
     # LLM used on LaTeX syntax review (deepseek is local)
     # use deepseek only if there's enough memory
-    if psutil.virtual_memory().available >= 9*1024:
-        tex_review_llm = LLMHandler(
-            model="deepseek-coder-v2:16b",
-            model_type="ollama",
-        )
-    else:
-        tex_review_llm = writer_llm
+    # if psutil.virtual_memory().available >= 9*1024:
+    #     tex_review_llm = LLMHandler(
+    #         model="deepseek-coder-v2:16b",
+    #         model_type="ollama",
+    #     )
+    # else:
+    tex_review_llm = writer_llm
     
     save_path = os.path.abspath(save_path)
     if not os.path.basename(save_path).endswith(".tex"):
@@ -73,16 +73,16 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
     pipe = PaperPipeline([
         first,
         
-        tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths),
-        tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path),
+        tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True),
+        tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path, find_bib_pattern=None),
         
         tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
-        tks.PaperSaver(save_path.replace(".tex", "-texrevscratch.tex"), config.tex_template_path),
+        tks.PaperSaver(save_path.replace(".tex", "-texrevscratch.tex"), config.tex_template_path, find_bib_pattern=None),
         
         tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths),
-        tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path),
+        tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path, find_bib_pattern=None),
         
-        tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_add,
+        tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_extract,
                                raw_save_path=save_path.replace(".tex", "-raw.ref"),
                                rawbib_save_path=save_path.replace(".tex", "-raw.bib"),
                                bib_save_path=save_path.replace(".tex", "-bibdb.bib"),
@@ -92,6 +92,6 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
                             prompt=config.prompt_ref_add, cooldown_sec=60),
         
         tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
-        tks.PaperSaver(save_path, config.tex_template_path)
+        tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None)
     ])
     pipe.run()

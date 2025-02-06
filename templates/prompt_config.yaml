@@ -59,7 +59,7 @@ write_prompt: |
 
   - Citations and References:
     - DO NOT focus on citing anywhere. Focus only in writing.
-    - DO NOT use any kind of BibTex or bibliography-related commands (\printbibliography, etc)
+    - DO NOT use any kind of BibTex or bibliography-related commands (\printbibliography, \cite, \bibliography, etc)
 
   - Figures and Tables:
     - If the section is too short (less than 500 words), you must include at least one visual element:

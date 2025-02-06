@@ -17,7 +17,7 @@ class PaperReviewer(PipelineTask):
     """
     A class abstraction for the process of reviewing a generated survey paper
     """
-    def __init__(self, llm: LLMHandler, review_prompt: str, apply_prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, request_cooldown_sec: int = 60 * 1.5, summarize_refs=False, use_faiss=False, faiss_embeddings: str = "google"):
+    def __init__(self, llm: LLMHandler, review_prompt: str, apply_prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, request_cooldown_sec: int = 60 * 1.5, discard_ref_sections=True, summarize_refs=False, use_faiss=False, faiss_embeddings: str = "google"):
         """
         Intializes a PaperWriter
         
@@ -42,6 +42,7 @@ class PaperReviewer(PipelineTask):
         self.ref_paths = ref_paths.copy()
         
         self._cooldown_sec = int(request_cooldown_sec)
+        self._discard_ref_sections = discard_ref_sections
         self._summarize = summarize_refs
         self._use_faiss = use_faiss
         self._faiss_embeddings = faiss_embeddings
@@ -87,10 +88,10 @@ class PaperReviewer(PipelineTask):
             self.prompt = prompt
         
         # read reference content and initialize llm chain
-        refmsg = SystemMessage(content=self._get_ref_content(self._summarize, self._use_faiss, self._faiss_embeddings))
+        refmsg = SystemMessage(content=self._get_ref_content(self._discard_ref_sections, self._summarize, self._use_faiss, self._faiss_embeddings))
         
         sz = len(self.paper.sections)
-        
+        word_count = 0
         # review section by section
         for i, section in enumerate(self.paper.sections):
             named_log(self, f"==> begin reviewing section ({i+1}/{sz}): {section.title}")
@@ -98,12 +99,11 @@ class PaperReviewer(PipelineTask):
             named_log(self, f"==> asking LLM for review points")
             # first get review from llm
             self.llm.init_chain(refmsg, self.review_prompt)
-            response, elapsed = time_func(self.llm.invoke, {
+            elapsed, response = time_func(self.llm.invoke, {
                 "subject": self.paper.subject,
                 "title": section.title,
                 "content": section.content,
             })
-            elapsed = int(elapsed)
             
             try:
                 named_log(self, f"==> got llm review points | time elapsed: {elapsed} s | metadata:", response.usage_metadata)
@@ -118,8 +118,7 @@ class PaperReviewer(PipelineTask):
                 "review_points": response.content,
             })
 
-            section.content = response.content
-            section.content = re.sub(r"[`]+[\w]*", "", section.content) # remove markdown code blocks if any
+            section.content = re.sub(r"[`]+[\w]*", "", response.content) # remove markdown code blocks if any
             word_count += len(section.content.split())
 
             named_log(self, f"==> finished reviewing section ({i+1}/{sz}): {section.title} | total words count: {word_count} | time elapsed: {int(elapsed)} s")
@@ -137,7 +136,7 @@ class PaperReviewer(PipelineTask):
         return self.paper
 
 
-    def _get_ref_content(self, summarize=False, use_faiss=False, faiss_embeddings: str ="google") -> Union[str,None]:
+    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, faiss_embeddings: str ="google") -> Union[str,None]:
         """
         Returns the content of all PDF references in a single string
         If the references weren't set in the constructor, return None
@@ -164,6 +163,17 @@ class PaperReviewer(PipelineTask):
             relevant = vec.similarity_search(f"Get useful, techinal, and analytical information on the subject {self.paper.subject}")
             content = "\n".join([doc.page_content for doc in relevant])
         else:
-            content = "\n".joing(pdfs.extract_content())
+            if discard_ref_section:
+                pdf_contents = pdfs.extract_content()
+                content = ""
+                for pdf_content in pdf_contents:
+                    ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", pdf_content, re.IGNORECASE)
+                    if ref_match:
+                        content += pdf_content[:ref_match.start()].strip()
+                    else:
+                        content += pdf_content.strip()
+                    content += "\n"
+            else:
+                content = "\n".join(pdfs.extract_content())
         
         return content
