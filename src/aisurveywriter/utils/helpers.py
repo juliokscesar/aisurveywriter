@@ -1,5 +1,5 @@
 from typing import Union, List
-from time import sleep
+from time import sleep, time
 import os
 from pathlib import Path
 import yaml
@@ -11,6 +11,12 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.bibdatabase import BibDatabase
 import re
 import html
+
+def time_func(func, *args, **kwargs):
+    start = time()
+    ret = func(*args, **kwargs)
+    elapsed = time() - start
+    return int(elapsed), ret
 
 def diff_keys(keys: list, d: dict):
     diff = set(keys - list(d.keys()))

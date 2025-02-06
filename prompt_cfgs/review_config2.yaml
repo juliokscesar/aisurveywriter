@@ -9,8 +9,8 @@ tex_review_prompt: |
     - `\title`
     - `\author`
     - `\date`
-    - `\begin{{document}}`
-    - `\end{{document}}`
+    - `\begin{document}`
+    - `\end{document}`
     - Any other preamble-related commands.
 
   3. **Eliminate Non-\cite BibTeX Commands**: Remove any bibliography-related commands except for `\cite`. Examples of commands to eliminate:
@@ -89,6 +89,7 @@ apply_prompt: |
   \begin{{filecontents*}}{{mybib.bib}}
   (SECTION REFERENCES IN BIBLATEX FORMAT)
   \end{{filecontents*}}
+
 
   - DO NOT USE '\\printbibliography' OR ANY OTHER BIBLATEX COMMAND ANYWHERE, EXCEPT FOR \\cite OR INSIDE THE 'filecontents' BLOCK
   - THE CITATION FORMAT SHOULD BE FORMATTED AS <author><year> (e.g. smith2024)

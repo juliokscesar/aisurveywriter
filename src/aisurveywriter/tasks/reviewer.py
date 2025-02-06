@@ -1,4 +1,6 @@
 from typing import List, Union, Optional
+from time import time
+import re
 
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
@@ -9,7 +11,7 @@ from aisurveywriter.core.paper import PaperData, SectionData
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.pdf_processor import PDFProcessor
 from aisurveywriter.tasks.pipeline_task import PipelineTask
-from aisurveywriter.utils import named_log, countdown_log, diff_keys
+from aisurveywriter.utils import named_log, countdown_log, diff_keys, time_func
 
 class PaperReviewer(PipelineTask):
     """
@@ -93,16 +95,23 @@ class PaperReviewer(PipelineTask):
         for i, section in enumerate(self.paper.sections):
             named_log(self, f"==> begin reviewing section ({i+1}/{sz}): {section.title}")
 
+            named_log(self, f"==> asking LLM for review points")
             # first get review from llm
             self.llm.init_chain(refmsg, self.review_prompt)
-            response = self.llm.invoke({
+            response, elapsed = time_func(self.llm.invoke, {
                 "subject": self.paper.subject,
                 "title": section.title,
                 "content": section.content,
             })
+            elapsed = int(elapsed)
+            
+            try:
+                named_log(self, f"==> got llm review points | time elapsed: {elapsed} s | metadata:", response.usage_metadata)
+            except:
+                named_log(self, f"==> got llm review points | time elapsed: {elapsed} s | (debug) metadata:", response)
             
             # now apply the review points
-            response = self.llm.invoke({
+            elapsed, response = time_func(self.llm.invoke, {
                 "subject": self.paper.subject,
                 "title": section.title,
                 "content": section.content,
@@ -110,12 +119,20 @@ class PaperReviewer(PipelineTask):
             })
 
             section.content = response.content
+            section.content = re.sub(r"[`]+[\w]*", "", section.content) # remove markdown code blocks if any
             word_count += len(section.content.split())
-            named_log(self, f"==> finished reviewing section ({i+1}/{sz}): {section.title} | total words count: {word_count}")
-            named_log(self, f"==> response metadata:", response.usage_metadata)
 
-            named_log(self, "==> initiating cooldown (request limitations)")
-            countdown_log("", self._cooldown_sec)
+            named_log(self, f"==> finished reviewing section ({i+1}/{sz}): {section.title} | total words count: {word_count} | time elapsed: {int(elapsed)} s")
+            
+            try:
+                named_log(self, f"==> response metadata:", response.usage_metadata)
+            except:
+                named_log(self, f"==> (debug) reponse object:", response)
+
+            if self._cooldown_sec:
+                cooldown = max(0, self._cooldown_sec - elapsed)
+                named_log(self, f"==> initiating cooldown of {cooldown} s (request limitations)")
+                countdown_log("", cooldown)
 
         return self.paper
 
@@ -131,7 +148,7 @@ class PaperReviewer(PipelineTask):
             use_faiss (bool): use FAISS to create a vector store and retrieve only a part of the information using text embedding.
             faiss_embeddings (str): vendor of embedding (google, openai). Will only have an effect if 'use_faiss' is True.
         """
-        pdfs = PDFProcessor(self.pdf_refs)
+        pdfs = PDFProcessor(self.ref_paths)
         
         if summarize:
             content = pdfs.summarize_content(self.llm.llm, show_metadata=True)

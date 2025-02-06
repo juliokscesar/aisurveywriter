@@ -10,10 +10,11 @@ from aisurveywriter.utils import named_log
 from .pipeline_task import PipelineTask
 
 class PaperStructureGenerator(PipelineTask):
-    def __init__(self, nblm_bot: NotebookLMBot, subject: str, prompt: str):
+    def __init__(self, nblm_bot: NotebookLMBot, subject: str, prompt: str, save_path: Optional[str] = None):
         self.nblm = nblm_bot
         self.subject = subject
         self.prompt = prompt
+        self.save_path = save_path
 
         if not self.nblm.is_logged_in():
             self.nblm.login()
@@ -26,10 +27,13 @@ class PaperStructureGenerator(PipelineTask):
         )
         return paper
 
-    def generate_structure(self, prompt: Optional[str] = None, sleep_wait_response: int = 30, save_yaml = True, out_yaml_path: str = "genstructure.yaml") -> List[dict[str,str]]:
+    def generate_structure(self, prompt: Optional[str] = None, sleep_wait_response: int = 30, save_path: Optional[str] = None) -> List[dict[str,str]]:
         """
         Generate a structure for the paper using NotebookLM with the sources provided with (ref_pdf_paths).
         """
+        if save_path:
+            self.save_path = save_path
+        
         if prompt is not None:
             self.prompt = prompt
         if self.prompt.find("{subject}") != -1:
@@ -43,9 +47,9 @@ class PaperStructureGenerator(PipelineTask):
         for line in response.split("\n"):
             result += f"  {line}\n"
 
-        if save_yaml:
-            with open(out_yaml_path, "w", encoding="utf-8") as f:
-                f.write(result)
+            if self.save_path:
+                with open(self.save_path, "w", encoding="utf-8") as f:
+                    f.write(result)
         
         result = yaml.safe_load(result)
         named_log(self,f"Finished generating paper structure. Got a structure with {len(result['sections'])} sections.\n")

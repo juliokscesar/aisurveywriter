@@ -3,10 +3,10 @@ from typing import Optional
 from .pipeline_task import PipelineTask
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.paper import PaperData
-from aisurveywriter.utils import named_log, countdown_log
+from aisurveywriter.utils import named_log, countdown_log, time_func
 
 class TexReviewer(PipelineTask):
-    def __init__(self, llm: LLMHandler, tex_review_prompt: str, bib_review_prompt: Optional[str] = None):
+    def __init__(self, llm: LLMHandler, tex_review_prompt: str, bib_review_prompt: Optional[str] = None, cooldown_sec: int = 40):
         """
         Initialize a TexReviewer
         
@@ -18,6 +18,7 @@ class TexReviewer(PipelineTask):
         self.llm = llm
         self.tex_prompt = tex_review_prompt
         self.bib_prompt = bib_review_prompt
+        self._cooldown_sec = int(cooldown_sec)
         
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
         if not isinstance(input_data, PaperData):
@@ -42,15 +43,21 @@ class TexReviewer(PipelineTask):
                 continue
             
             named_log(self, f"==> begin review LaTeX syntax for section ({i+1}/{sz}): {section.title}")
-            response = self.llm.invoke({
+            elapsed, response = time_func(self.llm.invoke, {
                 "content": section.content,
             })
             section.content = response.content
             named_log(self, f"==> finished review LaTeX syntax for section ({i+1}/{sz}): {section.title}")
-            named_log(self, f"==> response metadata:", response.usage_metadata)
+            
+            try:
+                named_log(self, f"==> response metadata:", response.usage_metadata)
+            except:
+                named_log(self, f"==> (debug) reponse object:", response)
 
-            named_log(self, "==> initiating cooldown (request limitations)")
-            countdown_log("", self._cooldown_sec)
+            if self._cooldown_sec:
+                cooldown = max(0, self._cooldown_sec - elapsed)
+                named_log(self, f"==> initiating cooldown of {cooldown} s (request limitations)")
+                countdown_log("", cooldown)
 
         return paper
 
@@ -65,17 +72,18 @@ class TexReviewer(PipelineTask):
             return paper
 
         self.llm.init_chain(None, self.bib_prompt)
-        sz = len(paper.sections)
         
         named_log(self, "==> begin review of BibTex")
-        response = self.llm.invoke({
+        elapsed, response = time_func(self.llm.invoke, {
             "bibcontent": paper.bib,
         })
         paper.bib = response.content
         named_log(self, "==> finished review of BibTex")
         named_log(self, f"==> response metadata:", response.usage_metadata)
 
-        named_log(self, "==> initiating cooldown (request limitations)")
-        countdown_log("", self._cooldown_sec)
+        if self._cooldown_sec:
+            countdown = max(0, self._cooldown_sec - elapsed)
+            named_log(self, f"==> initiating cooldown of {countdown} s (request limitations)")
+            countdown_log("", countdown)
 
         return paper

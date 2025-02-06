@@ -1,5 +1,6 @@
 from typing import List, Union, Optional
 from time import time
+import re
 
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
@@ -10,7 +11,7 @@ from aisurveywriter.core.paper import PaperData, SectionData
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.pdf_processor import PDFProcessor
 from aisurveywriter.tasks.pipeline_task import PipelineTask
-from aisurveywriter.utils import named_log, countdown_log, diff_keys
+from aisurveywriter.utils import named_log, countdown_log, diff_keys, time_func
 
 class PaperWriter(PipelineTask):
     """
@@ -95,21 +96,25 @@ class PaperWriter(PipelineTask):
         # write section by section
         for i, section in enumerate(self.paper.sections):
             named_log(self, f"==> begin writing section ({i+1}/{sz}): {section.title}")
-            start = time()
-            response = self.llm.invoke({
+            elapsed, response = time_func(self.llm.invoke, {
                 "subject": self.paper.subject,
                 "title": section.title,
                 "description": section.description,
             })
-            elapsed = time() - start
             section.content = response.content
+            section.content = re.sub(r"[`]+[\w]*", "", section.content) # remove markdown code blocks if any
             word_count += len(section.content.split())
-            named_log(self, f"==> finished writing section ({i+1}/{sz}): {section.title} | total words count: {word_count}")
-            named_log(self, f"==> response metadata:", response.usage_metadata)
+            named_log(self, f"==> finished writing section ({i+1}/{sz}): {section.title} | total words count: {word_count} | time elapsed: {int(elapsed)} s")
 
-            cooldown = int(self._cooldown_sec - elapsed)
-            named_log(self, "==> initiating cooldown of {cooldown}(request limitations)")
-            countdown_log("", cooldown)
+            try:
+                named_log(self, f"==> response metadata:", response.usage_metadata)
+            except:
+                named_log(self, f"==> (debug) reponse object:", response)
+
+            if self._cooldown_sec:
+                cooldown = max(0, self._cooldown_sec - elapsed)
+                named_log(self, f"==> initiating cooldown of {cooldown} s (request limitations)")
+                countdown_log("", cooldown)
 
         return self.paper
 

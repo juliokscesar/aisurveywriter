@@ -9,3 +9,4 @@ notebooks/out
 temp
 out
 *.egg-info
+results

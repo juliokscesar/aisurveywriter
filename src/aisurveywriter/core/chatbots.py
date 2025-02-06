@@ -171,7 +171,7 @@ class NotebookLMBot(ChatBot):
         elem.click()
         sleep(7)
 
-        self.add_sources(src_paths=self._src_paths, sleep_for=int(len(self._src_paths) * 10))
+        self.add_sources(src_paths=self._src_paths, sleep_for=30)
 
         # get input textarea
         self._prompt_element = self._web_driver.find_element(By.XPATH, "//textarea[contains(@class, 'query-box-input')]")
@@ -180,7 +180,7 @@ class NotebookLMBot(ChatBot):
     def is_logged_in(self):
         return (self._prompt_element is not None)
 
-    def add_sources(self, src_paths: List[str], sleep_for: int = 40):
+    def add_sources(self, src_paths: List[str], sleep_for: int = 30):
         # first need to hover on input button so that the input element appears
         try:
             elem = self._web_driver.find_element(By.XPATH, "//button[contains(@class, 'dropzone__icon') and contains(@class, 'mat-mdc-icon-button') and contains(@class, 'mdc-icon-button')]")
