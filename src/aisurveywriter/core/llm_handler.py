@@ -1,5 +1,7 @@
 from enum import Enum, auto
 from typing import Optional, Union
+import re
+
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, AIMessage
 from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
@@ -28,6 +30,7 @@ class LLMHandler:
         self.model = model
         if isinstance(model_type, str):
             model_type = LLMType.from_str(model_type)
+        self.model_type = model_type
         match model_type:
             case LLMType.OpenAI:
                 self.llm = ChatOpenAI(model=model, temperature=0.3)
@@ -65,6 +68,11 @@ class LLMHandler:
         """
         if self._chain is None:
             raise RuntimeError("To call LLMHandler.invoke, the chain has to be initialized")
+        resp = self._chain.invoke(input_variables)
+        
+        if self.model_type == LLMType.Ollama:
+            resp.content = re.sub(r"<think>[\s\S]*<\/think>", "", resp.content) # remove 'think' from deepseek
+        
         return self._chain.invoke(input_variables)
 
     def send_prompt(self, prompt: str) -> AIMessage:
