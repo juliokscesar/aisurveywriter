@@ -23,11 +23,21 @@ class ReferenceExtractor(PipelineTask):
 
         self._cooldown_sec = cooldown_sec
     
-    def pipeline_entry(self, input_data):
+    def pipeline_entry(self, input_data=None):
         refs = self.extract_references(save_path=self.raw_save_path)
         refs = self.refs_to_bib(refs, self.rawbib_save_path)
         refs = self.remove_duplicates(refs, self.bib_save_path)
         return self.bib_save_path
+    
+    def __call__(self, raw_save_path: Optional[str] = None, rawbib_save_path: Optional[str] = None, bib_save_path: Optional[str] = None):
+        if raw_save_path:
+            self.raw_save_path = raw_save_path
+        if rawbib_save_path:
+            self.rawbib_save_path = rawbib_save_path
+        if bib_save_path:
+            self.bib_save_path = bib_save_path
+        
+        return self.pipeline_entry()
     
     def extract_references(self, ref_paths: Optional[List[str]] = None, save_path: Optional[str] = None):
         """
