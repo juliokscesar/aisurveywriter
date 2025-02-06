@@ -1,6 +1,7 @@
 __pycache__
 driver
 .venv
+.gradio
 drivers/
 refexamples
 apikeys.yaml
