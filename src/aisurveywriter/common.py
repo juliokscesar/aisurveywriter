@@ -1,6 +1,6 @@
 from typing import List, Optional
 import os
-import psutil
+import queue
 
 import aisurveywriter.core.file_handler as fh
 from aisurveywriter.core.config_manager import ConfigManager
@@ -29,6 +29,7 @@ def generate_paper_survey(
     config_path: Optional[str] = None, 
     use_nblm_generation=False,
     refdb_path: str = None,
+    pipeline_status_queue: queue.Queue = None,
 ):
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
@@ -65,6 +66,7 @@ def generate_paper_survey(
 
     if pregen_struct_yaml:
         first = tks.DeliverTask(PaperData.from_structure_yaml(subject=subject, path=pregen_struct_yaml))
+        first_name = "Load YAML structure"
     else:
         if use_nblm_generation:
             driver = init_driver(config.browser_path, config.driver_path)
@@ -80,6 +82,7 @@ def generate_paper_survey(
             gen_llm = writer_llm
             
         first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
+        first_name = "Paper Structure Generator"
 
     if not refdb_path:
         refdb_path = save_path.replace(".tex", "-bibdb.bib")
@@ -87,22 +90,24 @@ def generate_paper_survey(
                                              raw_save_path=save_path.replace(".tex", "-raw.ref"),
                                              rawbib_save_path=save_path.replaec(".tex", "-raw.bib"),
                                              bib_save_path=refdb_path)
+        ref_extract_name = "Reference Extractor"
     else:
         if not os.path.isfile(refdb_path):
             raise FileNotFoundError(f"Unable to find file {refdb_path!r}")
         ref_extract = tks.DeliverTask()
+        ref_extract_name = "Load References Database"
 
     pipe = PaperPipeline([
-        first,
+        (first_name, first),
         
-        tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True),
-        tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path, find_bib_pattern=None),
+        ("Write Paper", tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True)),
+        ("Save Paper", tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path, find_bib_pattern=None)),
         
         # tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
         # tks.PaperSaver(save_path.replace(".tex", "-texrevscratch.tex"), config.tex_template_path, find_bib_pattern=None),
         
-        tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths),
-        tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path, find_bib_pattern=None),
+        ("Review Paper", tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths)),
+        ("Save Reviewed Paper", tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path, find_bib_pattern=None)),
         
         # tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_extract,
         #                        raw_save_path=save_path.replace(".tex", "-raw.ref"),
@@ -110,14 +115,14 @@ def generate_paper_survey(
         #                        bib_save_path=save_path.replace(".tex", "-bibdb.bib"),
         #                        cooldown_sec=60, batches=3),
         
-        ref_extract,
+        (ref_extract_name, ref_extract),
         
-        tks.PaperReferencer(writer_llm, bibdb_path=refdb_path,
-                            prompt=config.prompt_ref_add, cooldown_sec=60),
+        ("Add References", tks.PaperReferencer(writer_llm, bibdb_path=refdb_path,
+                            prompt=config.prompt_ref_add, cooldown_sec=60)),
         
-        tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
-        tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None)
-    ])
+        ("Review Tex", tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None)),
+        ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None)),
+    ], status_queue=pipeline_status_queue)
     
     print("==> BEGINNING PAPER SURVEY GENERATON PIPELINE")
     pipe.run()

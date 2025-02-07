@@ -1,12 +1,15 @@
 from enum import Enum, auto
 from typing import Optional, Union
 import re
+from time import sleep
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, AIMessage
 from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
+
+from aisurveywriter.utils import named_log
 
 class LLMType(Enum):
     OpenAI = auto()
@@ -33,9 +36,9 @@ class LLMHandler:
         self.model_type = model_type
         match model_type:
             case LLMType.OpenAI:
-                self.llm = ChatOpenAI(model=model, temperature=temperature, request_timeout=120)
+                self.llm = ChatOpenAI(model=model, temperature=temperature, max_tries=3, request_timeout=120)
             case LLMType.Google:
-                self.llm = ChatGoogleGenerativeAI(model=model, temperature=temperature, request_timeout=120)
+                self.llm = ChatGoogleGenerativeAI(model=model, temperature=temperature, max_tries=3, request_timeout=120)
             case LLMType.Ollama:
                 self.llm = ChatOllama(model=model, temperature=temperature)
             case _:
@@ -68,7 +71,18 @@ class LLMHandler:
         """
         if self._chain is None:
             raise RuntimeError("To call LLMHandler.invoke, the chain has to be initialized")
-        resp = self._chain.invoke(input_variables)
+        
+        while True: # handle with '429 (res. exhausted)' because of request timeout
+            try:
+                resp = self._chain.invoke(input_variables)
+                break
+            except Exception as e:
+                if "429" in str(e):
+                    named_log(self, f"Resource exhausted exception raised. Sleeping for 90 s.")
+                    named_log(self, f"This will continue trying. If you wish to stop, press Ctrl+C")
+                    sleep(90)
+                else:
+                    raise e
         
         if self.model_type == LLMType.Ollama:
             resp.content = re.sub(r"<think>[\s\S]*<\/think>", "", resp.content) # remove 'think' from deepseek
@@ -76,7 +90,18 @@ class LLMHandler:
         return resp
 
     def send_prompt(self, prompt: str) -> AIMessage:
-        resp = self.llm.invoke(prompt)
+        while True: # handle with '429 (res. exhausted)' because of request timeout
+            try:
+                resp = self.llm.invoke(prompt)
+                break
+            except Exception as e:
+                if "429" in str(e):
+                    named_log(self, f"Resource exhausted exception raised. Sleeping for 90 s.")
+                    named_log(self, f"This will continue trying. If you wish to stop, press Ctrl+C")
+                    sleep(90)
+                else:
+                    raise e
+
         if self.model_type == LLMType.Ollama:
             resp.content = re.sub(r"<think>[\s\S]*<\/think>", "", resp.content) # remove 'think' from deepseek
 

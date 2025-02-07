@@ -104,7 +104,7 @@ class PaperReviewer(PipelineTask):
                 "title": section.title,
                 "content": section.content,
             })
-            
+            improv_points = response.content
             try:
                 named_log(self, f"==> got llm review points | time elapsed: {elapsed} s | metadata:", response.usage_metadata)
             except:
@@ -115,7 +115,7 @@ class PaperReviewer(PipelineTask):
                 "subject": self.paper.subject,
                 "title": section.title,
                 "content": section.content,
-                "review_points": response.content,
+                "review_points": improv_points,
             })
 
             section.content = re.sub(r"[`]+[\w]*", "", response.content) # remove markdown code blocks if any

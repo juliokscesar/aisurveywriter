@@ -1,13 +1,20 @@
 import os
-import sys
 import argparse
 import gradio as gr
+import threading
+import queue
+import time
 
 from aisurveywriter import generate_paper_survey
 from aisurveywriter.utils import named_log
+from aisurveywriter.core.pipeline import TaskStatus
+
+def run_generation(output_queue, *args, **kwargs):
+    generate_paper_survey(*args, **kwargs, pipeline_status_queue=output_queue)
 
 class GradioInterface:
     def __init__(self):
+        self._back_thread = None
         self.supported_models = {
             "Gemini 1.5 Flash": ("google", "gemini-1.5-flash"),
             "Gemini 1.5 Pro": ("google", "gemini-1.5-pro"),
@@ -32,34 +39,57 @@ class GradioInterface:
             title="Survey Paper Writer",
             description="Provide a subject, reference PDFs, and a save path to generate and save a survey paper.",
         )
+        self._is_running = False
 
     def launch(self, *args, **kwargs):
         self.gr_interface.launch(*args, **kwargs)
 
     def chat_fn(self, message, history, refs, save_path, model, pregen_struct, config_path, nblm_generate, bibdb_path):
+        if self._is_running:
+            return "A paper survey generation is already running. Please wait -- this really takes a long time."
         if len(refs) == 0:
             return "Please provide at least one PDF reference"
         subject = message
         named_log(self, f"Got: message={message}, history={history}, refs={refs}, save_path={save_path}, model={model}, pregen_struct={pregen_struct}, config_path={config_path}")
+
+        status_queue = queue.Queue()
+        worker_thread = threading.Thread(
+            target=run_generation, 
+            args=(status_queue,),
+            kwargs={
+                "subject": subject,
+                "ref_paths": refs,
+                "save_path": save_path.strip(),
+                "model": self.supported_models[model][1],
+                "model_type": self.supported_models[model][0],
+                "pregen_struct_yaml": pregen_struct.strip(),
+                "config_path": config_path.strip(),
+                "use_nblm_generation": nblm_generate,
+                "refdb_path": bibdb_path,
+            }
+        )
+        worker_thread.start()
+        self._is_running = False
+        success = False
         try:
-            generate_paper_survey(
-                subject=subject,
-                ref_paths=refs,
-                save_path=save_path.strip(),
-                model=self.supported_models[model][1],
-                model_type=self.supported_models[model][0],
-                pregen_struct_yaml=pregen_struct.strip(),
-                config_path=config_path.strip(),
-                use_nblm_generation=nblm_generate,
-                refdb_path=bibdb_path,
-            )
-            return "Paper generated successfully and saved to " + save_path
+            while worker_thread.is_alive() or not status_queue.empty():
+                while not status_queue.empty():
+                    task_id, task_name, task_status = status_queue.get()
+                    notify_msg = f"Task {task_id + 1}, {task_name!r}, {'is running' if task_status==TaskStatus.RUNNING else 'completed'}"
+                    named_log(self, notify_msg)
+                    yield notify_msg
+                    time.sleep(2)
+            success = True
         except Exception as e:
             named_log(self, f"generate_paper_survey raised an exception. Stopped generating paper. Exception: {e}")
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            named_log(self, "Exception full description:", exc_type, fname, exc_tb.tb_lineno)
-            return f"Unable to generate paper: {e}"
+            self._is_running = False
+            yield f"Unable to generate paper: {e}"
+            
+        self._is_running = False
+        if success:
+            yield "Paper generated successfully and saved to " + save_path
+        else:
+            yield "Please try again"
 
 def parse_args():
     parser = argparse.ArgumentParser()
