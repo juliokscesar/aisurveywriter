@@ -25,7 +25,9 @@ class ReferenceExtractor(PipelineTask):
     
     def pipeline_entry(self, input_data=None):
         refs = self.extract_references(save_path=self.raw_save_path)
+        named_log(self, "==> gathering bib entries from extracted title and author")
         refs = self.refs_to_bib(refs, self.rawbib_save_path)
+        named_log(self, "==> filtering duplicate refernces")
         refs = self.remove_duplicates(refs, self.bib_save_path)
         return input_data
     
@@ -86,16 +88,18 @@ class ReferenceExtractor(PipelineTask):
         references = "\n".join([line for line in references.splitlines() if line.strip()]) # remove any blank lines
         
         # format to save yaml
-        res = "references:\n"
-        for line in references.split("\n"):
-            res += f"  {line}\n"
-        references = res
-        
+        # res = "references:\n"
+        # for line in references.split("\n"):
+        #     res += f"  {line}\n"
+        # references = res
+
+        references = self._fmt_to_reflist(references)
+        ref_dict = {"references": references}
         if save_path is not None:
             with open(save_path, "w", encoding="utf-8") as f:
-                f.write(references)
+                yaml.safe_dump(ref_dict, f)
                 
-        return yaml.safe_load(references)
+        return ref_dict
     
     def _split_content(self, content: str, n_batches: int):
         """
@@ -120,6 +124,12 @@ class ReferenceExtractor(PipelineTask):
             start = end
         return batches
     
+    def _fmt_to_reflist(self, references: str):
+        pattern = re.compile(r'- title: "(.*?)"\s+author: "(.*?)"', re.DOTALL)
+        matches = pattern.findall(references)
+        result = [{"title": title, "author": author} for title, author in matches]
+        return result
+    
     def remove_duplicates(self, bib_entries: list, save_path: Optional[str] = None):
         """
         Remove any duplicate entries on references by comparing their DOIs
@@ -129,7 +139,7 @@ class ReferenceExtractor(PipelineTask):
         for i, entry in enumerate(bib_entries):
             if "doi" not in entry:
                 continue
-            doi = entry["doi"]
+            doi = entry["doi"].strip()
             if doi not in doi_history:
                 doi_history.append(doi)
             else:

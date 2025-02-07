@@ -137,7 +137,7 @@ def get_bibtex_entry(title, author, bibtext_cache={}):
     """
     doi = search_crossref(title, author)
     if not doi:
-        print("DOI not found for given title and author.")
+        print(f"DOI not found for given title and author: {title}. {author}")
         return None
     
     bibtext = get_bibtext(doi, cache=bibtext_cache)

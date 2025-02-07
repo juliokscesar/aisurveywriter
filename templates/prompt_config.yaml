@@ -20,6 +20,7 @@ reference_extract_prompt: |
   - Examples of common Reference formats (X: a number, LN: last name, FA: first name abbreviation):
     - "(X) Author1LN, Author1F.; Author2LN, Author2F; ... AuthorNLN, AuthorNF. Some multiple words title finished by a dot. The rest"
       => This becomes: "title: 'Some multiple words title finished by a dot', author: "Author1LN, Author1F.; Author2LN, Author2F; ... AuthorNLN, AuthorNF"
+  - Do not confuse the "Journal" for the Author or Title. Remember that journals' names usually contains "Science", "Review", "Letters", and related.
 
 
 gen_struct_prompt: |
@@ -79,6 +80,8 @@ write_prompt: |
   - From your experience, you know that you must incorporate direct insights from the authors, from works cited by these authors, and insights you gather yourself.
 
   - As an academic writer, **you must inspire yourself with as many references as possible**. Nevertheless, do not copy the references.
+
+  - Avoid using bullet points. If you need to detail and/or explain a topic, insert it within the flow of the text.
 
   - Remember to include visual or tabular elements where relevant, using your expertise in visual elements.
 

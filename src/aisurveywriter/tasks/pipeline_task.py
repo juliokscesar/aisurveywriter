@@ -9,7 +9,7 @@ class DeliverTask(PipelineTask):
     """
     This is just a task that takes and returns the input as it is
     """
-    def __init__(self, data_to_deliver):
+    def __init__(self, data_to_deliver=None):
         self.deliver = data_to_deliver
     
     def pipeline_entry(self, input_data):

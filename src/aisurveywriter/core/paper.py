@@ -25,4 +25,8 @@ class PaperData:
         )
         return paper
             
-        
+    def full_content(self) -> str:
+        content = ""
+        for section in self.sections:
+            content += section.content + "\n"
+        return content  

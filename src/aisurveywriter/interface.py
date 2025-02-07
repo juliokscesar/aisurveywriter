@@ -11,6 +11,7 @@ class GradioInterface:
             "Gemini 1.5 Flash": ("google", "gemini-1.5-flash"),
             "Gemini 1.5 Pro": ("google", "gemini-1.5-pro"),
             "Gemini 2.0 Flash Exp": ("google", "gemini-2.0-flash-exp"),
+            "Gemini 2.0 Pro Exp": ("google", "gemini-2.0-pro-exp"),
             "OpenAI (TODO)": (None,None),
             "Deepseek-R1 32b": ("ollama", "deepseek-r1:32b"),
         }
@@ -22,9 +23,10 @@ class GradioInterface:
                 gr.File(label="Upload reference PDFs", file_types=[".pdf"], file_count="multiple"),
                 gr.Textbox(label="Save path and name", placeholder="Enter the full path to save the paper (including its filename)", value=os.path.join(os.getcwd(), "out")),
                 gr.Dropdown(label="Writer LLM model", choices=list(self.supported_models.keys())),
-                gr.Textbox(label="Pre-generated YAML structure", placeholder="Full path to pre-generated structure"),
+                gr.Textbox(label="Pre-generated YAML structure (one will be generated if none is provided)", placeholder="Full path to pre-generated structure"),
                 gr.Textbox(label="Path to YAML configuration file", placeholder="Full path to configuration", value = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))),
                 gr.Checkbox(label="Use NotebookLM to generate the paper structure", info="Slow compared to bare LLM models, but supports up to 50 PDFs", value=False),
+                gr.Textbox(label="Path to .bib database to use (one will be generated from the references, if none is provided)", placeholder="Full path to BibTex database", value=os.path.abspath(os.path.join(__file__, "../../../out/generated-bibdb.bib"))),
             ],
             title="Survey Paper Writer",
             description="Provide a subject, reference PDFs, and a save path to generate and save a survey paper.",
@@ -33,7 +35,7 @@ class GradioInterface:
     def launch(self, *args, **kwargs):
         self.gr_interface.launch(*args, **kwargs)
 
-    def chat_fn(self, message, history, refs, save_path, model, pregen_struct, config_path, nblm_generate):
+    def chat_fn(self, message, history, refs, save_path, model, pregen_struct, config_path, nblm_generate, bibdb_path):
         if len(refs) == 0:
             return "Please provide at least one PDF reference"
         subject = message
@@ -46,9 +48,9 @@ class GradioInterface:
                 model=self.supported_models[model][1],
                 model_type=self.supported_models[model][0],
                 pregen_struct_yaml=pregen_struct.strip(),
-                # config_path=config_path.strip(),
                 config_path=config_path.strip(),
                 use_nblm_generation=nblm_generate,
+                refdb_path=bibdb_path,
             )
             return "Paper generated successfully and saved to " + save_path
         except Exception as e:

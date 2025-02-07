@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 from .pipeline_task import PipelineTask
 
@@ -7,11 +8,12 @@ from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.utils import named_log, time_func, countdown_log
 
 class PaperReferencer(PipelineTask):
-    def __init__(self, llm: LLMHandler, bibdb_path: str, prompt: str, paper: PaperData = None, cooldown_sec: int = 30):
+    def __init__(self, llm: LLMHandler, bibdb_path: str, prompt: str, paper: PaperData = None, cooldown_sec: int = 30, save_usedbib_path: Optional[str] = None):
         self.llm = llm
         self.paper = paper
         self.bibdb_path = bibdb_path
         self.prompt = prompt
+        self.save_usedbib_path = save_usedbib_path
                 
         self._cooldown_sec = int(cooldown_sec)
         
@@ -56,5 +58,36 @@ class PaperReferencer(PipelineTask):
                 named_log(self, f"==> initiating  cooldown of {cooldown} s (request limitations)")
                 countdown_log("", cooldown)
 
+        if self.save_usedbib_path:
+            self._dump_used_bib(paper, bibdb, self.save_usedbib_path)
+
         return self.paper
         
+    def _dump_used_bib(self, paper: PaperData, bibdb_content: str, save_path: str):
+        latex_content = paper.full_content()
+        # Find all citation keys inside \cite{...}
+        cited_keys = set(re.findall(r'\\cite\{(.*?)\}', latex_content))
+        
+        # Flatten nested citations (e.g., \cite{ref1, ref2})
+        cited_keys = {key.strip() for group in cited_keys for key in group.split(',')}
+        
+        # Dictionary to store matched references
+        used_references = {}
+        
+        # Find and extract matching BibTeX entries
+        bib_entries = re.split(r'(@\w+\{)', bibdb_content)[1:]
+        
+        for i in range(0, len(bib_entries), 2):
+            entry_type = bib_entries[i].strip()
+            entry_body = bib_entries[i + 1]
+            match = re.match(r'([^,\s]+),', entry_body)
+            if match:
+                entry_key = match.group(1)
+                if entry_key in cited_keys:
+                    used_references[entry_key] = entry_type + entry_body
+        
+    
+        used_bib_content = '\n\n'.join(used_references.values())
+        with open(save_path, "w", encoding="utf-8") as f:
+            f.write(used_bib_content)
+    

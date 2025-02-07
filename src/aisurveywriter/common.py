@@ -19,7 +19,17 @@ def get_credentials(config: ConfigManager):
         os.environ["OPENAI_API_KEY"] = credentials["openai_key"]
     return credentials
 
-def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, model: str = "gemini-1.5-flash", model_type: str = "google", pregen_struct_yaml: Optional[str] = None, config_path: Optional[str] = None, use_nblm_generation=False):
+def generate_paper_survey(
+    subject: str, 
+    ref_paths: List[str], 
+    save_path: str, 
+    model: str = "gemini-1.5-flash", 
+    model_type: str = "google", 
+    pregen_struct_yaml: Optional[str] = None, 
+    config_path: Optional[str] = None, 
+    use_nblm_generation=False,
+    refdb_path: str = None,
+):
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
     try:
@@ -68,7 +78,19 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
             gen_llm = nblm
         else:
             gen_llm = writer_llm
+            
         first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
+
+    if not refdb_path:
+        refdb_path = save_path.replace(".tex", "-bibdb.bib")
+        ref_extract = tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_extract,
+                                             raw_save_path=save_path.replace(".tex", "-raw.ref"),
+                                             rawbib_save_path=save_path.replaec(".tex", "-raw.bib"),
+                                             bib_save_path=refdb_path)
+    else:
+        if not os.path.isfile(refdb_path):
+            raise FileNotFoundError(f"Unable to find file {refdb_path!r}")
+        ref_extract = tks.DeliverTask()
 
     pipe = PaperPipeline([
         first,
@@ -76,22 +98,27 @@ def generate_paper_survey(subject: str, ref_paths: List[str], save_path: str, mo
         tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True),
         tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path, find_bib_pattern=None),
         
-        tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
-        tks.PaperSaver(save_path.replace(".tex", "-texrevscratch.tex"), config.tex_template_path, find_bib_pattern=None),
+        # tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
+        # tks.PaperSaver(save_path.replace(".tex", "-texrevscratch.tex"), config.tex_template_path, find_bib_pattern=None),
         
         tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths),
         tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path, find_bib_pattern=None),
         
-        tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_extract,
-                               raw_save_path=save_path.replace(".tex", "-raw.ref"),
-                               rawbib_save_path=save_path.replace(".tex", "-raw.bib"),
-                               bib_save_path=save_path.replace(".tex", "-bibdb.bib"),
-                               cooldown_sec=60, batches=2),
+        # tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_extract,
+        #                        raw_save_path=save_path.replace(".tex", "-raw.ref"),
+        #                        rawbib_save_path=save_path.replace(".tex", "-raw.bib"),
+        #                        bib_save_path=save_path.replace(".tex", "-bibdb.bib"),
+        #                        cooldown_sec=60, batches=3),
         
-        tks.PaperReferencer(writer_llm, bibdb_path=save_path.replace(".tex", "-bibdb.bib"),
+        ref_extract,
+        
+        tks.PaperReferencer(writer_llm, bibdb_path=refdb_path,
                             prompt=config.prompt_ref_add, cooldown_sec=60),
         
         tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
         tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None)
     ])
+    
+    print("==> BEGINNING PAPER SURVEY GENERATON PIPELINE")
     pipe.run()
+    print("==> PAPER SURVEY GENRATION PIPELINE FINISHED")

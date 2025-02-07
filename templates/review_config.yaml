@@ -20,6 +20,8 @@ tex_review_prompt: |
 
   4. **Preserve the Section Content**: Do not modify, rephrase, or summarize the textual content in any way. Only adjust syntax-related issues.
 
+  5. **Adjust TikZ figures**: If there's any tikz figure present (given by \begin{{tikzpicture}}), double-check the TikZ commands to make sure the figure will be appropiately displayed (with no overlaps specially)
+
   ### Output Format:
   - If the section is syntactically correct after the necessary removals, return the cleaned-up LaTeX section as is.
   - If there are syntax errors, correct them preserving the original content.
@@ -34,9 +36,10 @@ bib_review_prompt: |
   NONE
 
 review_prompt: |
-  You are an expert in academic writing, specially in the field of "{subject}".
+  - **You are an expert in academic writing, specially in the field of "{subject}".**
+  - You are working on analysing a survey paper for this field, based on the provided references.
 
-  **Your task**: perform a thorough revision of this section. Specifically:
+  - **Your task**: perform a thorough revision of the given section. Specifically:
 
   1. **Clarity and Coherence** 
       - Review the text for grammatical, syntactical, or logical errors.
@@ -49,9 +52,16 @@ review_prompt: |
       - Suggest rephrasing or restructuring where needed.
       - Highlight any sections that lack depth or are redundant.
 
-  **WRITE IN ENGLISH ONLY**
+  - You know that what you are pointing out will be extremely important to instruct an LLM, so you must be clear, objective and clearly directive
 
-  - Be direct and objective in your output -- most importantly you must be CONCISE.
+  - You also know that the more concise, the more understandable your instructions will be
+
+  - **WRITE IN ENGLISH ONLY**
+
+  - For each suggestion, detail exactly what must be done
+
+  - If you do not encounter an explicit issue/suggestion, then DO nothing
+
   - Use markdown formatting
 
   - Section title: {title}
@@ -60,28 +70,40 @@ review_prompt: |
 
 
 apply_prompt: |
-  You are an expert in academic writing, specially in the field of "{subject}".
+  - **You are an expert in academic writing, specially in the field of "{subject}".**
 
-  Below is the LaTex content of the section "{title}" from a survey paper on the subject {subject}, along with points that must be improved.
+  - Below is the LaTex content of the section "{title}" from a survey paper on the subject {subject} that you are writing
 
-  **TASK**: Apply these improvements to the given section.
+  - You are given instructions from a pre-review of the paper, containing suggestions and direct points to what you must do
+
+  - **TASK**: Apply these improvements to the given section.
 
   ## Requirements
+
   - **Maintain the same style of scientific, objective, and formal writing.**
+
   - **Maintain or increase the length by incorporating meaningful content.**
+
   - **DO NOT SUMMARIZE ANY STEP, ONLY DETAIL IT.**
+
   - **Preserve formatting**
+
   - **Preserve all sections (\section) and subsections (\subsection)**
+
+  - Avoid detailing/explaining topics in bullet points.
 
   ## Output format
   - **Provide all your answers in English**.
-  - You must use only LaTeX formatting
-  Just as the LaTeX text with the section's content, your answer should be formatted as follows:
 
+  - YOUR OUTPUT SHOULD CONTAIN NOTHING MORE THAN JUST THE LATEX OUTPUT FOR THIS SECTION:
+  - The format of output must only be influenced by the section content and NOT the improvement points.
+
+  """
   \section{{(*section title*)}}
   ...
   \subsection{{...}}
   ...
+  """
 
   - DO NOT USE '\\printbibliography' OR ANY OTHER BIBLATEX COMMAND ANYWHERE (including \cite, \bibliography, etc)
   - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT:
@@ -89,8 +111,10 @@ apply_prompt: |
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
   - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
 
+  ## Improvement points:
+  {review_points}
+
   ## Section LaTeX content:
   {content}
 
-  ## Improvement points:
-  {review_points}
+  
