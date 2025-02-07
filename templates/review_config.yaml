@@ -74,7 +74,8 @@ apply_prompt: |
   - **Preserve all sections (\section) and subsections (\subsection)**
 
   ## Output format
-  **Provide all your answers in English**.
+  - **Provide all your answers in English**.
+  - You must use only LaTeX formatting
   Just as the LaTeX text with the section's content, your answer should be formatted as follows:
 
   \section{{(*section title*)}}

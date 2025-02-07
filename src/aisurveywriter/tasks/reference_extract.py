@@ -15,7 +15,6 @@ class ReferenceExtractor(PipelineTask):
         self.llm = llm
         self.ref_paths = ref_paths
         self.prompt = prompt
-        self.llm.init_chain(None, prompt)
         
         self.raw_save_path = raw_save_path
         self.rawbib_save_path = rawbib_save_path
@@ -50,6 +49,7 @@ class ReferenceExtractor(PipelineTask):
         if ref_paths is not None:
             self.ref_paths = ref_paths
         references = ""
+        self.llm.init_chain(None, self.prompt)
         pdfs = PDFProcessor(self.ref_paths).extract_content()
         for path,pdf in zip(self.ref_paths,pdfs):
             # get only the "references" section if possible
@@ -83,6 +83,7 @@ class ReferenceExtractor(PipelineTask):
                 countdown_log("", cooldown)
         
         references = re.sub(r"[`]+[\w]*", "", references)
+        references = "\n".join([line for line in references.splitlines() if line.strip()]) # remove any blank lines
         
         # format to save yaml
         res = "references:\n"

@@ -16,6 +16,7 @@ class GradioInterface:
         }
         self.gr_interface = gr.ChatInterface(
             fn=self.chat_fn,
+            type="messages",
             textbox=gr.Textbox(placeholder="Enter the subject of the survey paper..."),
             additional_inputs=[
                 gr.File(label="Upload reference PDFs", file_types=[".pdf"], file_count="multiple"),
