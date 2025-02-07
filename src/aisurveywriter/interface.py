@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 import gradio as gr
 
 from aisurveywriter import generate_paper_survey
@@ -60,6 +61,12 @@ class GradioInterface:
             named_log(self, "Exception full description:", exc_type, fname, exc_tb.tb_lineno)
             return f"Unable to generate paper: {e}"
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--share", action="store_true", help="Launch gradio with share=True (create public link)")
+    return parser.parse_args()
+
 if __name__ == "__main__":
+    args = parse_args()
     interface = GradioInterface()
-    interface.launch(share=False)
+    interface.launch(share=args.share)
