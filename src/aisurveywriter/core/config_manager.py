@@ -48,6 +48,7 @@ class ConfigManager:
             self.prompt_write = cfg["write_prompt"]
             self.prompt_ref_extract = cfg["reference_extract_prompt"]
             self.prompt_ref_add = cfg["add_reference_prompt"]
+            self.prompt_refine = cfg["refine_prompt"]
         else:
             raise ValueError(f"Missing configuration items in {self.prompt_config_path}")
         
@@ -85,6 +86,7 @@ class ConfigManager:
             "write_prompt",
             "reference_extract_prompt",
             "add_reference_prompt",
+            "refine_prompt",
         ]
         diff = list(set(cfg.keys()) - set(PROMPT_KEYS))
         if len(diff) != 0:

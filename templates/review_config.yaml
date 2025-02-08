@@ -41,6 +41,8 @@ bib_review_prompt: |
 review_prompt: |
   - You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey scientific paper on this subjects
 
+  - The survey is thoroughly based on the provided references.
+
   - You are given only one section of this paper. It is expected that you perform a thorough revision of this section.
 
   - For the review, you must:
@@ -103,7 +105,7 @@ apply_prompt: |
   ...
   """
 
-  - DO NOT USE '\\printbibliography' OR ANY OTHER BIBLATEX COMMAND ANYWHERE (including \cite, \bibliography, etc)
+  - DO NOT USE ANY BIBLATEX COMMAND ANYWHERE (including \cite, \bibliography, \printbibliography, \begin{{thebibliography}}, etc)
   - DO NOT FOCUS ON REFERENCES, ONLY IN FOLLOWING THE REVIEW DIRECTIVES
   - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT:
     - It is relevant to include figures where a topic can be easily explained visually

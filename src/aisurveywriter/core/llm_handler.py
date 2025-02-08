@@ -48,7 +48,7 @@ class LLMHandler:
         self._chain = None
     
     def init_chain(self, ctxmsg: SystemMessage, prompt: str):
-        if ctxmsg is not None:
+        if ctxmsg:
             input_prompt = ChatPromptTemplate.from_messages([
                 ctxmsg, 
                 HumanMessagePromptTemplate.from_template(prompt),
@@ -72,15 +72,20 @@ class LLMHandler:
         if self._chain is None:
             raise RuntimeError("To call LLMHandler.invoke, the chain has to be initialized")
         
-        while True: # handle with '429 (res. exhausted)' because of request timeout
+        max_tries = 4
+        try_count = 0
+        cooldown = 90
+        while try_count <= max_tries: # handle with '429 (res. exhausted)' because of request timeout
             try:
+                try_count += 1
                 resp = self._chain.invoke(input_variables)
                 break
             except Exception as e:
                 if "429" in str(e):
-                    named_log(self, f"Resource exhausted exception raised. Sleeping for 90 s.")
-                    named_log(self, f"This will continue trying. If you wish to stop, press Ctrl+C")
-                    sleep(90)
+                    named_log(self, f"Resource exhausted exception raised. Sleeping for {cooldown} s.")
+                    named_log(self, f"Trying {try_count}/{max_tries}. If you wish to stop, press Ctrl+C")
+                    sleep(cooldown)
+                    cooldown += 90
                 else:
                     raise e
         

@@ -123,9 +123,10 @@ def generate_paper_survey(
         (ref_extract_name, ref_extract),
         
         ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
-                            prompt=config.prompt_ref_add, cooldown_sec=75)),
+                            prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", "-bib.bib"))),
+        ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path, find_bib_pattern=None)),
         
-        ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, cooldown_sec=request_cooldown_sec)),
+        ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
         
         ("Review Tex", tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None, cooldown_sec=request_cooldown_sec)),
         ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None)),

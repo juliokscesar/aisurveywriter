@@ -21,7 +21,7 @@ class PaperRefiner(PipelineTask):
     def pipeline_entry(self, input_data: PaperData):
         if not isinstance(input_data, PaperData):
             raise TypeError(f"Task {self.__class__.__name__} requires input data to be of type PaperData in pipeline entry, but got {type(input_data)}")
-        return self.refine(input_data)
+        return self.refine(paper=input_data)
     
     def refine(self, paper: Optional[PaperData] = None, prompt: Optional[str] = None):
         if paper:
@@ -32,7 +32,7 @@ class PaperRefiner(PipelineTask):
         named_log(self, f"==> asking LLM to produce title and abstract")
         # this prompts takes the whole paper content + subject
         # and outputs title and abstract, maybe in a JSON format ({"title": ..., "abstract": ...})
-        self.llm.init_chain(None, prompt)
+        self.llm.init_chain(ctxmsg=None, prompt=self.prompt)
         elapsed, response = time_func(self.llm.invoke, {
             "subject": self.paper.subject,
             "content": self.paper.full_content(),
@@ -44,13 +44,12 @@ class PaperRefiner(PipelineTask):
             countdown_log("", self._cooldown_sec)
 
         try:
-            resp_json = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", response.content.strip())
+            resp_json = re.search(r"[`]+(?:json)?\s*([\s\S]*?)\s*[`]+", response.content.strip())
             resp = json.loads(resp_json)
-            # TODO: add title and abstract fields to PaperData, instead of this gambiarra
             self.paper.sections.insert(0, SectionData(
                 title="Abstract",
                 description="paper abstract",
-                content=f"\\section{{Abstract}}\n{resp['abstract']}"
+                content=f"\\section{{Abstract}}\n\n{resp['abstract']}"
             ))
             self.paper.title = resp["title"]
         except:
@@ -60,5 +59,6 @@ class PaperRefiner(PipelineTask):
                 description="paper abstract",
                 content=response.content.strip(),
             ))
+            self.paper.title = "CHECK JSON OUTPUT"
 
         return self.paper

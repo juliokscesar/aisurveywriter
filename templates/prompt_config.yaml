@@ -110,32 +110,33 @@ add_reference_prompt: |
     - ONLY use the command "\cite{{nickname}}", where "nickname" is the article ID to reference using bibtex (in bibtex, the nickname is given by: "@article{{nickname, ...}}")
     - DO NOT use any BibTex or bibliography commands in general, except for "\cite"
     - DO NOT alter the content of the section, focus only in adding RELEVANT references
-    - To judge a reference relevant, you must:
+    - To judge a reference relevant, you must do as follows:
       - If there is an "abstract" key available in the entry, read that abstract to check for the relevance in the current section
       - Else, use the other keys to extract as much information from the entry as possible (title, journal, authors) and check if they must be added or not.
     
   - Your output should only contain the section with "\cite" commands inserted, and nothing more.
 
-  - Add AT LEAST 10 references PER SECTION
+  - Add AT LEAST 7 references PER SECTION
+    - A single citation should contain no more than 3 references (e.g. \cite{{nick1,nick2,..}} must contain no more than up to nick3)
 
   - Section "{title}" content:
   {content}
 
 
-#refine_prompt: |
-#  """
-#  {content}
-#  """
-#
-#  - You are an expert in academic writing, specially in the field of "{subject}" and in writing survey papers.
-#
-#  - The LaTeX content above (enclosed in three double-quotes) is from a survey paper being written on the subject "{subject}"
-#
-#  - Your task: Write a proper Abstract and produce a meaningful Title for this paper
-#    - The abstract should properly describe the paper and attend to Scientific standards:
-#    - Most important: maintain a formal, scientific, and objective tone
-#
-#  - **OUTPUT FORMAT**: your output must be in JSON format as follows:
-#  ```json
-#  {{"title": "YOUR_TITLE", "abstract": "YOUR_ABSTRACT"}}
-#  ```
+refine_prompt: |
+  """
+  {content}
+  """
+
+  - You are an expert in academic writing, specially in the field of "{subject}" and in writing survey papers.
+
+  - The LaTeX content above (enclosed in three double-quotes) is from a survey paper being written on the subject "{subject}"
+
+  - Your task: Write a proper Abstract and produce a meaningful Title for this paper
+    - The abstract should properly describe the paper and attend to Scientific standards:
+    - Most important: maintain a formal, scientific, and objective tone
+
+  - **OUTPUT FORMAT**: your output must be in JSON format as follows:
+  ```json
+  {{"title": "YOUR_TITLE", "abstract": "YOUR_ABSTRACT"}}
+  ```

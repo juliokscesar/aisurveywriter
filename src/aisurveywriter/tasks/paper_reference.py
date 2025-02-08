@@ -50,7 +50,7 @@ class PaperReferencer(PipelineTask):
             elapsed = int(elapsed)
             section.content = re.sub(r"[`]+[\w]*", "", response.content)
             
-            named_log(self, f"==> finisihed adding references in section ({i+1}/{sz}) | time elapsed: {elapsed} s")
+            named_log(self, f"==> finished adding references in section ({i+1}/{sz}) | time elapsed: {elapsed} s")
             named_log(self, f"==> response metadata:", response.usage_metadata)
             
             if self._cooldown_sec:
