@@ -48,7 +48,7 @@ class TexReviewer(PipelineTask):
                 "content": section.content,
             })
             section.content = response.content
-            named_log(self, f"==> finished review LaTeX syntax for section ({i+1}/{sz}): {section.title}")
+            named_log(self, f"==> finished review LaTeX syntax for section ({i+1}/{sz}): {section.title} | time elapsed: {elapsed} s")
             
             try:
                 named_log(self, f"==> response metadata:", response.usage_metadata)
@@ -57,9 +57,8 @@ class TexReviewer(PipelineTask):
 
             section.content = re.sub(r"[`]+[\w]*", "", section.content)
             if self._cooldown_sec:
-                cooldown = max(0, self._cooldown_sec - elapsed)
-                named_log(self, f"==> initiating cooldown of {cooldown} s (request limitations)")
-                countdown_log("", cooldown)
+                named_log(self, f"==> initiating cooldown of {self._cooldown_sec} s (request limitations)")
+                countdown_log("", self._cooldown_sec)
 
         return paper
 

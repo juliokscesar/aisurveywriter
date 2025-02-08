@@ -29,7 +29,7 @@ class LLMType(Enum):
                 raise ValueError(f"{s!r} is not a valid LLMType")
 
 class LLMHandler:
-    def __init__(self, model: str, model_type: Union[LLMType, str], temperature: float = 0.3):
+    def __init__(self, model: str, model_type: Union[LLMType, str], temperature: float = 0.5):
         self.model = model
         if isinstance(model_type, str):
             model_type = LLMType.from_str(model_type)

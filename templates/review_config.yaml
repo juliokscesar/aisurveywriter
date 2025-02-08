@@ -22,6 +22,8 @@ tex_review_prompt: |
 
   5. **Adjust TikZ figures**: If there's any tikz figure present (given by \begin{{tikzpicture}}), double-check the TikZ commands to make sure the figure will be appropiately displayed (with no overlaps specially)
 
+  6. If you find any non-LaTeX syntax (such as Markdown), convert it entirely to LaTeX.
+
   ### Output Format:
   - If the section is syntactically correct after the necessary removals, return the cleaned-up LaTeX section as is.
   - If there are syntax errors, correct them preserving the original content.
@@ -35,38 +37,32 @@ tex_review_prompt: |
 bib_review_prompt: |
   NONE
 
+
 review_prompt: |
-  - **You are an expert in academic writing, specially in the field of "{subject}".**
-  - You are working on analysing a survey paper for this field, based on the provided references.
+  - You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey scientific paper on this subjects
 
-  - **Your task**: perform a thorough revision of the given section. Specifically:
+  - You are given only one section of this paper. It is expected that you perform a thorough revision of this section.
 
-  1. **Clarity and Coherence** 
-      - Review the text for grammatical, syntactical, or logical errors.
-      - Suggest improvements to ensure the section is clear, concise, and flows logically.
-  2. **Factual Accuracy and Completeness**
-      - Cross-check the content against the provided references.
-      - Identify any factual inaccuracies, missing key points, or inconsistencies.
-      - Suggest additional context or explanations where necessary.
-  3. **Suggestions for Improvement**
-      - Suggest rephrasing or restructuring where needed.
-      - Highlight any sections that lack depth or are redundant.
+  - For the review, you must:
+    - Review the text for grammatical, syntactical, or logical errors
+    - Suggest improvements to ensure the section is clear, and follows logically.
+    - Cross-check the content against the provided references
+    - Identify any factual inaccuracies, missing key points, or inconsistencies
+    - Highlight parts that lack depth or are redundant
+    - If you don't find any relevant improvement, then specify "Nothing to do"
 
-  - You know that what you are pointing out will be extremely important to instruct an LLM, so you must be clear, objective and clearly directive
+  - You must then provide points for improvement on the given section, focusing on the aspects above.
+    - Use markdown bullet formatting for separating each point clearly and objectively
+    - Provide a minimum of 5 directives and a maximum of 10
 
-  - You also know that the more concise, the more understandable your instructions will be
+  - Most importantly:
+    - You must be directive, objective, and clear. Remember that you're directives will be strictly followed, so it is essential that you are directive and clear.
+    - You must be concise
+    - You must write only in English
+    - Your output should contain nothing more than the directives. So don't output stuff like "Okay, here are the directives...."
 
-  - **WRITE IN ENGLISH ONLY**
-
-  - For each suggestion, detail exactly what must be done
-
-  - If you do not encounter an explicit issue/suggestion, then DO nothing
-
-  - Use markdown formatting
-
-  - Section title: {title}
-  - Secion content: 
-    {content}
+  - Section title: "{title}"
+  - Section content: "{content}"
 
 
 apply_prompt: |
@@ -88,9 +84,11 @@ apply_prompt: |
 
   - **Preserve formatting**
 
+  - **DO NOT USE ANYTHING ELSE THAN LATEX**
+
   - **Preserve all sections (\section) and subsections (\subsection)**
 
-  - Avoid detailing/explaining topics in bullet points.
+  - Avoid bullet points for detailing/explaining topics.
 
   ## Output format
   - **Provide all your answers in English**.
@@ -106,13 +104,15 @@ apply_prompt: |
   """
 
   - DO NOT USE '\\printbibliography' OR ANY OTHER BIBLATEX COMMAND ANYWHERE (including \cite, \bibliography, etc)
+  - DO NOT FOCUS ON REFERENCES, ONLY IN FOLLOWING THE REVIEW DIRECTIVES
   - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT:
     - It is relevant to include figures where a topic can be easily explained visually
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
   - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
-
-  ## Improvement points:
-  {review_points}
+  
+  - It is essential that your output contains only the section LaTeX, with clear and correct formatting.
+  
+  - If there is no clear directive to make a change, then don't change anything and output the section as-it-is.
 
   ## Section LaTeX content:
   {content}

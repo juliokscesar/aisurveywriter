@@ -11,8 +11,6 @@ def write_latex(template_path: str, paper: PaperData, file_path: str, find_bib_p
     paper_content = ""
     bib_content = ""
 
-    #bib_pattern = r"\\begin{filecontents\*}(.*?)\\end{filecontents\*}"
-
     if find_bib_pattern is not None:
         for section in paper.sections:
             # Extract biblatex file content (from the pattern provided in the prompt)
@@ -33,6 +31,9 @@ def write_latex(template_path: str, paper: PaperData, file_path: str, find_bib_p
         tex_content = template.replace("{bibresourcefile}", os.path.basename(bib_file))
     else:
         paper_content = "\n".join([s.content for s in paper.sections if s.content is not None])
+
+    if paper.title:
+        paper_content = f"\\title{{{paper.title}}}\n" + paper_content
 
     # Replace variables in template
     tex_content = template.replace("{content}", paper_content)

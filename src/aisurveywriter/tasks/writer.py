@@ -115,9 +115,8 @@ class PaperWriter(PipelineTask):
                 named_log(self, f"==> (debug) reponse object:", response)
 
             if self._cooldown_sec:
-                cooldown = max(0, self._cooldown_sec - elapsed)
-                named_log(self, f"==> initiating cooldown of {cooldown} s (request limitations)")
-                countdown_log("", cooldown)
+                named_log(self, f"==> initiating cooldown of {self._cooldown_sec} s (request limitations)")
+                countdown_log("", self._cooldown_sec)
 
         return self.paper
 

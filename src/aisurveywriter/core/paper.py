@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Union, List
+from typing import Union, List, Optional
+import re
 
 from aisurveywriter.core.file_handler import read_yaml
 
@@ -14,6 +15,7 @@ class SectionData:
 class PaperData:
     subject: str
     sections: List[SectionData]
+    title: Union[None, str] = None
     bib: Union[None, str] = None
     
     @staticmethod
@@ -24,6 +26,33 @@ class PaperData:
             sections=[SectionData(s["title"], s["description"]) for s in sections]              
         )
         return paper
+
+    @staticmethod
+    def from_tex(path: str, subject: Optional[str] = None, bib_path: Optional[str] = None):
+        with open(path, "r", encoding="utf-8") as f:
+            latex_content = f.read()
+    
+        # Extract title (assuming \title{} is present)
+        if not subject:
+            title_match = re.search(r"\\title\{(.+?)\}", latex_content)
+            subject = title_match.group(1) if title_match else "Unknown Title"
+        
+        # Extract sections
+        sections = []
+        section_matches = re.finditer(r"\\section\{(.+?)\}([\s\S]*?)(?=\\section|\Z)", latex_content)
+
+        for match in section_matches:
+            sec_title = match.group(1).strip()
+            sec_content = match.group(2).strip()
+            sections.append(SectionData(title=sec_title, description=sec_title, content=sec_content))
+
+        # Read bibliography if provided
+        bib_content = None
+        if bib_path:
+            with open(bib_path, "r", encoding="utf-8") as bib_file:
+                bib_content = bib_file.read()
+
+        return PaperData(subject=subject, sections=sections, bib=bib_content)
             
     def full_content(self) -> str:
         content = ""

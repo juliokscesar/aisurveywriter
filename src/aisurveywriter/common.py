@@ -26,10 +26,12 @@ def generate_paper_survey(
     model: str = "gemini-1.5-flash", 
     model_type: str = "google", 
     pregen_struct_yaml: Optional[str] = None, 
+    prewritten_paper_tex: Optional[str] = None,
     config_path: Optional[str] = None, 
     use_nblm_generation=False,
     refdb_path: str = None,
     pipeline_status_queue: queue.Queue = None,
+    request_cooldown_sec: int = int(60 * 1.5),
 ):
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
@@ -84,9 +86,10 @@ def generate_paper_survey(
         first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
         first_name = "Paper Structure Generator"
 
+    refs_llm = LLMHandler(model="gemini-2.0-flash-exp", model_type="google", temperature=0.3) # use gemini-2.0-flash-exp for references because of quota
     if not refdb_path:
         refdb_path = save_path.replace(".tex", "-bibdb.bib")
-        ref_extract = tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_extract,
+        ref_extract = tks.ReferenceExtractor(refs_llm, ref_paths, config.prompt_ref_extract,
                                              raw_save_path=save_path.replace(".tex", "-raw.ref"),
                                              rawbib_save_path=save_path.replaec(".tex", "-raw.bib"),
                                              bib_save_path=refdb_path)
@@ -97,30 +100,34 @@ def generate_paper_survey(
         ref_extract = tks.DeliverTask()
         ref_extract_name = "Load References Database"
 
+    if prewritten_paper_tex:
+        write_step = tks.DeliverTask(PaperData.from_tex(prewritten_paper_tex, subject))
+        write_step_name = "Load Paper .tex"
+        next_write = tks.DeliverTask()
+        next_write_name = "Input paper loaded to review"
+    else:
+        write_step = tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True, request_cooldown_sec=request_cooldown_sec)
+        write_step_name = "Write Paper"
+        next_write = tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path, find_bib_pattern=None)
+        next_write_name = "Save Paper"
+        
     pipe = PaperPipeline([
         (first_name, first),
         
-        ("Write Paper", tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True)),
-        ("Save Paper", tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path, find_bib_pattern=None)),
+        (write_step_name, write_step),
+        (next_write_name, next_write),
         
-        # tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None),
-        # tks.PaperSaver(save_path.replace(".tex", "-texrevscratch.tex"), config.tex_template_path, find_bib_pattern=None),
-        
-        ("Review Paper", tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths)),
+        ("Review Paper", tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths, request_cooldown_sec=request_cooldown_sec)),
         ("Save Reviewed Paper", tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path, find_bib_pattern=None)),
-        
-        # tks.ReferenceExtractor(writer_llm, ref_paths, config.prompt_ref_extract,
-        #                        raw_save_path=save_path.replace(".tex", "-raw.ref"),
-        #                        rawbib_save_path=save_path.replace(".tex", "-raw.bib"),
-        #                        bib_save_path=save_path.replace(".tex", "-bibdb.bib"),
-        #                        cooldown_sec=60, batches=3),
         
         (ref_extract_name, ref_extract),
         
-        ("Add References", tks.PaperReferencer(writer_llm, bibdb_path=refdb_path,
-                            prompt=config.prompt_ref_add, cooldown_sec=60)),
+        ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
+                            prompt=config.prompt_ref_add, cooldown_sec=75)),
         
-        ("Review Tex", tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None)),
+        ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, cooldown_sec=request_cooldown_sec)),
+        
+        ("Review Tex", tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None, cooldown_sec=request_cooldown_sec)),
         ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None)),
     ], status_queue=pipeline_status_queue)
     

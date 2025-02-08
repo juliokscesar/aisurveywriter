@@ -105,17 +105,23 @@ class PaperReviewer(PipelineTask):
                 "content": section.content,
             })
             improv_points = response.content
-            try:
-                named_log(self, f"==> got llm review points | time elapsed: {elapsed} s | metadata:", response.usage_metadata)
-            except:
-                named_log(self, f"==> got llm review points | time elapsed: {elapsed} s | (debug) metadata:", response)
+            named_log(self, f"==> got llm review points | time elapsed: {elapsed} s | metadata:", response.usage_metadata)
+            
+            named_log(self, f"==> cooldown sending reveiw points to llm ({self._cooldown_sec} s)")
+            countdown_log("", self._cooldown_sec)
             
             # now apply the review points
+            self.llm.init_chain(
+                ctxmsg=SystemMessage(
+                    content=f"- YOUR REFERENCES:\n\"\"\"\n{refmsg.content}\"\"\"\n\n- REVIEW DIRECTIVES:\n\"\"\"{response.content}\"\"\"\n\n",
+                ), 
+                prompt=self.apply_prompt
+            )
             elapsed, response = time_func(self.llm.invoke, {
                 "subject": self.paper.subject,
                 "title": section.title,
                 "content": section.content,
-                "review_points": improv_points,
+                # "review_points": improv_points, testing with improve points as system message
             })
 
             section.content = re.sub(r"[`]+[\w]*", "", response.content) # remove markdown code blocks if any
@@ -129,9 +135,8 @@ class PaperReviewer(PipelineTask):
                 named_log(self, f"==> (debug) reponse object:", response)
 
             if self._cooldown_sec:
-                cooldown = max(0, self._cooldown_sec - elapsed)
-                named_log(self, f"==> initiating cooldown of {cooldown} s (request limitations)")
-                countdown_log("", cooldown)
+                named_log(self, f"==> initiating cooldown of {self._cooldown_sec} s (request limitations)")
+                countdown_log("", self._cooldown_sec)
 
         return self.paper
 
