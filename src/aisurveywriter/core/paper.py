@@ -32,6 +32,10 @@ class PaperData:
         with open(path, "r", encoding="utf-8") as f:
             latex_content = f.read()
     
+        doc_match = re.search(r"\\begin\{document\}(.+?)\\end\{document\}", latex_content)
+        if doc_match:
+            latex_content = doc_match.group()
+    
         # Extract title (assuming \title{} is present)
         if not subject:
             title_match = re.search(r"\\title\{(.+?)\}", latex_content)

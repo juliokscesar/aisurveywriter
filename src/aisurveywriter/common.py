@@ -91,7 +91,7 @@ def generate_paper_survey(
         refdb_path = save_path.replace(".tex", "-bibdb.bib")
         ref_extract = tks.ReferenceExtractor(refs_llm, ref_paths, config.prompt_ref_extract,
                                              raw_save_path=save_path.replace(".tex", "-raw.ref"),
-                                             rawbib_save_path=save_path.replaec(".tex", "-raw.bib"),
+                                             rawbib_save_path=save_path.replace(".tex", "-raw.bib"),
                                              bib_save_path=refdb_path)
         ref_extract_name = "Reference Extractor"
     else:
@@ -123,7 +123,7 @@ def generate_paper_survey(
         (ref_extract_name, ref_extract),
         
         ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
-                            prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", "-bib.bib"))),
+                            prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path, find_bib_pattern=None)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
@@ -132,6 +132,6 @@ def generate_paper_survey(
         ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None)),
     ], status_queue=pipeline_status_queue)
     
-    print("==> BEGINNING PAPER SURVEY GENERATON PIPELINE")
+    print(f"==> BEGINNING PAPER SURVEY GENERATON PIPELINE WITH {len(pipe.steps)} STEPS")
     pipe.run()
     print("==> PAPER SURVEY GENRATION PIPELINE FINISHED")

@@ -44,8 +44,9 @@ class PaperRefiner(PipelineTask):
             countdown_log("", self._cooldown_sec)
 
         try:
-            resp_json = re.search(r"[`]+(?:json)?\s*([\s\S]*?)\s*[`]+", response.content.strip())
-            resp = json.loads(resp_json)
+            resp_json = re.search(r"\{.*?\}", response.content.strip()).group()
+            resp = resp_json[resp_json.find("{"):resp_json.rfind("}")+1]
+            resp = json.loads(resp)
             self.paper.sections.insert(0, SectionData(
                 title="Abstract",
                 description="paper abstract",
