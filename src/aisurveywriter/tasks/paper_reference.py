@@ -21,6 +21,16 @@ class PaperReferencer(PipelineTask):
         if not isinstance(input_data, PaperData):
             raise TypeError(f"Task {self.__class__.__name__} requires input of type PaperData in pipe entry")
         paper = self.reference(input_data, self.bibdb_path, self.prompt)
+
+        if self.save_usedbib_path:
+            with open(self.bibdb_path, "r", encoding="utf-8") as f:
+                bibdb = f.read()
+            used_bib = self._get_used_bib(paper, bibdb)
+            paper = self._check_citations(paper, used_bib)
+            
+            with open(self.save_usedbib_path, "w", encoding="utf-8") as f:
+                f.write(used_bib)
+        
         return paper
     
     def reference(self, paper: PaperData = None, bibdb_path: str = None, prompt: str = None):
@@ -58,12 +68,9 @@ class PaperReferencer(PipelineTask):
                 named_log(self, f"==> initiating  cooldown of {cooldown} s (request limitations)")
                 countdown_log("", cooldown)
 
-        if self.save_usedbib_path:
-            self._dump_used_bib(paper, bibdb, self.save_usedbib_path)
-
         return self.paper
         
-    def _dump_used_bib(self, paper: PaperData, bibdb_content: str, save_path: str):
+    def _get_used_bib(self, paper: PaperData, bibdb_content: str):
         latex_content = paper.full_content()
         # Find all citation keys inside \cite{...}
         cited_keys = set(re.findall(r'\\cite\{(.*?)\}', latex_content))
@@ -88,6 +95,41 @@ class PaperReferencer(PipelineTask):
         
     
         used_bib_content = '\n\n'.join(used_references.values())
-        with open(save_path, "w", encoding="utf-8") as f:
-            f.write(used_bib_content)
-    
+        return used_bib_content
+        # with open(save_path, "w", encoding="utf-8") as f:
+        #     f.write(used_bib_content)
+
+    def _check_citations(self, paper: PaperData, bib_content: str):
+        # Load the .bib file content
+        bib_entries = {}
+        for line in bib_content.split('\n'):
+            if not line.strip():  # Skip empty lines
+                continue
+            parts = line.split('=')
+            key = parts[0].strip()[1:-1]  # Remove curly braces around the key
+            value = '='.join(parts[1:]).strip()
+            bib_entries[key] = value
+        
+        for section in paper.sections:
+           # Extract all keys used in \cite commands
+            cite_keys = set()
+            latex_pattern = r'\\cite\{([^}]+)\}'
+            matches = re.findall(latex_pattern, section.content)
+            
+            cite_groups = []  # Store original cite groups (e.g., ['key1, key2, key3'])
+            for mat in matches:
+                keys = [key.strip() for key in mat.split(',')]
+                cite_keys.update(keys)
+                cite_groups.append((mat, keys))  # Store raw match for replacement
+
+            for mat, keys in cite_groups:
+                valid_keys = [key for key in keys if key in bib_entries]
+                if valid_keys:
+                    new_cite = f"\\cite{{{', '.join(valid_keys)}}}"
+                else:
+                    named_log(self, f"Invalid keys in \\cite: {', '.join(valid_keys)}")
+                    new_cite = ""
+                
+                section.content = section.content.replace(f"\\cite{{{mat}}}", new_cite)
+        
+        return paper

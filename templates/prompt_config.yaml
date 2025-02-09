@@ -125,19 +125,20 @@ add_reference_prompt: |
 
 
 refine_prompt: |
-  """
-  {content}
-  """
-
   - You are an expert in academic writing, specially in the field of "{subject}" and in writing survey papers.
 
-  - The LaTeX content above (enclosed in three double-quotes) is from a survey paper being written on the subject "{subject}"
+  - You are writing a survey paper on the subject at the moment.
 
   - Your task: Write a proper Abstract and produce a meaningful Title for this paper
-    - The abstract should properly describe the paper and attend to Scientific standards:
+    - The abstract should properly describe the paper and attend to Scientific standards
     - Most important: maintain a formal, scientific, and objective tone
 
   - **OUTPUT FORMAT**: your output must be in JSON format as follows:
   ```json
   {{"title": "YOUR_TITLE", "abstract": "YOUR_ABSTRACT"}}
   ```
+
+  - Here's the full paper content, in LaTeX:
+  """
+  {content}
+  """

@@ -1,6 +1,7 @@
 from typing import List, Optional
 import os
 import queue
+import re
 
 import aisurveywriter.core.file_handler as fh
 from aisurveywriter.core.config_manager import ConfigManager
@@ -10,6 +11,15 @@ import aisurveywriter.tasks as tks
 from aisurveywriter.core.chatbots import NotebookLMBot
 from aisurveywriter.utils import init_driver
 from aisurveywriter.core.paper import PaperData
+
+def tex_filter_survey(tex_content: str):
+    tex_content = re.sub(r"[`]+[\w]*", "", tex_content)
+    tex_content = tex_content.replace("\\begin{document}", "")
+    tex_content = tex_content.replace("\\end{document}", "")
+    tex_content = tex_content.replace("\\begin{filecontents}", "")
+    tex_content = tex_content.replace("\\end{filecontents}", "")
+    tex_content = re.sub(r"\\usepackage\{([^}]+)\}", "", tex_content)
+    return tex_content
 
 def get_credentials(config: ConfigManager):
     credentials = fh.read_credentials(config.credentials_path)
@@ -86,7 +96,7 @@ def generate_paper_survey(
         first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
         first_name = "Paper Structure Generator"
 
-    refs_llm = LLMHandler(model="gemini-2.0-flash-exp", model_type="google", temperature=0.3) # use gemini-2.0-flash-exp for references because of quota
+    refs_llm = LLMHandler(model="gemini-2.0-flash", model_type="google", temperature=0.3) # use gemini-2.0-flash for references because of quota
     if not refdb_path:
         refdb_path = save_path.replace(".tex", "-bibdb.bib")
         ref_extract = tks.ReferenceExtractor(refs_llm, ref_paths, config.prompt_ref_extract,
@@ -129,7 +139,7 @@ def generate_paper_survey(
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
         
         ("Review Tex", tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None, cooldown_sec=request_cooldown_sec)),
-        ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None)),
+        ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None, tex_filter_fn=tex_filter_survey)),
     ], status_queue=pipeline_status_queue)
     
     print(f"==> BEGINNING PAPER SURVEY GENERATON PIPELINE WITH {len(pipe.steps)} STEPS")

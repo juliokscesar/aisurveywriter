@@ -95,17 +95,23 @@ class LLMHandler:
         return resp
 
     def send_prompt(self, prompt: str) -> AIMessage:
-        while True: # handle with '429 (res. exhausted)' because of request timeout
+        max_tries = 4
+        try_count = 0
+        cooldown = 90
+        while try_count <= max_tries: # handle with '429 (res. exhausted)' because of request timeout
             try:
+                try_count += 1
                 resp = self.llm.invoke(prompt)
                 break
             except Exception as e:
                 if "429" in str(e):
-                    named_log(self, f"Resource exhausted exception raised. Sleeping for 90 s.")
-                    named_log(self, f"This will continue trying. If you wish to stop, press Ctrl+C")
-                    sleep(90)
+                    named_log(self, f"Resource exhausted exception raised. Sleeping for {cooldown} s.")
+                    named_log(self, f"Trying {try_count}/{max_tries}. If you wish to stop, press Ctrl+C")
+                    sleep(cooldown)
+                    cooldown += 90
                 else:
                     raise e
+
 
         if self.model_type == LLMType.Ollama:
             resp.content = re.sub(r"<think>[\s\S]*<\/think>", "", resp.content) # remove 'think' from deepseek

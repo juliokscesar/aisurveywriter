@@ -89,6 +89,12 @@ class PaperStructureGenerator(PipelineTask):
         
         # First need to get PDF contents
         pdf_contents = PDFProcessor(self.ref_paths).extract_content()
+        # remove references section from each pdf (decreases token count)
+        for i in range(len(pdf_contents)):
+            ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", pdf_contents[i], re.IGNORECASE)
+            if ref_match:
+                pdf_contents[i] = pdf_contents[i][:ref_match.start()].strip()
+        
         input_prompt = "\n".join(pdf_contents) + "\n\n" + self.prompt
         response = self.llm.send_prompt(input_prompt)
         if return_metadata:

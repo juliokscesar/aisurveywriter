@@ -2,6 +2,7 @@ from typing import List, Optional
 import os
 import yaml
 import re
+from time import sleep
 
 from .pipeline_task import PipelineTask
 
@@ -166,6 +167,7 @@ class ReferenceExtractor(PipelineTask):
         
         bibs = []
         for ref in refs["references"]:
+            sleep(2) # avoid api timeout
             try:
                 entry = get_bibtex_entry(ref["title"], ref["author"])
                 if not entry:

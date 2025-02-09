@@ -4,41 +4,21 @@ import re
 
 from aisurveywriter.core.paper import PaperData, SectionData
 
-def write_latex(template_path: str, paper: PaperData, file_path: str, find_bib_pattern: Optional[str] = None, tex_filter_fn: Optional[Callable[[str],str]] = None):
+def write_latex(template_path: str, paper: PaperData, file_path: str, bib_path: Optional[str] = None, bib_template_variable: Optional[str] = "bibresourcefile", tex_filter_fn: Optional[Callable[[str],str]] = None):
     with open(template_path, "r", encoding="utf-8") as f:
         template = f.read()
-    
-    paper_content = ""
-    bib_content = ""
 
-    if find_bib_pattern is not None:
-        for section in paper.sections:
-            # Extract biblatex file content (from the pattern provided in the prompt)
-            match = re.search(find_bib_pattern, section.content, re.DOTALL)
-            sec_bib_content = match.group(1).strip() if match else None
-            if sec_bib_content is not None:
-                bib_content += sec_bib_content
-                section_text = re.sub(find_bib_pattern, "", section.content, flags=re.DOTALL)
-            else:
-                section_text = section.content
-                print("FAILED TO MATCH BIBLATEX CONTENT IN SECTION:", section.title)
-            paper_content += section_text
-
-        bib_content = bib_content.replace("{mybib.bib}", "")
-        bib_file = file_path.replace(".tex", ".bib")
-        with open(bib_file, "w", encoding="utf-8") as bib_f:
-            bib_f.write(bib_content)
-        tex_content = template.replace("{bibresourcefile}", os.path.basename(bib_file))
-    else:
-        paper_content = "\n".join([s.content for s in paper.sections if s.content is not None])
-
+    paper_content = paper.full_content()
     if paper.title:
         paper_content = f"\\title{{{paper.title}}}\n" + paper_content
 
     # Replace variables in template
-    tex_content = template.replace("{content}", paper_content)
     if tex_filter_fn is not None:
-        tex_content = tex_filter_fn(tex_content)
+        paper_content = tex_filter_fn(paper_content)
+    if bib_path:
+        template = template.replace(f"{{{bib_template_variable}}}", bib_path)
+
+    tex_content = template.replace("{content}", paper_content)
 
     # Save files
     with open(file_path, "w", encoding="utf-8") as tex_f:

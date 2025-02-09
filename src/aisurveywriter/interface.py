@@ -26,7 +26,7 @@ class GradioInterface:
         self.supported_models = {
             "Gemini 1.5 Flash": ("google", "gemini-1.5-flash"),
             "Gemini 1.5 Pro": ("google", "gemini-1.5-pro"),
-            "Gemini 2.0 Flash Exp": ("google", "gemini-2.0-flash-exp"),
+            "Gemini 2.0 Flash": ("google", "gemini-2.0-flash"),
             "Gemini 2.0 Pro Exp": ("google", "gemini-2.0-pro-exp"),
             "OpenAI (TODO)": (None,None),
             "Deepseek-R1 32b": ("ollama", "deepseek-r1:32b"),
