@@ -3,7 +3,10 @@ import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from PyPDF2 import PdfReader
+import fitz
+from pathlib import Path
+
+from aisurveywriter.utils import named_log
 
 class PDFProcessor:
     def __init__(self, pdf_paths: List[str]):
@@ -16,7 +19,7 @@ class PDFProcessor:
     def _load(self):
         for i, pdf in enumerate(self.pdf_paths):
             self.pdf_documents[i] = PyPDFLoader(pdf).load()
-            self.img_readers[i] = PdfReader(pdf)
+            self.img_readers[i] = fitz.open(pdf)
 
     def _print(self, *msgs: str):
         print(f"({self.__class__.__name__})", *msgs)
@@ -33,14 +36,30 @@ class PDFProcessor:
             save_dir = os.path.abspath(save_dir)
             os.makedirs(save_dir, exist_ok=True)
             
-        for reader in self.img_readers:
-            img_count = 0
-            for page in reader.pages:
-                for img_file_obj in page.images:
+        for pdf_idx, reader in enumerate(self.img_readers):
+            for page_idx in range(len(reader)):
+                page = reader.load_page(page_idx)
+                img_list = page.get_images(full=True)
+                
+                for img_idx, img in enumerate(img_list):
+                    xref = img[0]
+                    base_img = reader.extract_image(xref)
+                    img_bytes = base_img["image"]
+                    img_ext = base_img["ext"]
+                    img_name = f"{Path(self.pdf_paths[pdf_idx]).stem}_img{img_idx}page{page_idx}.{img_ext}"
+                    
                     if save_dir:
-                        with open(os.path.join(save_dir, str(img_count) + img_file_obj.name), "wb") as fp:
-                            fp.write(img_file_obj.data)
-                    imgs.append(img_file_obj)
+                        path = os.path.join(save_dir, img_name)
+                        with open(path, "wb") as f:
+                            f.write(img_bytes)
+                        
+                        named_log(self, f"Image saved: {path}")
+
+                    imgs.append({
+                        "pdf": self.pdf_paths[pdf_idx],
+                        "data": img_bytes,
+                        "ext": img_ext,
+                    })
                     
         return imgs
             
