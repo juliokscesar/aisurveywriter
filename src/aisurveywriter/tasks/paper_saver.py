@@ -8,10 +8,10 @@ import aisurveywriter.core.latex_handler as lh
 from aisurveywriter.utils import named_log
 
 class PaperSaver(PipelineTask):
-    def __init__(self, save_path: str, template_path: str, find_bib_pattern: Optional[str] = r"\\begin{filecontents\*}(.*?)\\end{filecontents\*}", tex_filter_fn: Callable[[str], str] = None):
+    def __init__(self, save_path: str, template_path: str, bib_path: Optional[str] = None, tex_filter_fn: Callable[[str], str] = None):
         self.save_path = save_path
         self.template_path = template_path
-        self.find_bib_pattern = find_bib_pattern
+        self.bib_path = bib_path
         self.tex_filter_fn = tex_filter_fn
     
     def pipeline_entry(self, input_data: PaperData):
@@ -28,6 +28,6 @@ class PaperSaver(PipelineTask):
             self.template_path,
             paper,
             self.save_path,
-            find_bib_pattern=self.find_bib_pattern,
+            bib_path=self.bib_path,
             tex_filter_fn=self.tex_filter_fn,
         )

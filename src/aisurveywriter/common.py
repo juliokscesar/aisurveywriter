@@ -118,7 +118,7 @@ def generate_paper_survey(
     else:
         write_step = tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True, request_cooldown_sec=request_cooldown_sec)
         write_step_name = "Write Paper"
-        next_write = tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path, find_bib_pattern=None)
+        next_write = tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path)
         next_write_name = "Save Paper"
         
     pipe = PaperPipeline([
@@ -128,18 +128,18 @@ def generate_paper_survey(
         (next_write_name, next_write),
         
         ("Review Paper", tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths, request_cooldown_sec=request_cooldown_sec)),
-        ("Save Reviewed Paper", tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path, find_bib_pattern=None)),
+        ("Save Reviewed Paper", tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path)),
         
         (ref_extract_name, ref_extract),
         
         ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
                             prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
-        ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path, find_bib_pattern=None)),
+        ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
         
         ("Review Tex", tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None, cooldown_sec=request_cooldown_sec)),
-        ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, find_bib_pattern=None, tex_filter_fn=tex_filter_survey)),
+        ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, bib_path=save_path.replace(".tex", ".bib"), tex_filter_fn=tex_filter_survey)),
     ], status_queue=pipeline_status_queue)
     
     print(f"==> BEGINNING PAPER SURVEY GENERATON PIPELINE WITH {len(pipe.steps)} STEPS")
