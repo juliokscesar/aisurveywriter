@@ -9,6 +9,7 @@ from aisurveywriter.utils import named_log
 
 class PaperSaver(PipelineTask):
     def __init__(self, save_path: str, template_path: str, bib_path: Optional[str] = None, tex_filter_fn: Callable[[str], str] = None):
+        self.no_divide = True
         self.save_path = save_path
         self.template_path = template_path
         self.bib_path = bib_path

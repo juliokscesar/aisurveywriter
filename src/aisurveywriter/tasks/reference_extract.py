@@ -13,6 +13,7 @@ from aisurveywriter.utils import named_log, countdown_log, get_bibtex_entry, bib
 
 class ReferenceExtractor(PipelineTask):
     def __init__(self, llm: LLMHandler, ref_paths: List[str], prompt: str, raw_save_path: Optional[str] = None, rawbib_save_path: Optional[str] = None, bib_save_path: Optional[str] = None, cooldown_sec: int = 30, batches: int = 3):
+        self.no_divide = True
         self.llm = llm
         self.ref_paths = ref_paths
         self.prompt = prompt

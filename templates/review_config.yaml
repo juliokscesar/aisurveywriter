@@ -110,6 +110,7 @@ apply_prompt: |
   - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT:
     - It is relevant to include figures where a topic can be easily explained visually
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
+  - FIGURES FROM THE REFERENCES MUST ALSO BE ADDED - CITE THEM OR ADD THEM AS A BLANK FIGURE WITH THE EXACT SAME CAPTION
   - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
   
   - It is essential that your output contains only the section LaTeX, with clear and correct formatting.

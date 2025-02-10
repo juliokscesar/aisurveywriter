@@ -182,3 +182,19 @@ class PaperReviewer(PipelineTask):
                 content = "\n".join(pdfs.extract_content())
         
         return content
+
+    def divide_subtasks(self, n: int, input_data: PaperData = None):
+        self.paper = input_data
+        sub = []
+        n_sections = len(self.paper.sections)
+        per_task = n_sections // n
+        for i in range(0, n, per_task):
+            subpaper = PaperData(self.paper.subject, self.paper.sections[i:i+per_task], self.paper.title, self.paper.bib)
+            sub.append(PaperReviewer(self.llm, self.review_prompt, self.apply_prompt, subpaper, self.ref_paths, self._cooldown_sec, self._discard_ref_sections, self._summarize, self._use_faiss, self._faiss_embeddings))
+        return sub    
+    
+    def merge_subtasks_data(self, data: List[PaperData]):
+        merged_paper = PaperData(data[0].subject, data[0].sections, data[0].title, data[0].bib)
+        for paper in data[1:]:
+            merged_paper.sections.extend(paper.sections)
+        return merged_paper

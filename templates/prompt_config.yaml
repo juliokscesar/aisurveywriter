@@ -35,7 +35,7 @@ gen_struct_prompt: |
     - Be as much objective as possible regarding the description of each section -- detail them thoroughly.
   
   3. **OUTPUT FORMAT**:
-    - Provide the structure in YAML format
+    - Provide the structure in YAML format. THE TILE MUST BE ENCLOSED WITH QUOTES
     - Do it as follows:
       ```yaml
       - title: "Section Title"
@@ -69,6 +69,7 @@ write_prompt: |
       - Include tables that are adequate for the explanation of a topic
     - Else, acquire insights from the content of the section and judge if a Figure would be beneficial:
       - If there is some visual topic to be explained, consider using TikZ package to create a visual explanation
+      - Use figures from the references, either by explictly citing them or add a blank figure with the exact same caption and description
 
   - **Write in English only**.
 

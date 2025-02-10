@@ -48,6 +48,7 @@ class PaperData:
         for match in section_matches:
             sec_title = match.group(1).strip()
             sec_content = match.group(2).strip()
+            sec_content = f"\n\\section{{{sec_title}}}\n\n" + sec_content
             sections.append(SectionData(title=sec_title, description=sec_title, content=sec_content))
 
         # Read bibliography if provided

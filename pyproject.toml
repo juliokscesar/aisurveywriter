@@ -19,6 +19,7 @@ dependencies = [
     "langchain-openai",
     "langchain-ollama",
     "langchain-community",
+    "faiss-cpu",
     "pypdf",
     "bibtexparser",
     "gradio",

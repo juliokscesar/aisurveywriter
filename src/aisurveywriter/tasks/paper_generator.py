@@ -2,9 +2,6 @@ from typing import List, Optional, Union
 import yaml
 import re
 
-from langchain_core.messages import SystemMessage
-
-from aisurveywriter.core.config_manager import ConfigManager
 from aisurveywriter.core.chatbots import NotebookLMBot
 from aisurveywriter.core.llm_handler import LLMHandler
 import aisurveywriter.core.file_handler as fh
@@ -16,6 +13,8 @@ from .pipeline_task import PipelineTask
 
 class PaperStructureGenerator(PipelineTask):
     def __init__(self, llm: Union[NotebookLMBot, LLMHandler], ref_paths: List[str], subject: str, prompt: str, save_path: Optional[str] = None):
+        super().__init__()
+        self.no_divide = True
         self.llm = llm
         self.subject = subject
         self.prompt = prompt

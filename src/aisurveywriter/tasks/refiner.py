@@ -12,6 +12,7 @@ class PaperRefiner(PipelineTask):
     Adds Title and Abstract to the paper
     """
     def __init__(self, llm: LLMHandler, paper: Optional[PaperData] = None, prompt: Optional[str] = None, cooldown_sec: int = 0):
+        self.no_divide = True
         self.llm = llm
         self.paper = paper
         self.prompt = prompt

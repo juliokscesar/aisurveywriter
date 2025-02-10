@@ -10,13 +10,13 @@ def write_latex(template_path: str, paper: PaperData, file_path: str, bib_path: 
 
     paper_content = paper.full_content()
     if paper.title:
-        paper_content = f"\\title{{{paper.title}}}\n" + paper_content
+        paper_content = f"\\title{{{paper.title}}}\n\\maketitle\n\\tableofcontents\n\n" + paper_content
 
     # Replace variables in template
     if tex_filter_fn is not None:
         paper_content = tex_filter_fn(paper_content)
     if bib_path:
-        template = template.replace(f"{{{bib_template_variable}}}", bib_path)
+        template = template.replace(f"{{{bib_template_variable}}}", os.path.basename(bib_path))
 
     tex_content = template.replace("{content}", paper_content)
 

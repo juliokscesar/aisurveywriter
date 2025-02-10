@@ -27,9 +27,17 @@ class GradioInterface:
             "Gemini 1.5 Flash": ("google", "gemini-1.5-flash"),
             "Gemini 1.5 Pro": ("google", "gemini-1.5-pro"),
             "Gemini 2.0 Flash": ("google", "gemini-2.0-flash"),
+            "Gemini 2.0 Flash-Lite": ("google", "gemini-2.0-flash-lite-preview-02-05"),
             "Gemini 2.0 Pro Exp": ("google", "gemini-2.0-pro-exp"),
             "OpenAI (TODO)": (None,None),
             "Deepseek-R1 32b": ("ollama", "deepseek-r1:32b"),
+        }
+        self.supported_text_embedding = {
+            "Google Text Embedding 004", ("google", "models/text-embedding-004"),
+            "OpenAI (TODO)", (None, None),
+            "SFR-Embedding-Mistral (HuggingFace)", ("huggingface", "Salesforce/SFR-Embedding-Mistral"),
+            "all-MiniLM-L6-v2 (HuggingFace)", ("huggingface", "sentence-transformers/all-MiniLM-L6-v2"),
+            "gte-Qwen2-1.5b (HuggingFace)", ("huggingface", "Alibaba-NLP/gte-Qwen2-1.5B-instruct"),
         }
         self.gr_interface = gr.ChatInterface(
             fn=self.chat_fn,
@@ -39,12 +47,14 @@ class GradioInterface:
                 gr.File(label="Upload reference PDFs", file_types=[".pdf"], file_count="multiple"),
                 gr.Textbox(label="Save path and name", placeholder="Enter the full path to save the paper (including its filename)", value=os.path.join(os.getcwd(), "out")),
                 gr.Dropdown(label="Writer LLM model", choices=list(self.supported_models.keys())),
+                gr.Dropdown(label="Text embedding model", choices=list(self.supported_text_embedding.keys()), info="Text embedding model used in retrieving relevant references from the FAISS (RAG) in the step of adding them to the paper."),
                 gr.Number(label="Request cooldown (seconds)", info="Cooldown time between two consecutive requests. It is important to adjust this according to the amount of tokens, since depending on the LLM it may take a while to reset", value=int(90)),
                 gr.Textbox(label="Pre-generated YAML structure (one will be generated if none is provided)", placeholder="Full path to pre-generated structure"),
                 gr.Textbox(label="Pre-written .TEX paper (one will be written from the structure if none is provided)", placeholder="Full path to pre-written paper .tex"),
                 gr.Textbox(label="Path to YAML configuration file", placeholder="Full path to configuration", value = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))),
                 gr.Checkbox(label="Use NotebookLM to generate the paper structure", info="Slow compared to bare LLM models, but supports up to 50 PDFs", value=False),
                 gr.Textbox(label="Path to .bib database to use (one will be generated from the references, if none is provided)", placeholder="Full path to BibTex database", value=os.path.abspath(os.path.join(__file__, "../../../out/generated-bibdb.bib"))),
+                gr.Textbox(label="Path to a local FAISS vector store from the .bib database. If not provided, one will be created"),
             ],
             title="Survey Paper Writer",
             description="Provide a subject, reference PDFs, and a save path to generate and save a survey paper.",
@@ -54,13 +64,15 @@ class GradioInterface:
     def launch(self, *args, **kwargs):
         self.gr_interface.launch(*args, **kwargs)
 
-    def chat_fn(self, message, history, refs, save_path, model, req_cooldown_sec, pregen_struct, prewritten_paper, config_path, nblm_generate, bibdb_path):
+    def chat_fn(self, message, history, refs, save_path, model, embed_model, req_cooldown_sec, pregen_struct, prewritten_paper, config_path, nblm_generate, bibdb_path, faissdb_path):
         if self._is_running:
             return "A paper survey generation is already running. Please wait -- this really takes a long time."
         if len(refs) == 0:
             return "Please provide at least one PDF reference"
         subject = message
 
+        named_log(self, "DEBUG:", message, history, refs, save_path, model, req_cooldown_sec, pregen_struct, prewritten_paper, config_path, nblm_generate, bibdb_path)
+        
         status_queue = queue.Queue()
         worker_thread = threading.Thread(
             target=run_generation, 
@@ -76,6 +88,9 @@ class GradioInterface:
                 "config_path": config_path.strip(),
                 "use_nblm_generation": nblm_generate,
                 "refdb_path": bibdb_path,
+                "faissdb_path": faissdb_path,
+                "embed_model": self.supported_text_embedding[embed_model][1],
+                "embed_model_type": self.supported_text_embedding[embed_model][0],
                 "request_cooldown_sec": int(req_cooldown_sec),
             }
         )

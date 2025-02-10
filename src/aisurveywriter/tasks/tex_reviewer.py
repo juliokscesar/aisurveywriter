@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 import re
 
 from .pipeline_task import PipelineTask
@@ -7,7 +7,7 @@ from aisurveywriter.core.paper import PaperData
 from aisurveywriter.utils import named_log, countdown_log, time_func
 
 class TexReviewer(PipelineTask):
-    def __init__(self, llm: LLMHandler, tex_review_prompt: str, bib_review_prompt: Optional[str] = None, cooldown_sec: int = 40):
+    def __init__(self, llm: LLMHandler, tex_review_prompt: str, bib_review_prompt: Optional[str] = None, paper: Optional[PaperData] = None, cooldown_sec: int = 40):
         """
         Initialize a TexReviewer
         
@@ -19,6 +19,7 @@ class TexReviewer(PipelineTask):
         self.llm = llm
         self.tex_prompt = tex_review_prompt
         self.bib_prompt = bib_review_prompt
+        self.paper = paper
         self._cooldown_sec = int(cooldown_sec)
         
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
@@ -37,6 +38,7 @@ class TexReviewer(PipelineTask):
         Review LaTeX syntax and commands section by section
         """
         self.llm.init_chain(None, self.tex_prompt)
+        self.paper = paper
         
         sz = len(paper.sections)
         for i, section in enumerate(paper.sections):
@@ -88,3 +90,20 @@ class TexReviewer(PipelineTask):
             countdown_log("", countdown)
 
         return paper
+
+    def divide_subtasks(self, n, input_data: PaperData =None):
+        paper = input_data
+        sub = []
+        n_sections = len(paper.sections)
+        per_task = n_sections // n
+        for i in range(0, n, per_task):
+            subpaper = PaperData(paper.subject, paper.sections[i:i+per_task], paper.title, paper.bib)
+            sub.append(TexReviewer(self.llm, self.tex_prompt, self.bib_prompt, subpaper, self._cooldown_sec))
+        return sub
+
+    def merge_subtasks_data(self, data: List[PaperData]):
+        paper = PaperData(data[0].subject, data[0].sections, data[0].title, data[0].bib)
+        for subpaper in data[1:]:
+            paper.sections.extend(subpaper.sections)
+        return paper
+        

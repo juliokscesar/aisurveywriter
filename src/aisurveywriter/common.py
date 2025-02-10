@@ -3,9 +3,12 @@ import os
 import queue
 import re
 
+from langchain_huggingface import HuggingFaceEmbeddings
+
 import aisurveywriter.core.file_handler as fh
 from aisurveywriter.core.config_manager import ConfigManager
 from aisurveywriter.core.llm_handler import LLMHandler
+from aisurveywriter.core.text_embedding import load_embeddings
 from aisurveywriter.core.pipeline import PaperPipeline
 import aisurveywriter.tasks as tks
 from aisurveywriter.core.chatbots import NotebookLMBot
@@ -40,6 +43,9 @@ def generate_paper_survey(
     config_path: Optional[str] = None, 
     use_nblm_generation=False,
     refdb_path: str = None,
+    faissdb_path: str = None,
+    embed_model: str = "Salesforce/SFR-Embedding-Mistral",
+    embed_model_type: str = "huggingface",
     pipeline_status_queue: queue.Queue = None,
     request_cooldown_sec: int = int(60 * 1.5),
 ):
@@ -60,6 +66,9 @@ def generate_paper_survey(
         model=model,
         model_type=model_type,
     )
+    
+    # Embed Model used on paper reference
+    embed = load_embeddings(model=embed_model, model_type=embed_model_type)
     
     # LLM used on LaTeX syntax review (deepseek is local)
     # use deepseek only if there's enough memory
@@ -132,8 +141,10 @@ def generate_paper_survey(
         
         (ref_extract_name, ref_extract),
         
-        ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
-                            prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
+        # ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
+        #                     prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
+        ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, 
+                                                    save_usedbib_path=save_path.replace(".tex", ".bib"))),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
