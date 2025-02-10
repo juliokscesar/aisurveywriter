@@ -167,7 +167,7 @@ class ReferenceExtractor(PipelineTask):
         
         bibs = []
         for ref in refs["references"]:
-            sleep(2) # avoid api timeout
+            # sleep(2) # avoid api timeout
             try:
                 entry = get_bibtex_entry(ref["title"], ref["author"])
                 if not entry:
