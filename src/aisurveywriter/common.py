@@ -3,8 +3,6 @@ import os
 import queue
 import re
 
-from langchain_huggingface import HuggingFaceEmbeddings
-
 import aisurveywriter.core.file_handler as fh
 from aisurveywriter.core.config_manager import ConfigManager
 from aisurveywriter.core.llm_handler import LLMHandler
@@ -44,6 +42,7 @@ def generate_paper_survey(
     use_nblm_generation=False,
     refdb_path: str = None,
     faissdb_path: str = None,
+    faissfig_path: str = None,
     embed_model: str = "Salesforce/SFR-Embedding-Mistral",
     embed_model_type: str = "huggingface",
     pipeline_status_queue: queue.Queue = None,
@@ -66,9 +65,11 @@ def generate_paper_survey(
         model=model,
         model_type=model_type,
     )
+    print(f"Loaded LLM: {model}")
     
     # Embed Model used on paper reference
     embed = load_embeddings(model=embed_model, model_type=embed_model_type)
+    print(f"Loaded embeddings: {embed_model}")
     
     # LLM used on LaTeX syntax review (deepseek is local)
     # use deepseek only if there's enough memory
@@ -146,6 +147,11 @@ def generate_paper_survey(
         ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, 
                                                     save_usedbib_path=save_path.replace(".tex", ".bib"))),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
+        
+        ("Add figures from references", tks.FigureExtractor(refs_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 
+                                                            faiss_save_path=save_path.replce(".tex", "-refimgfaiss"), local_faiss_path=faissfig_path,
+                                                            request_cooldown_sec=max(15, request_cooldown_sec // 3))),
+        ("Save paper wiith figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
         

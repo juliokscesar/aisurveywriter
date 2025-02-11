@@ -16,7 +16,7 @@ from aisurveywriter.core.paper import PaperData
 from aisurveywriter.utils import named_log, countdown_log, image_to_base64
 
 class FigureExtractor(PipelineTask):
-    def __init__(self, llm: LLMHandler, embed, subject: str, pdf_paths: List[str], save_dir: str, faiss_save_path: str, paper: Optional[PaperData] = None, request_cooldown_sec: int = 30):
+    def __init__(self, llm: LLMHandler, embed, subject: str, pdf_paths: List[str], save_dir: str, faiss_save_path: Optional[str] = None, local_faiss_path: Optional[str] = None, paper: Optional[PaperData] = None, request_cooldown_sec: int = 30):
         self.no_divide = True
         self.llm = llm
         self.embed = embed
@@ -26,17 +26,20 @@ class FigureExtractor(PipelineTask):
         self.save_dir = os.path.abspath(save_dir)
         self.faiss_save_path = faiss_save_path
         self.faiss = None
+        if local_faiss_path:
+            self.faiss = FAISS.load_local(local_faiss_path, embed, allow_dangerous_deserialization=True)
         
         self._cooldown_sec = request_cooldown_sec
         
     def pipeline_entry(self, input_data: PaperData = None):
         if input_data:
             self.paper = input_data
-        img_data = self.extract()
-        with open("refextract_imgdata.yaml", "w", encoding="utf-8") as f:
-            yaml.safe_dump({"data": img_data}, f)
-        
-        self.faiss = self._imgdata_faiss(img_data, self.faiss_save_path)
+        if not self.faiss:
+            img_data = self.extract()
+            with open("refextract_imgdata.yaml", "w", encoding="utf-8") as f:
+                yaml.safe_dump({"data": img_data}, f)
+            
+            self.faiss = self._imgdata_faiss(img_data, self.faiss_save_path)
         self.paper = self.add_to_paper(self.faiss, self.paper, self.save_dir)
         return self.paper
     
@@ -110,6 +113,8 @@ class FigureExtractor(PipelineTask):
         if save_dir:
             self.save_dir = os.path.abspath(save_dir)
         
+        os.makedirs(os.path.join(self.save_dir, "used"), exist_ok=True)
+        
         fig_pattern = r"\\begin\{figure\}[\s\S]+?\\includegraphics[\S]*[\s]*\]]*?\{([\s\S]+?)\}[\s\S]*?\\caption\{([\s\S]+?)\}"
         
         for section in self.paper.sections:
@@ -117,17 +122,17 @@ class FigureExtractor(PipelineTask):
             
             for start, end, figname, caption in fig_matches:
                 # use caption to retrieve an image
-                result = self.faiss.similarity_search(f"{figname}: {caption}", k=1)
+                result = self.faiss.similarity_search(f"{figname}: {caption}", k=1)[0]
                 named_log(self, f"Best match for caption {figname}: {caption!r} in section {section.title} is: {result.metadata["path"]}")
                 
                 try:
-                    path = os.path.join(self.save_dir, os.path.basename(result.metadata["path"]))
+                    path = os.path.join(os.path.join(self.save_dir, "used"), os.path.basename(result.metadata["path"]))
                     shutil.copy(result.metadata["path"], path)
                 except Exception as e:
                     path = result.metadata["path"]
                     named_log(self, f"Couldn't copy {path} to save directory: {e}")
                 
-                section.content[start:end] = section.content[start:end].replace(figname, os.path.basename(path))
+                section.content = section.content.replace(figname, os.path.basename(path))
             
         return self.paper
         

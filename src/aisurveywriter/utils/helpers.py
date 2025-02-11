@@ -18,7 +18,7 @@ from PIL import Image
 def image_to_base64(path: str):
     img = Image.open(path)
     buffered = BytesIO()
-    img.save(buffered, format="PNG")
+    img.convert("RGB").save(buffered, format="PNG")
     img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return img_b64
 
