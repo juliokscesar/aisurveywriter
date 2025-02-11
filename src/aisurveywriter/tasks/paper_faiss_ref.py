@@ -28,6 +28,7 @@ class PaperFAISSReferencer(PipelineTask):
         
         if local_faissdb_path:
             self.vector_store = FAISS.load_local(local_faissdb_path, embed_model, allow_dangerous_deserialization=True)
+            self.vector_store
             named_log(self, f"Loaded local FAISS")
         else:
             self.vector_store = self._faiss_from_bibdb(embed_model, bibdb_path, chunks=1200)
@@ -37,28 +38,18 @@ class PaperFAISSReferencer(PipelineTask):
         
         
     def pipeline_entry(self, input_data):
-        if not isinstance(input_data, PaperData):
+        if not isinstance(input_data, PaperData) or not input_data:
             raise TypeError(f"Task {self.__class__.__name__} requires input of type PaperData in pipe entry")
         paper = self.reference(input_data)
 
-        if self.save_usedbib_path:
-            with open(self.bibdb_path, "r", encoding="utf-8") as f:
-                bibdb = f.read()
-            used_bib = self._get_used_bib(paper, bibdb)
-            paper = self._check_citations(paper, used_bib)
-            
-            with open(self.save_usedbib_path, "w", encoding="utf-8") as f:
-                f.write(used_bib)
-        
         return paper
     
     def reference(self, paper: PaperData = None):
         if paper:
             self.paper = paper
-        
         used_keys = []
         # go section by section
-        for section in paper.sections:
+        for section in self.paper.sections:
             ref_count = 0
             # best_for_section = self.vector_store.similarity_search(section.content, k=self.ref_per_section)
             

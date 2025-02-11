@@ -38,6 +38,7 @@ def generate_paper_survey(
     model_type: str = "google", 
     pregen_struct_yaml: Optional[str] = None, 
     prewritten_paper_tex: Optional[str] = None,
+    no_review: bool = False,
     config_path: Optional[str] = None, 
     use_nblm_generation=False,
     refdb_path: str = None,
@@ -48,6 +49,7 @@ def generate_paper_survey(
     embed_model_type: str = "huggingface",
     pipeline_status_queue: queue.Queue = None,
     request_cooldown_sec: int = int(60 * 1.5),
+    embed_request_cooldown_sec: int = int(20),
 ):
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
@@ -65,6 +67,7 @@ def generate_paper_survey(
     writer_llm = LLMHandler(
         model=model,
         model_type=model_type,
+        temperature=0.6,
     )
     print(f"Loaded LLM: {model}")
     
@@ -117,13 +120,11 @@ def generate_paper_survey(
                                              bib_save_path=refdb_path)
         ref_extract_name = "Reference Extractor"
     else:
-        if not os.path.isfile(refdb_path):
-            raise FileNotFoundError(f"Unable to find file {refdb_path!r}")
         ref_extract = tks.DeliverTask()
         ref_extract_name = "Load References Database"
 
     if prewritten_paper_tex:
-        write_step = tks.DeliverTask(PaperData.from_tex(prewritten_paper_tex, subject))
+        write_step = tks.LoadTask(prewritten_paper_tex, subject)
         write_step_name = "Load Paper .tex"
         next_write = tks.DeliverTask()
         next_write_name = "Input paper loaded to review"
@@ -132,6 +133,19 @@ def generate_paper_survey(
         write_step_name = "Write Paper"
         next_write = tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path)
         next_write_name = "Save Paper"
+
+    if not no_review:
+        review_step = tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths, request_cooldown_sec=request_cooldown_sec)
+        review_step_name = "Review Paper"
+        
+        next_review = tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path)
+        next_review_name = "Save Reviewed Paper"
+    else:
+        review_step = tks.DeliverTask()
+        review_step_name = "Skip review"
+        
+        next_review = tks.DeliverTask()
+        next_review_name = "Skip review save"
         
     pipe = PaperPipeline([
         (first_name, first),
@@ -139,21 +153,21 @@ def generate_paper_survey(
         (write_step_name, write_step),
         (next_write_name, next_write),
         
-        ("Review Paper", tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths, request_cooldown_sec=request_cooldown_sec)),
-        ("Save Reviewed Paper", tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path)),
+        (review_step_name, review_step),
+        (next_review_name, next_review),
         
         (ref_extract_name, ref_extract),
         
         # ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
         #                     prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
-        ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, 
-                                                    save_usedbib_path=save_path.replace(".tex", ".bib"), save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"))),
+        ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, save_usedbib_path=save_path.replace(".tex", ".bib"), 
+                                                    save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), confidence=0.84)),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
         ("Add figures from references", tks.FigureExtractor(writer_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 
                                                             faiss_save_path=save_path.replace(".tex", f"-{embed_model}-imgfaiss"), local_faiss_path=faissfig_path,
-                                                            imgs_dir=imgs_path, request_cooldown_sec=0)),
-        ("Save paper wiith figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
+                                                            imgs_dir=imgs_path, request_cooldown_sec=embed_request_cooldown_sec)),
+        ("Save paper with figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
         

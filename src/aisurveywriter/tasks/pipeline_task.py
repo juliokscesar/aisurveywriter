@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from aisurveywriter.core.paper import PaperData
+
 class PipelineTask(ABC):
     def __init__(self):
         self.no_divide = False
@@ -26,9 +28,28 @@ class DeliverTask(PipelineTask):
         self.deliver = data_to_deliver
     
     def pipeline_entry(self, input_data):
-        if input_data is not None:
+        if input_data:
             self.deliver = input_data
         return self.deliver
+
+    def divide_subtasks(self, n, input_data=None):
+        raise NotImplemented()
+    
+    def merge_subtasks_data(self, data):
+        raise NotImplemented()
+
+class LoadTask(PipelineTask):
+    def __init__(self, tex_path: str, subject: str):
+        self.no_divide = True
+        self.tex_path = tex_path
+        self.subject = subject
+
+    def pipeline_entry(self, input_data):
+        paper = PaperData.from_tex(self.tex_path, self.subject)
+        if isinstance(input_data, PaperData):
+            for ps, ins in zip(paper.sections, input_data.sections):
+                ps.description = ins.description
+        return paper
 
     def divide_subtasks(self, n, input_data=None):
         raise NotImplemented()

@@ -52,6 +52,7 @@ class GradioInterface:
                 gr.Number(label="Request cooldown (seconds)", info="Cooldown time between two consecutive requests. It is important to adjust this according to the amount of tokens, since depending on the LLM it may take a while to reset", value=int(90)),
                 gr.Textbox(label="Pre-generated YAML structure (one will be generated if none is provided)", placeholder="Full path to pre-generated structure"),
                 gr.Textbox(label="Pre-written .TEX paper (one will be written from the structure if none is provided)", placeholder="Full path to pre-written paper .tex"),
+                gr.Checkbox(label="Skip content/writing review step"),
                 gr.Textbox(label="Path to YAML configuration file", placeholder="Full path to configuration", value = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))),
                 gr.Checkbox(label="Use NotebookLM to generate the paper structure", info="Slow compared to bare LLM models, but supports up to 50 PDFs", value=False),
                 gr.Textbox(label="Path to .bib database to use (one will be generated from the references, if none is provided)", placeholder="Full path to BibTex database", value=os.path.abspath(os.path.join(__file__, "../../../out/generated-bibdb.bib"))),
@@ -67,14 +68,14 @@ class GradioInterface:
     def launch(self, *args, **kwargs):
         self.gr_interface.launch(*args, **kwargs)
 
-    def chat_fn(self, message, history, refs, save_path, model, embed_model, req_cooldown_sec, pregen_struct, prewritten_paper, config_path, nblm_generate, bibdb_path, faissdb_path, faissfig_path, imgs_dir):
+    def chat_fn(self, message, history, refs, save_path, model, embed_model, req_cooldown_sec, pregen_struct, prewritten_paper, no_review, config_path, nblm_generate, bibdb_path, faissdb_path, faissfig_path, imgs_dir):
         if self._is_running:
             return "A paper survey generation is already running. Please wait -- this really takes a long time."
         if len(refs) == 0:
             return "Please provide at least one PDF reference"
         subject = message
 
-        named_log(self, "DEBUG:", message, history, refs, save_path, model, req_cooldown_sec, pregen_struct, prewritten_paper, config_path, nblm_generate, bibdb_path)
+        named_log(self, "DEBUG:", message, history, refs, save_path, model, req_cooldown_sec, pregen_struct, prewritten_paper, no_review, config_path, nblm_generate, bibdb_path)
         
         status_queue = queue.Queue()
         worker_thread = threading.Thread(
@@ -88,6 +89,7 @@ class GradioInterface:
                 "model_type": self.supported_models[model][0],
                 "pregen_struct_yaml": pregen_struct.strip(),
                 "prewritten_paper_tex": prewritten_paper.strip(),
+                "no_review": no_review,
                 "config_path": config_path.strip(),
                 "use_nblm_generation": nblm_generate,
                 "refdb_path": bibdb_path,

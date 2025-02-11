@@ -41,7 +41,7 @@ class FigureExtractor(PipelineTask):
                 yaml.safe_dump({"data": img_data}, f)
             
             self.faiss = self._imgdata_faiss(img_data, self.faiss_save_path)
-        self.paper = self.add_to_paper(self.faiss, self.save_dir, self.paper)
+        self.paper = self.add_to_paper(self.faiss, self.imgs_dir, self.paper)
         return self.paper
     
     def __call__(self, input_data: PaperData = None):
@@ -57,7 +57,7 @@ class FigureExtractor(PipelineTask):
         self.save_dir = os.path.abspath(self.save_dir)
         self.imgs_dir = self.save_dir
         print(self.pdf_paths)
-        prompt_template = f"'''\n{{pdfcontent}}\n'''\n\nThe text above is from a reference relevant for the subject {self.subject}. Based on that, the image provided next is from this document.\n\nProvide a detailed but concise description of the image, be direct, objective and clear in your description -- a maximum of 100 words."
+        prompt_template = f"'''\n{{pdfcontent}}\n'''\n\nThe text above is from a reference relevant for the subject {self.subject}. The image provided next is from this document.\n\nProvide a detailed and descriptive description of the image, be direct, objective and clear in your description -- a maximum of 200 words."
         img_input_template = "data:image/png;base64,{imgb64}"
         for pdf in self.pdf_paths:
             proc = PDFProcessor([pdf])
@@ -115,22 +115,32 @@ class FigureExtractor(PipelineTask):
         
         fig_pattern = r"\\begin\{figure\}[\s\S]+?\\includegraphics[\S]*[\s]*\]]*?\{([\s\S]+?)\}[\s\S]*?\\caption\{([\s\S]+?)\}"
         
+        used_imgs = []
         for section in self.paper.sections:
             fig_matches = [(m.start(), m.end(), m.group(1), m.group(2)) for m in re.finditer(fig_pattern, section.content)]
             
             for start, end, figname, caption in fig_matches:
                 # use caption to retrieve an image
-                result = self.faiss.similarity_search(f"{figname}: {caption}", k=1)[0]
-                named_log(self, f"Best match for caption {figname}: {caption!r} in section {section.title} is: {result.metadata["path"]}")
+                results = self.faiss.similarity_search(f"{figname}: {caption}", k=5)
+                named_log(self, f"Best match for caption {figname}: {caption!r} in section {section.title} is: {', '.join([re.metadata["path"] for re in results])}")
                 
-                try:
-                    path = os.path.join(os.path.join(self.save_dir, "used"), result.metadata["path"])
-                    shutil.copy(os.path.join(imgs_dir, result.metadata["path"]), path)
-                except Exception as e:
-                    path = result.metadata["path"]
-                    named_log(self, f"Couldn't copy {path} to save directory: {e}")
+                path = None
+                for result in results:
+                    if result.metadata["path"] in used_imgs:
+                        continue
+                    used_imgs.append(result.metadata["path"])
+                    
+                    try:
+                        path = os.path.join(self.save_dir, result.metadata["path"])
+                        shutil.copy(os.path.join(imgs_dir, result.metadata["path"]), path)
+                    except Exception as e:
+                        path = result.metadata["path"]
+                        named_log(self, f"Couldn't copy {path} to save directory: {e}")
                 
-                section.content = section.content.replace(figname, os.path.basename(path))
+                if path:
+                    section.content = section.content.replace(figname, os.path.basename(path))
+                else:
+                    named_log(self, f"Couldn't find a match for {figname}: {caption!r} that wasn't used before")
             
         return self.paper
         
