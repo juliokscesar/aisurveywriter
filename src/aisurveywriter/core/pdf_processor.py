@@ -59,6 +59,7 @@ class PDFProcessor:
                         "pdf": self.pdf_paths[pdf_idx],
                         "data": img_bytes,
                         "ext": img_ext,
+                        "path": os.path.join(save_dir, img_name) if save_dir else img_name,
                     })
                     
         return imgs

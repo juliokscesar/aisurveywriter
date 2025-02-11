@@ -11,6 +11,16 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.bibdatabase import BibDatabase
 import re
 import html
+import base64
+from io import BytesIO
+from PIL import Image
+
+def image_to_base64(path: str):
+    img = Image.open(path)
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    return img_b64
 
 def time_func(func, *args, **kwargs):
     start = time()
