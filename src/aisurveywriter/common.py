@@ -108,8 +108,8 @@ def generate_paper_survey(
         first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
         first_name = "Paper Structure Generator"
 
-    refs_llm = LLMHandler(model="gemini-2.0-flash", model_type="google", temperature=0.3) # use gemini-2.0-flash for references because of quota
     if not refdb_path:
+        refs_llm = LLMHandler(model="gemini-2.0-flash", model_type="google", temperature=0.3) # use gemini-2.0-flash for references because of quota
         refdb_path = save_path.replace(".tex", "-bibdb.bib")
         ref_extract = tks.ReferenceExtractor(refs_llm, ref_paths, config.prompt_ref_extract,
                                              raw_save_path=save_path.replace(".tex", "-raw.ref"),
@@ -150,7 +150,7 @@ def generate_paper_survey(
                                                     save_usedbib_path=save_path.replace(".tex", ".bib"), save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"))),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
-        ("Add figures from references", tks.FigureExtractor(refs_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 
+        ("Add figures from references", tks.FigureExtractor(writer_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 
                                                             faiss_save_path=save_path.replace(".tex", f"-{embed_model}-imgfaiss"), local_faiss_path=faissfig_path,
                                                             imgs_dir=imgs_path, request_cooldown_sec=0)),
         ("Save paper wiith figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
