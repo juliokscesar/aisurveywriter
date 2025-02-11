@@ -29,3 +29,9 @@ class DeliverTask(PipelineTask):
         if input_data is not None:
             self.deliver = input_data
         return self.deliver
+
+    def divide_subtasks(self, n, input_data=None):
+        raise NotImplemented()
+    
+    def merge_subtasks_data(self, data):
+        raise NotImplemented()

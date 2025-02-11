@@ -183,3 +183,9 @@ class ReferenceExtractor(PipelineTask):
                 f.write(bibstr)
         
         return bibs
+
+    def divide_subtasks(self, n, input_data=None):
+        raise NotImplemented()
+    
+    def merge_subtasks_data(self, data):
+        raise NotImplemented()

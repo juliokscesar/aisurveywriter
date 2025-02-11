@@ -64,3 +64,10 @@ class PaperRefiner(PipelineTask):
             self.paper.title = "CHECK JSON OUTPUT"
 
         return self.paper
+
+
+    def divide_subtasks(self, n, input_data=None):
+        raise NotImplemented()
+    
+    def merge_subtasks_data(self, data):
+        raise NotImplemented()

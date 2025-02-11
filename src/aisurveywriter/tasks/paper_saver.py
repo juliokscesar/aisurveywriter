@@ -32,3 +32,9 @@ class PaperSaver(PipelineTask):
             bib_path=self.bib_path,
             tex_filter_fn=self.tex_filter_fn,
         )
+
+    def divide_subtasks(self, n, input_data=None):
+        raise NotImplemented()
+    
+    def merge_subtasks_data(self, data):
+        raise NotImplemented()

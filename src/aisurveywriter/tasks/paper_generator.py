@@ -113,3 +113,10 @@ class PaperStructureGenerator(PipelineTask):
             sections=[SectionData(s["title"], s["description"]) for s in yaml_sections]
         )
         return paper
+
+
+    def divide_subtasks(self, n, input_data=None):
+        raise NotImplemented()
+    
+    def merge_subtasks_data(self, data):
+        raise NotImplemented()
