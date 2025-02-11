@@ -65,9 +65,9 @@ def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False)
         elif os.path.isdir(path):
             for (root, _, filenames) in os.walk(path):
                 if skip_ext is not None:
-                    files.extend([os.path.join(root, file) for file in filenames if file_ext(file) not in skip_ext])
+                    files.extend([os.path.abspath(os.path.join(root, file)) for file in filenames if file_ext(file) not in skip_ext])
                 else:
-                    files.extend([os.path.join(root, file) for file in filenames])
+                    files.extend([os.path.abspath(os.path.join(root, file)) for file in filenames])
         
         else:
             raise RuntimeError(f"{path} is an invalid file source")
