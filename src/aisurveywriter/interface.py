@@ -11,9 +11,10 @@ from aisurveywriter.core.pipeline import TaskStatus
 
 g_generation_success = False
 def run_generation(output_queue, *args, **kwargs):
+    global g_generation_success
     try:
-        generate_paper_survey(*args, **kwargs, pipeline_status_queue=output_queue)
         g_generation_success = True
+        generate_paper_survey(*args, **kwargs, pipeline_status_queue=output_queue)
     except Exception as e:
         print(f"generate_paper_survey raised an exception: {e}")
         g_generation_success = False
@@ -104,6 +105,7 @@ class GradioInterface:
         worker_thread.start()
         self._is_running = False
         try:
+            self._is_running = True
             while worker_thread.is_alive() or not status_queue.empty():
                 while not status_queue.empty():
                     task_id, task_name, task_status = status_queue.get()
@@ -117,6 +119,7 @@ class GradioInterface:
             yield f"Unable to generate paper: {e}"
             
         self._is_running = False
+        global g_generation_success
         if g_generation_success:
             yield "Paper generated successfully and saved to " + save_path
         else:
