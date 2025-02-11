@@ -147,12 +147,12 @@ def generate_paper_survey(
         # ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
         #                     prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
         ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, 
-                                                    save_usedbib_path=save_path.replace(".tex", ".bib"))),
+                                                    save_usedbib_path=save_path.replace(".tex", ".bib"), save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"))),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
         ("Add figures from references", tks.FigureExtractor(refs_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 
-                                                            faiss_save_path=save_path.replce(".tex", "-refimgfaiss"), local_faiss_path=faissfig_path,
-                                                            imgs_dir=imgs_path, request_cooldown_sec=max(15, request_cooldown_sec // 3))),
+                                                            faiss_save_path=save_path.replace(".tex", f"-{embed_model}-imgfaiss"), local_faiss_path=faissfig_path,
+                                                            imgs_dir=imgs_path, request_cooldown_sec=0)),
         ("Save paper wiith figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),

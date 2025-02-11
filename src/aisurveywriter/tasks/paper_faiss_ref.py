@@ -14,7 +14,7 @@ from aisurveywriter.core.paper import PaperData
 from aisurveywriter.utils import named_log, time_func, countdown_log
 
 class PaperFAISSReferencer(PipelineTask):
-    def __init__(self, embed_model, bibdb_path: str, paper: PaperData = None, local_faissdb_path=None, save_usedbib_path: str = None, save_faiss_path: str = None, max_per_section: int = 50, max_per_sentence: int = 2, confidence=0.9):
+    def __init__(self, embed_model, bibdb_path: str, paper: PaperData = None, local_faissdb_path=None, save_usedbib_path: str = None, save_faiss_path: str = None, max_per_section: int = 60, max_per_sentence: int = 1, confidence=0.9):
         self.llm = None
         self.paper = paper
         self.embed_model = embed_model
@@ -39,7 +39,7 @@ class PaperFAISSReferencer(PipelineTask):
     def pipeline_entry(self, input_data):
         if not isinstance(input_data, PaperData):
             raise TypeError(f"Task {self.__class__.__name__} requires input of type PaperData in pipe entry")
-        paper = self.reference(input_data, self.bibdb_path, self.prompt)
+        paper = self.reference(input_data)
 
         if self.save_usedbib_path:
             with open(self.bibdb_path, "r", encoding="utf-8") as f:
@@ -53,7 +53,7 @@ class PaperFAISSReferencer(PipelineTask):
         return paper
     
     def reference(self, paper: PaperData = None):
-        if paper is None:
+        if paper:
             self.paper = paper
         
         used_keys = []
