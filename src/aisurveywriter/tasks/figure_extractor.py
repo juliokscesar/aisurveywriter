@@ -16,7 +16,7 @@ from aisurveywriter.core.paper import PaperData
 from aisurveywriter.utils import named_log, countdown_log, image_to_base64
 
 class FigureExtractor(PipelineTask):
-    def __init__(self, llm: LLMHandler, embed, subject: str, pdf_paths: List[str], save_dir: str, faiss_save_path: Optional[str] = None, local_faiss_path: Optional[str] = None, paper: Optional[PaperData] = None, request_cooldown_sec: int = 30):
+    def __init__(self, llm: LLMHandler, embed, subject: str, pdf_paths: List[str], save_dir: str, faiss_save_path: Optional[str] = None, local_faiss_path: Optional[str] = None, imgs_dir: Optional[str] = None, paper: Optional[PaperData] = None, request_cooldown_sec: int = 30):
         self.no_divide = True
         self.llm = llm
         self.embed = embed
@@ -24,6 +24,7 @@ class FigureExtractor(PipelineTask):
         self.paper = paper
         self.pdf_paths = pdf_paths.copy()
         self.save_dir = os.path.abspath(save_dir)
+        self.imgs_dir = os.path.abspath(imgs_dir)
         self.faiss_save_path = faiss_save_path
         self.faiss = None
         if local_faiss_path:
@@ -40,22 +41,21 @@ class FigureExtractor(PipelineTask):
                 yaml.safe_dump({"data": img_data}, f)
             
             self.faiss = self._imgdata_faiss(img_data, self.faiss_save_path)
-        self.paper = self.add_to_paper(self.faiss, self.paper, self.save_dir)
+        self.paper = self.add_to_paper(self.faiss, self.save_dir, self.paper)
         return self.paper
     
     def __call__(self, input_data: PaperData = None):
         return self.pipeline_entry(input_data)
     
-    def extract(self, pdf_paths: List[str] = None, save_dir: str = None, faiss_save_path: str = None):
+    def extract(self, pdf_paths: List[str] = None, save_dir: str = None):
         if pdf_paths:
             self.pdf_paths = pdf_paths
         if save_dir:
             self.save_dir = save_dir
-        if faiss_save_path:
-            self.faiss_save_path = faiss_save_path
         
         img_data = []
         self.save_dir = os.path.abspath(self.save_dir)
+        self.imgs_dir = self.save_dir
         print(self.pdf_paths)
         prompt_template = f"'''\n{{pdfcontent}}\n'''\n\nThe text above is from a reference relevant for the subject {self.subject}. Based on that, the image provided next is from this document.\n\nProvide a detailed but concise description of the image, be direct, objective and clear in your description -- a maximum of 100 words."
         img_input_template = "data:image/png;base64,{imgb64}"
@@ -87,7 +87,7 @@ class FigureExtractor(PipelineTask):
                 
                 img_data.append({
                     "id": len(img_data),
-                    "path": img["path"],
+                    "path": os.path.basename(img["path"]),
                     "description": response.content,
                 })
 
@@ -105,13 +105,11 @@ class FigureExtractor(PipelineTask):
         return vector_store
 
 
-    def add_to_paper(self, figure_faiss: Optional[FAISS] = None, paper: Optional[PaperData] = None, save_dir: str = None):
+    def add_to_paper(self, figure_faiss, imgs_dir: str, paper: Optional[PaperData] = None):
         if paper:
             self.paper = paper
         if figure_faiss:
             self.faiss = figure_faiss
-        if save_dir:
-            self.save_dir = os.path.abspath(save_dir)
         
         os.makedirs(os.path.join(self.save_dir, "used"), exist_ok=True)
         
@@ -126,8 +124,8 @@ class FigureExtractor(PipelineTask):
                 named_log(self, f"Best match for caption {figname}: {caption!r} in section {section.title} is: {result.metadata["path"]}")
                 
                 try:
-                    path = os.path.join(os.path.join(self.save_dir, "used"), os.path.basename(result.metadata["path"]))
-                    shutil.copy(result.metadata["path"], path)
+                    path = os.path.join(os.path.join(self.save_dir, "used"), result.metadata["path"])
+                    shutil.copy(os.path.join(imgs_dir, result.metadata["path"]), path)
                 except Exception as e:
                     path = result.metadata["path"]
                     named_log(self, f"Couldn't copy {path} to save directory: {e}")

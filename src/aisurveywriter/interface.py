@@ -56,7 +56,8 @@ class GradioInterface:
                 gr.Checkbox(label="Use NotebookLM to generate the paper structure", info="Slow compared to bare LLM models, but supports up to 50 PDFs", value=False),
                 gr.Textbox(label="Path to .bib database to use (one will be generated from the references, if none is provided)", placeholder="Full path to BibTex database", value=os.path.abspath(os.path.join(__file__, "../../../out/generated-bibdb.bib"))),
                 gr.Textbox(label="Path to a local FAISS vector store from the .bib database. If not provided, one will be created"),
-                gr.Textbox(label="Path to local FAISS vector store of every figure and its description, accross all references (if none is provided, one will be created)")
+                gr.Textbox(label="Path to local FAISS vector store of every figure and its description, accross all references (if none is provided, one will be created)"),
+                gr.Textbox(label="Path to directory containing images used in FAISS figure. If none is provided, one will be created"),
             ],
             title="Survey Paper Writer",
             description="Provide a subject, reference PDFs, and a save path to generate and save a survey paper.",
@@ -66,7 +67,7 @@ class GradioInterface:
     def launch(self, *args, **kwargs):
         self.gr_interface.launch(*args, **kwargs)
 
-    def chat_fn(self, message, history, refs, save_path, model, embed_model, req_cooldown_sec, pregen_struct, prewritten_paper, config_path, nblm_generate, bibdb_path, faissdb_path, faissfig_path):
+    def chat_fn(self, message, history, refs, save_path, model, embed_model, req_cooldown_sec, pregen_struct, prewritten_paper, config_path, nblm_generate, bibdb_path, faissdb_path, faissfig_path, imgs_dir):
         if self._is_running:
             return "A paper survey generation is already running. Please wait -- this really takes a long time."
         if len(refs) == 0:
@@ -92,6 +93,7 @@ class GradioInterface:
                 "refdb_path": bibdb_path,
                 "faissdb_path": faissdb_path,
                 "faissfig_path": faissfig_path,
+                "imgs_path": imgs_dir,
                 "embed_model": self.supported_text_embedding[embed_model][1],
                 "embed_model_type": self.supported_text_embedding[embed_model][0],
                 "request_cooldown_sec": int(req_cooldown_sec),

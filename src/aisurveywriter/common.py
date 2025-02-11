@@ -43,6 +43,7 @@ def generate_paper_survey(
     refdb_path: str = None,
     faissdb_path: str = None,
     faissfig_path: str = None,
+    imgs_path: str = None,
     embed_model: str = "Salesforce/SFR-Embedding-Mistral",
     embed_model_type: str = "huggingface",
     pipeline_status_queue: queue.Queue = None,
@@ -68,6 +69,7 @@ def generate_paper_survey(
     print(f"Loaded LLM: {model}")
     
     # Embed Model used on paper reference
+    print(f"Loading embed model: {embed_model}, {embed_model_type}")
     embed = load_embeddings(model=embed_model, model_type=embed_model_type)
     print(f"Loaded embeddings: {embed_model}")
     
@@ -150,7 +152,7 @@ def generate_paper_survey(
         
         ("Add figures from references", tks.FigureExtractor(refs_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 
                                                             faiss_save_path=save_path.replce(".tex", "-refimgfaiss"), local_faiss_path=faissfig_path,
-                                                            request_cooldown_sec=max(15, request_cooldown_sec // 3))),
+                                                            imgs_dir=imgs_path, request_cooldown_sec=max(15, request_cooldown_sec // 3))),
         ("Save paper wiith figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
