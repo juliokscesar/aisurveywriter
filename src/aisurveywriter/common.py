@@ -175,6 +175,6 @@ def generate_paper_survey(
         ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, bib_path=save_path.replace(".tex", ".bib"), tex_filter_fn=tex_filter_survey)),
     ], status_queue=pipeline_status_queue)
     
-    print(f"==> BEGINNING PAPER SURVEY GENERATON PIPELINE WITH {len(pipe.steps)} STEPS")
+    print(f"==> BEGINNING PAPER SURVEY GENERATION PIPELINE WITH {len(pipe.steps)} STEPS")
     pipe.run()
     print("==> PAPER SURVEY GENRATION PIPELINE FINISHED")

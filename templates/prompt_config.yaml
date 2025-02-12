@@ -33,19 +33,24 @@ gen_struct_prompt: |
     - Include core (Introductions, conclusions,...) sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
     - Do not include the number of the section along with its title (e.g. 1. introduction, 2. methods...)
     - Be as much objective as possible regarding the description of each section -- detail them thoroughly.
+    - Minimum of 6 sections.
   
   3. **OUTPUT FORMAT**:
     - Provide the structure in YAML format. THE TILE MUST BE ENCLOSED WITH QUOTES
     - Do it as follows:
       ```yaml
-      - title: "Section Title"
+      - title: "Section1 Title"
         description: |
           - Subsection Title
-            - Brief explanation of what this subsection will cover.
+            - Explanation of what this subsection will cover.
             - Additional details as necessary.
           - Another Subsection Title
             - Explanation.
             - More details.
+      - title: "Section2 title"
+        descripton: |
+          - Subsection title
+            - More explanation...
       ``` 
 
     **Provide your answer in English only**.
@@ -71,8 +76,9 @@ write_prompt: |
       - DO NOT add "\includegraphics" if the Figure is TikZ
     - Else, acquire insights from the content of the section and judge if a Figure would be beneficial:
       - If there is some visual topic to be explained, consider using TikZ package to create a visual explanation
-      - Use figures from the references, either by explictly citing them or add a placeholder with a dummy name for a figure with a descriptive caption
-      - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**
+      - If not tikz, use figures from the references, either by explictly citing them or add a placeholder with a dummy name for a figure with a descriptive caption
+      - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**, but DON'T say it's a placeholder or use \cite in this.
+      - DO NOT ADD A PLACEHOLDER IF IN A TIKZPICTURE
 
   - **Write in English only**.
 

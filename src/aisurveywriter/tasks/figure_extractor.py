@@ -47,6 +47,11 @@ class FigureExtractor(PipelineTask):
     def __call__(self, input_data: PaperData = None):
         return self.pipeline_entry(input_data)
     
+    def create_faiss(self):
+        img_data = self.extract()
+        faiss = self._imgdata_faiss(img_data, self.faiss_save_path)
+        return faiss
+    
     def extract(self, pdf_paths: List[str] = None, save_dir: str = None):
         if pdf_paths:
             self.pdf_paths = pdf_paths

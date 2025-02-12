@@ -14,7 +14,6 @@ def parse_args():
     parser.add_argument("--llm-model", "-m", dest="llm_model", default="gemini-2.0-flash", help="Specific LLM model to use.")
     parser.add_argument("-c", "--config", default="config.yaml", help="YAML file containg your configuration parameters")
     parser.add_argument("--structure", "-s", default=None, type=str, help="YAML file containing the structure to use. If provided, this will skip the structure generation process.")
-    parser.add_argument("--review-from", "-r", default=None, help="Path to a pre-written .TEX to begin reviewing.")
     parser.add_argument("--paper", "-p", default=None, help="Path to .TEX paper to use. If provided, won't write one from the structure, and will skip directly to reviewing it (unless --no-review) is provided")
     parser.add_argument("--no-review", action="store_true", help="Skip content/writing review step")
     parser.add_argument("--nblm", action="store_true", help="Use NotebookLM for generating the structure")

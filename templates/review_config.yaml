@@ -112,7 +112,8 @@ apply_prompt: |
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
     - DO NOT add "\includegraphics" if the figure is TikZ
   - FIGURES FROM THE REFERENCES MUST ALSO BE ADDED - CITE THEM OR ADD THEM AS A BLANK FIGURE WITH A DESCRIPTIVE CAPTION.
-    - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**
+    - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**, but DON'T say it's a placeholder or use \cite in this.
+
   - PREFER TIKZ OVER REFERENCE FIGURES
   - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
 
