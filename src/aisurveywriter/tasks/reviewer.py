@@ -90,9 +90,9 @@ class PaperReviewer(PipelineTask):
         
         # read reference content and initialize llm chain
         refcontent = self._get_ref_content(self._discard_ref_sections, self._summarize, self._use_faiss, self._faiss_embeddings)
-        review_sys = SystemMessagePromptTemplate.from_template(self.review_prompt.replace("{{refcontents}}", refcontent))
+        review_sys = SystemMessagePromptTemplate.from_template(self.review_prompt)
         review_hum = HumanMessagePromptTemplate.from_template("Section to review:\n- Title: {title}\n- Content:\n{content}")
-        apply_sys = SystemMessagePromptTemplate.from_template(self.apply_prompt.replace("{{refcontents}}", refcontent))
+        apply_sys = SystemMessagePromptTemplate.from_template(self.apply_prompt)
         apply_hum = HumanMessagePromptTemplate.from_template("- Directives for this section:\n{directives}\n\n- Section latex content:\n\n{content}")
 
         sz = len(self.paper.sections)
@@ -105,11 +105,11 @@ class PaperReviewer(PipelineTask):
             # first get review from llm
             self.llm.init_chain_messages(review_sys, review_hum)
             elapsed, response = time_func(self.llm.invoke, {
+                "refcontents": refcontent,
                 "subject": self.paper.subject,
                 "title": section.title,
                 "content": section.content,
             })
-            improv_points = response.content
             named_log(self, f"==> got llm review points | time elapsed: {elapsed} s | metadata:", response.usage_metadata)
             
             named_log(self, f"==> cooldown sending reveiw points to llm ({self._cooldown_sec} s)")
@@ -118,6 +118,7 @@ class PaperReviewer(PipelineTask):
             # now apply the review points
             self.llm.init_chain_messages(apply_sys, apply_hum)
             elapsed, response = time_func(self.llm.invoke, {
+                "refcontents": refcontent,
                 "subject": self.paper.subject,
                 "directives": response.content,
                 "content": section.content,

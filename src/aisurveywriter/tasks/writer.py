@@ -92,7 +92,7 @@ class PaperWriter(PipelineTask):
         # read reference content and initialize llm chain
         ref_content = self._get_ref_content(self._discard_ref_section, self._summarize, self._use_faiss, self._faiss_embeddings)
         self.llm.init_chain_messages(
-            SystemMessagePromptTemplate.from_template(self.prompt.replace("{{refcontents}}", ref_content)),
+            SystemMessagePromptTemplate.from_template(self.prompt),
             HumanMessagePromptTemplate.from_template("Write the currrent section:\n- Title: {title}\n- Description:\n{description}")
         )
         
@@ -103,6 +103,7 @@ class PaperWriter(PipelineTask):
         for i, section in enumerate(self.paper.sections):
             named_log(self, f"==> begin writing section ({i+1}/{sz}): {section.title}")
             elapsed, response = time_func(self.llm.invoke, {
+                "refcontents": ref_content,
                 "subject": self.paper.subject,
                 "title": section.title,
                 "description": section.description,

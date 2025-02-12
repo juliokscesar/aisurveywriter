@@ -41,7 +41,7 @@ bib_review_prompt: |
 
 review_prompt: |
   """
-  {{refcontents}}
+  {refcontents}
   """
 
   - You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey scientific paper on this subjects
@@ -74,7 +74,7 @@ review_prompt: |
 
 apply_prompt: |
   """
-  {{refcontents}}
+  {refcontents}
   """
 
   - **You are an expert in academic writing, specially in the field of "{subject}".**
