@@ -55,8 +55,9 @@ class FigureExtractor(PipelineTask):
     def __call__(self, input_data: PaperData = None):
         return self.pipeline_entry(input_data)
     
-    def create_faiss(self):
-        img_data = self.extract()
+    def create_faiss(self, img_data: List[dict[str,str]] = None):
+        if not img_data:
+            img_data = self.extract()
         faiss = self._imgdata_faiss(img_data, self.faiss_save_path)
         return faiss
     
@@ -68,7 +69,6 @@ class FigureExtractor(PipelineTask):
         
         img_data = []
         self.save_dir = os.path.abspath(self.save_dir)
-        self.imgs_dir = self.save_dir
         print(self.pdf_paths)
         prompt_template = f"'''\n{{pdfcontent}}\n'''\n\nThe text above is from a reference relevant for the subject {self.subject}. The image provided next is from this document.\n\nProvide a detailed and descriptive description of the image, be direct, objective and clear in your description -- a maximum of 200 words."
         img_input_template = "data:image/png;base64,{imgb64}"
@@ -103,6 +103,10 @@ class FigureExtractor(PipelineTask):
                     "path": os.path.basename(img["path"]),
                     "description": response.content,
                 })
+
+        # save each image description
+        with open("imgdata.yaml", "w", encoding="utf-8") as f:
+            yaml.safe_dump({"data": img_data}, f)
 
         return img_data
 
@@ -145,7 +149,7 @@ class FigureExtractor(PipelineTask):
                     
                     try:
                         path = os.path.join(self.save_dir, result.metadata["path"])
-                        shutil.copy(os.path.join(imgs_dir, result.metadata["path"]), path)
+                        shutil.copy(os.path.join(self.imgs_dir, result.metadata["path"]), path)
                     except Exception as e:
                         path = result.metadata["path"]
                         named_log(self, f"Couldn't copy {path} to save directory: {e}")

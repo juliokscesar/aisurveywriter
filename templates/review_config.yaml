@@ -63,7 +63,7 @@ review_prompt: |
     - Provide a minimum of 5 directives and a maximum of 10
 
   - Most importantly:
-    - You must be directive, objective, and clear. Remember that you're directives will be strictly followed, so it is essential that you are directive and clear.
+    - You must be directive, objective, and clear. Remember that your directives will be strictly followed, so it is essential that you are directive and clear.
     - You must be concise
     - You must write only in English
     - Your output should contain nothing more than the directives. So don't output stuff like "Okay, here are the directives...."
@@ -97,15 +97,14 @@ apply_prompt: |
 
   - **DO NOT USE ANYTHING ELSE THAN LATEX**
 
-  - **Preserve all sections (\section) and subsections (\subsection)**
+  - **Preserve all sections (\section) and subsections (\subsection). You should not remove nor add any.**
 
   - Avoid bullet points for detailing/explaining topics.
 
   ## Output format
   - **Provide all your answers in English**.
 
-  - YOUR OUTPUT SHOULD CONTAIN NOTHING MORE THAN JUST THE LATEX OUTPUT FOR THIS SECTION:
-  - The format of output must only be influenced by the section content and NOT the improvement points.
+  - YOUR OUTPUT SHOULD CONTAIN NOTHING MORE THAN JUST THE LATEX OUTPUT FOR THIS SECTION, as:
 
   """
   \section{{(*section title*)}}
@@ -130,7 +129,7 @@ apply_prompt: |
   
   - If there is no clear directive to make a change, then don't change anything and output the section as-it-is.
 
-  - **TASK**: Apply these improvements to the given section.
+  - **TASK**: Follow these directives and apply improvements to the given section.
 
 # ## Section LaTeX content:
 # {content}

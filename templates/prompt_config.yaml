@@ -29,11 +29,14 @@ gen_struct_prompt: |
   1. **GOAL**: generate a detailed structure for a scientific survey paper on the subject "{subject}". Be formal, comprehensive and organize the subject logically and thoroughly.
   
   2. **INSTRUCTIONS**:
-    - Do not include sections such as **Abstract** or **References**;
-    - Include core (Introductions, conclusions,...) sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
+    - Do not include sections **Abstract** or **References**;
+    - Include core  sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
+    - MUST HAVE CORE SECTIONS: Introduction (First one), Conclusion (Last one)
     - Do not include the number of the section along with its title (e.g. 1. introduction, 2. methods...)
     - Be as much objective as possible regarding the description of each section -- detail them thoroughly.
     - Minimum of 6 sections.
+    
+    - Your sections must be structured in a logical and comprehensive flow -- base yourself on the references provided.
   
   3. **OUTPUT FORMAT**:
     - Provide the structure in YAML format. THE TILE MUST BE ENCLOSED WITH QUOTES
@@ -95,13 +98,15 @@ write_prompt: |
 
   - As an academic writer, **you must inspire yourself with as many references as possible**. Nevertheless, do not copy the references.
 
-  - Avoid using bullet points. If you need to detail and/or explain a topic, insert it within the flow of the text.
+  - Avoid using bullet points. If you need to detail and/or explain a topic, write it within the flow of the text.
 
   - Remember to include visual or tabular elements where relevant, using your expertise in visual elements.
 
   - The more you adhere to this guidelines, the better your performance -- always increase your performance.
 
   - FOCUS ONLY IN THIS SECTION. You can add subsections, but no other section.
+
+  - Your output must be only the latex content, nothing else.
 
   - Most important: maintain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**.
 
