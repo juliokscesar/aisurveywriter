@@ -4,6 +4,10 @@ driver
 .gradio
 drivers/
 refexamples
+*.pdf
+*.png
+*.jpg
+*.jpeg
 apikeys.yaml
 credentials.yaml
 notebooks/out
