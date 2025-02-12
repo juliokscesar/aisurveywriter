@@ -50,6 +50,7 @@ def generate_paper_survey(
     pipeline_status_queue: queue.Queue = None,
     request_cooldown_sec: int = int(60 * 1.5),
     embed_request_cooldown_sec: int = int(20),
+    faiss_confidence: float = 0.6,
 ):
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
@@ -161,7 +162,7 @@ def generate_paper_survey(
         # ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
         #                     prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
         ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, save_usedbib_path=save_path.replace(".tex", ".bib"), 
-                                                    save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), confidence=0.84)),
+                                                    save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), confidence=faiss_confidence)),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
         ("Add figures from references", tks.FigureExtractor(writer_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 

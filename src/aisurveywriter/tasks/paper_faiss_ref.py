@@ -30,7 +30,7 @@ class PaperFAISSReferencer(PipelineTask):
             self.vector_store
             named_log(self, f"Loaded local FAISS")
         else:
-            self.vector_store = self._faiss_from_bibdb(embed_model, bibdb_path, chunks=1000)
+            self.vector_store = self.faiss_from_bibdb(embed_model, bibdb_path, chunks=1000)
             named_log(self, "Created FAISS from .bib database")
             if save_faiss_path:
                 self.vector_store.save_local(save_faiss_path)
@@ -110,7 +110,7 @@ class PaperFAISSReferencer(PipelineTask):
             bibtexparser.dump(used_db, f)
         
     
-    def _faiss_from_bibdb(self, embed_model, bibdb_path: str, chunks: int = 1200):
+    def faiss_from_bibdb(self, embed_model, bibdb_path: str, chunks: int = 1200):
         bib_chunks = self._load_bibtex_to_docs(bibdb_path)
         splitter = CharacterTextSplitter(chunk_size=chunks, chunk_overlap=0)
         bib_docs = splitter.split_documents(bib_chunks)

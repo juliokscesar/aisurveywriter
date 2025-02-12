@@ -20,15 +20,15 @@ class EmbedModelType(Enum):
             case _:
                 return EmbedModelType.HuggingFace
 
-def load_embeddings(model: str, model_type: Union[EmbedModelType, str]):
+def load_embeddings(model: str, model_type: Union[EmbedModelType, str], **model_kwargs):
     if isinstance(model_type, str):
         model_type = EmbedModelType.from_str(model_type)
     match model_type:
         case EmbedModelType.OpenAI:
-            return OpenAIEmbeddings(model=model)
+            return OpenAIEmbeddings(model=model, **model_kwargs)
         case EmbedModelType.Google:
-            return GoogleGenerativeAIEmbeddings(model=model)
+            return GoogleGenerativeAIEmbeddings(model=model, **model_kwargs)
         case EmbedModelType.HuggingFace:
-            return HuggingFaceEmbeddings(model_name=model)
+            return HuggingFaceEmbeddings(model_name=model, model_kwargs=model_kwargs)
         case _:
             raise ValueError("Invalid model type:", model_type)
