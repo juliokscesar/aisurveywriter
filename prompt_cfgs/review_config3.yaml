@@ -20,8 +20,7 @@ tex_review_prompt: |
 
   4. **Preserve the Section Content**: Do not modify, rephrase, or summarize the textual content in any way. Only adjust syntax-related issues.
 
-  5. **Adjust TikZ figures**: 
-    - Double-check the TikZ pictures to make sure the figure will be appropiately displayed (with no overlaps specially)
+  5. **Adjust TikZ figures**: If there's any tikz figure present (given by \begin{{tikzpicture}}), double-check the TikZ commands to make sure the figure will be appropiately displayed (with no overlaps specially)
 
   6. If you find any non-LaTeX syntax (such as Markdown), convert it entirely to LaTeX.
 
@@ -40,10 +39,6 @@ bib_review_prompt: |
 
 
 review_prompt: |
-  """
-  {{refcontents}}
-  """
-
   - You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey scientific paper on this subjects
 
   - The survey is thoroughly based on the provided references.
@@ -68,22 +63,18 @@ review_prompt: |
     - You must write only in English
     - Your output should contain nothing more than the directives. So don't output stuff like "Okay, here are the directives...."
 
-# - Section title: "{title}"
-# - Section content: "{content}"
+  - Section title: "{title}"
+  - Section content: "{content}"
 
 
 apply_prompt: |
-  """
-  {{refcontents}}
-  """
-
   - **You are an expert in academic writing, specially in the field of "{subject}".**
 
-  - Some references are provided above, which you must follow
-
-  - You will receive LaTex content of a section from a survey paper on the subject {subject} that you are writing
+  - Below is the LaTex content of the section "{title}" from a survey paper on the subject {subject} that you are writing
 
   - You are given instructions from a pre-review of the paper, containing suggestions and direct points to what you must do
+
+  - **TASK**: Apply these improvements to the given section.
 
   ## Requirements
 
@@ -119,7 +110,7 @@ apply_prompt: |
   - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT:
     - It is relevant to include figures where a topic can be easily explained visually
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
-      - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
+    - DO NOT add "\includegraphics" if the figure is TikZ
   - FIGURES FROM THE REFERENCES MUST ALSO BE ADDED - CITE THEM OR ADD THEM AS A BLANK FIGURE WITH A DESCRIPTIVE CAPTION.
     - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**, but DON'T say it's a placeholder or use \cite in this.
 
@@ -128,11 +119,11 @@ apply_prompt: |
 
   - FOCUS ONLY IN THIS SECTION. You can add subsections, but no other section.
   
+  - It is essential that your output contains only the section LaTeX, with clear and correct formatting.
+  
   - If there is no clear directive to make a change, then don't change anything and output the section as-it-is.
 
-  - **TASK**: Apply these improvements to the given section.
-
-# ## Section LaTeX content:
-# {content}
+  ## Section LaTeX content:
+  {content}
 
   

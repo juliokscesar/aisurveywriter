@@ -5,7 +5,7 @@ import re
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.messages import SystemMessage
-
+from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 from aisurveywriter.core.paper import PaperData, SectionData
 from aisurveywriter.core.llm_handler import LLMHandler
@@ -90,8 +90,11 @@ class PaperWriter(PipelineTask):
             self.prompt = prompt
         
         # read reference content and initialize llm chain
-        sysmsg = SystemMessage(content=self._get_ref_content(self._discard_ref_section, self._summarize, self._use_faiss, self._faiss_embeddings))
-        self.llm.init_chain(sysmsg, self.prompt)
+        ref_content = self._get_ref_content(self._discard_ref_section, self._summarize, self._use_faiss, self._faiss_embeddings)
+        self.llm.init_chain_messages(
+            SystemMessagePromptTemplate.from_template(self.prompt.replace("{{refcontents}}", ref_content)),
+            HumanMessagePromptTemplate.from_template("Write the currrent section:\n- Title: {title}\n- Description:\n{description}")
+        )
         
         sz = len(self.paper.sections)
         word_count = 0
@@ -145,7 +148,7 @@ class PaperWriter(PipelineTask):
                 case _:
                     raise ValueError(f"Invalid embeddings vendor {faiss_embeddings!r}")
             vec = pdfs.vector_store(embed)
-            relevant = vec.similarity_search(f"Get useful, techinal, and analytical information on the subject {self.paper.subject}")
+            relevant = vec.similarity_search(f"Relation to {self.paper.subject}")
             content = "\n".join([doc.page_content for doc in relevant])
         else:
             if discard_ref_section:

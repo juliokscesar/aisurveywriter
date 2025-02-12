@@ -16,7 +16,7 @@ from aisurveywriter.core.paper import PaperData
 from aisurveywriter.utils import named_log, countdown_log, image_to_base64
 
 class FigureExtractor(PipelineTask):
-    def __init__(self, llm: LLMHandler, embed, subject: str, pdf_paths: List[str], save_dir: str, faiss_save_path: Optional[str] = None, local_faiss_path: Optional[str] = None, imgs_dir: Optional[str] = None, paper: Optional[PaperData] = None, request_cooldown_sec: int = 30):
+    def __init__(self, llm: LLMHandler, embed, subject: str, pdf_paths: List[str], save_dir: str, faiss_save_path: Optional[str] = None, local_faiss_path: Optional[str] = None, imgs_dir: Optional[str] = None, paper: Optional[PaperData] = None, request_cooldown_sec: int = 30, embed_req_cooldown_sec: int = 0):
         self.no_divide = True
         self.llm = llm
         self.embed = embed
@@ -24,13 +24,21 @@ class FigureExtractor(PipelineTask):
         self.paper = paper
         self.pdf_paths = pdf_paths.copy()
         self.save_dir = os.path.abspath(save_dir)
-        self.imgs_dir = os.path.abspath(imgs_dir)
+        if imgs_dir:
+            self.imgs_dir = os.path.abspath(imgs_dir)
+        else:
+            self.imgs_dir = self.save_dir
+
+        if self.imgs_dir == self.save_dir:
+            self.imgs_dir = os.path.join(self.imgs_dir, "used")
+            
         self.faiss_save_path = faiss_save_path
         self.faiss = None
         if local_faiss_path:
             self.faiss = FAISS.load_local(local_faiss_path, embed, allow_dangerous_deserialization=True)
         
         self._cooldown_sec = request_cooldown_sec
+        self._embed_cooldown = embed_req_cooldown_sec
         
     def pipeline_entry(self, input_data: PaperData = None):
         if input_data:
@@ -146,6 +154,10 @@ class FigureExtractor(PipelineTask):
                     section.content = section.content.replace(figname, os.path.basename(path))
                 else:
                     named_log(self, f"Couldn't find a match for {figname}: {caption!r} that wasn't used before")
+
+                if self._embed_cooldown:
+                    named_log(self, f"Initiating cooldown of {self._embed_cooldown} for Text Embedding model request")
+                    countdown_log("", self._embed_cooldown)
             
         return self.paper
         

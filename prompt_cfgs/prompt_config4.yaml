@@ -57,11 +57,7 @@ gen_struct_prompt: |
 
 
 write_prompt: |
-  """
-  {{refcontents}}
-  """
-
-  **BASE YOUR KNOWLEDGE IN THE PROVIDED REFERENCES ABOVE; !ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO!:**
+  **ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO:**
 
   **You must use only LaTeX format, using the following guidelines for structure and content:**
   - LaTeX Sectioning:
@@ -76,12 +72,13 @@ write_prompt: |
   - Figures and Tables:
     - If the section is too short (less than 500 words), you must include at least one visual element:
       - Include Figures by either using the TikZ package to create your own, or citing Figures from other works (and pointing it out)
-      - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
       - Include tables that are adequate for the explanation of a topic
+      - DO NOT add "\includegraphics" if the Figure is TikZ
     - Else, acquire insights from the content of the section and judge if a Figure would be beneficial:
       - If there is some visual topic to be explained, consider using TikZ package to create a visual explanation
       - If not tikz, use figures from the references, either by explictly citing them or add a placeholder with a dummy name for a figure with a descriptive caption
       - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**, but DON'T say it's a placeholder or use \cite in this.
+      - DO NOT ADD A PLACEHOLDER IF IN A TIKZPICTURE
 
   - **Write in English only**.
 
@@ -89,7 +86,7 @@ write_prompt: |
 
   - Your task is to write a complete survey on {subject} based on the references that are given.
 
-  - You are pragmatic, so you are writing it section by section, as the user provides you with a section title and its description.
+  - You are pragmatic, so you are writing it section by section, and now you must write the section titled "{title}".
 
   - From your experience, you know that you must incorporate direct insights from the authors, from works cited by these authors, and insights you gather yourself.
 
@@ -105,8 +102,8 @@ write_prompt: |
 
   - Most important: maintain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**.
 
-# - Here's what you know that must be included in the section "{title}":
-# {description}
+  - Here's what you know that must be included in the section "{title}":
+  {description}
 
 
 add_reference_prompt: |

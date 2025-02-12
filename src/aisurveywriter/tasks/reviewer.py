@@ -5,6 +5,7 @@ import re
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.messages import SystemMessage
+from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 
 from aisurveywriter.core.paper import PaperData, SectionData
@@ -88,8 +89,12 @@ class PaperReviewer(PipelineTask):
             self.prompt = prompt
         
         # read reference content and initialize llm chain
-        refmsg = SystemMessage(content=self._get_ref_content(self._discard_ref_sections, self._summarize, self._use_faiss, self._faiss_embeddings))
-        
+        refcontent = self._get_ref_content(self._discard_ref_sections, self._summarize, self._use_faiss, self._faiss_embeddings)
+        review_sys = SystemMessagePromptTemplate.from_template(self.review_prompt.replace("{{refcontents}}", refcontent))
+        review_hum = HumanMessagePromptTemplate.from_template("Section to review:\n- Title: {title}\n- Content:\n{content}")
+        apply_sys = SystemMessagePromptTemplate.from_template(self.apply_prompt.replace("{{refcontents}}", refcontent))
+        apply_hum = HumanMessagePromptTemplate.from_template("- Directives for this section:\n{directives}\n\n- Section latex content:\n\n{content}")
+
         sz = len(self.paper.sections)
         word_count = 0
         # review section by section
@@ -98,7 +103,7 @@ class PaperReviewer(PipelineTask):
 
             named_log(self, f"==> asking LLM for review points")
             # first get review from llm
-            self.llm.init_chain(refmsg, self.review_prompt)
+            self.llm.init_chain_messages(review_sys, review_hum)
             elapsed, response = time_func(self.llm.invoke, {
                 "subject": self.paper.subject,
                 "title": section.title,
@@ -111,15 +116,10 @@ class PaperReviewer(PipelineTask):
             countdown_log("", self._cooldown_sec)
             
             # now apply the review points
-            self.llm.init_chain(
-                ctxmsg=SystemMessage(
-                    content=f"- YOUR REFERENCES:\n\"\"\"\n{refmsg.content}\"\"\"\n\n- REVIEW DIRECTIVES:\n\"\"\"{response.content}\"\"\"\n\n",
-                ), 
-                prompt=self.apply_prompt
-            )
+            self.llm.init_chain_messages(apply_sys, apply_hum)
             elapsed, response = time_func(self.llm.invoke, {
                 "subject": self.paper.subject,
-                "title": section.title,
+                "directives": response.content,
                 "content": section.content,
                 # "review_points": improv_points, testing with improve points as system message
             })

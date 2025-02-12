@@ -36,7 +36,7 @@ class PaperFAISSReferencer(PipelineTask):
                 self.vector_store.save_local(save_faiss_path)
         
         
-    def pipeline_entry(self, input_data):
+    def pipeline_entry(self, input_data: PaperData):
         if not isinstance(input_data, PaperData) or not input_data:
             raise TypeError(f"Task {self.__class__.__name__} requires input of type PaperData in pipe entry")
         paper = self.reference(input_data)
