@@ -5,7 +5,6 @@ import bibtexparser
 from time import sleep
 
 from langchain_community.docstore.document import Document
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import CharacterTextSplitter
 
@@ -31,7 +30,7 @@ class PaperFAISSReferencer(PipelineTask):
             self.vector_store
             named_log(self, f"Loaded local FAISS")
         else:
-            self.vector_store = self._faiss_from_bibdb(embed_model, bibdb_path, chunks=1200)
+            self.vector_store = self._faiss_from_bibdb(embed_model, bibdb_path, chunks=1000)
             named_log(self, "Created FAISS from .bib database")
             if save_faiss_path:
                 self.vector_store.save_local(save_faiss_path)
