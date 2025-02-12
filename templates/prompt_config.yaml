@@ -58,7 +58,7 @@ gen_struct_prompt: |
 
 write_prompt: |
   """
-  {{refcontents}}
+  {refcontents}
   """
 
   **BASE YOUR KNOWLEDGE IN THE PROVIDED REFERENCES ABOVE; !ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO!:**
