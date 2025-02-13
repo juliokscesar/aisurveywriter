@@ -9,6 +9,7 @@ from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessag
 
 from aisurveywriter.core.paper import PaperData, SectionData
 from aisurveywriter.core.llm_handler import LLMHandler
+from aisurveywriter.core.text_embedding import load_embeddings
 from aisurveywriter.core.pdf_processor import PDFProcessor
 from aisurveywriter.tasks.pipeline_task import PipelineTask
 from aisurveywriter.utils import named_log, countdown_log, diff_keys, time_func
@@ -17,7 +18,7 @@ class PaperWriter(PipelineTask):
     """
     A class abstraction for the process of writing a survey paper
     """
-    def __init__(self, llm: LLMHandler, prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, discard_ref_section=True, request_cooldown_sec: int = 60 * 1.4, summarize_refs=False, use_faiss=False, faiss_embeddings: str = "google"):
+    def __init__(self, llm: LLMHandler, prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, discard_ref_section=True, request_cooldown_sec: int = 60 * 1.4, summarize_refs=False, use_faiss=False, embedding=None):
         """
         Intializes a PaperWriter
         
@@ -47,7 +48,7 @@ class PaperWriter(PipelineTask):
         self._cooldown_sec = int(request_cooldown_sec)
         self._summarize = summarize_refs
         self._use_faiss = use_faiss
-        self._faiss_embeddings = faiss_embeddings
+        self._embed = embedding
         
     def pipeline_entry(self, input_data: Union[PaperData, dict]) -> PaperData:
         """
@@ -90,7 +91,9 @@ class PaperWriter(PipelineTask):
             self.prompt = prompt
         
         # read reference content and initialize llm chain
-        ref_content = self._get_ref_content(self._discard_ref_section, self._summarize, self._use_faiss, self._faiss_embeddings)
+        if not self._use_faiss:
+            ref_content = self._get_ref_content(self._discard_ref_section, self._summarize, self._use_faiss)
+            
         self.llm.init_chain_messages(
             SystemMessagePromptTemplate.from_template(self.prompt),
             HumanMessagePromptTemplate.from_template("Write the currrent section:\n- Title: {title}\n- Description:\n{description}")
@@ -102,6 +105,8 @@ class PaperWriter(PipelineTask):
         # write section by section
         for i, section in enumerate(self.paper.sections):
             named_log(self, f"==> begin writing section ({i+1}/{sz}): {section.title}")
+            if self._use_faiss:
+                ref_content = self._get_ref_content(self._discard_ref_section, use_faiss=self._use_faiss, section=section)
             elapsed, response = time_func(self.llm.invoke, {
                 "refcontents": ref_content,
                 "subject": self.paper.subject,
@@ -125,7 +130,7 @@ class PaperWriter(PipelineTask):
         return self.paper
 
 
-    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, faiss_embeddings: str ="google") -> Union[str,None]:
+    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, section: SectionData = None) -> Union[str,None]:
         """
         Returns the content of all PDF references in a single string
         If the references weren't set in the constructor, return None
@@ -141,15 +146,10 @@ class PaperWriter(PipelineTask):
         if summarize:
             content = pdfs.summarize_content(self.llm.llm, show_metadata=True)
         elif use_faiss:
-            match faiss_embeddings.strip().lower():
-                case "openai":
-                    embed = OpenAIEmbeddings()
-                case "google":
-                    embed = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
-                case _:
-                    raise ValueError(f"Invalid embeddings vendor {faiss_embeddings!r}")
-            vec = pdfs.vector_store(embed)
-            relevant = vec.similarity_search(f"Relation to {self.paper.subject}")
+            assert(section is not None)
+            vec = pdfs.faiss(self._embed)
+            # relevant = vec.similarity_search(f"Relation to {self.paper.subject}")
+            relevant = vec.similarity_search(f"Retrieve contextual, techinal, and analytical information on the subject {self.paper.subject} for a section titled \"{section.title}\", description:\n{section.description}")
             content = "\n".join([doc.page_content for doc in relevant])
         else:
             if discard_ref_section:

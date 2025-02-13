@@ -41,7 +41,6 @@ class GradioInterface:
             "gte-Qwen2-1.5b (HuggingFace)": ("huggingface", "Alibaba-NLP/gte-Qwen2-1.5B-instruct"),
             "stella-1.5B (HuggingFace)": ("huggingface", "dunzhang/stella_en_1.5B_v5"),
             "all-mpnet-base-v2": ("huggingface", "sentence-transformers/all-mpnet-base-v2"),
-            "bge-m3": ("huggingface", "BAAI/bge-m3"),
             "multilingual-e5-large-instruct": ("hugginface", "intfloat/multilingual-e5-large-instruct"),
         }
         self.gr_interface = gr.ChatInterface(
@@ -64,6 +63,7 @@ class GradioInterface:
                 gr.Textbox(label="Path to local FAISS vector store of every figure and its description, accross all references (if none is provided, one will be created)"),
                 gr.Textbox(label="Path to directory containing images used in FAISS figure. If none is provided, one will be created"),
                 gr.Number(value=float(0.6), label="Confidence score threshold for FAISS similarity search"),
+                gr.Checkbox(label="Use FAISS for PDF references", info="Use FAISS to retrieve only a part of the references, instead of the entire PDF", value=False),
             ],
             title="Survey Paper Writer",
             description="Provide a subject, reference PDFs, and a save path to generate and save a survey paper.",
@@ -73,7 +73,7 @@ class GradioInterface:
     def launch(self, *args, **kwargs):
         self.gr_interface.launch(*args, **kwargs)
 
-    def chat_fn(self, message, history, refs, save_path, model, embed_model, req_cooldown_sec, pregen_struct, prewritten_paper, no_review, config_path, nblm_generate, bibdb_path, faissdb_path, faissfig_path, imgs_dir, faiss_confidence):
+    def chat_fn(self, message, history, refs, save_path, model, embed_model, req_cooldown_sec, pregen_struct, prewritten_paper, no_review, config_path, nblm_generate, bibdb_path, faissdb_path, faissfig_path, imgs_dir, faiss_confidence, use_ref_faiss):
         if self._is_running:
             return "A paper survey generation is already running. Please wait -- this really takes a long time."
         if len(refs) == 0:
@@ -94,6 +94,7 @@ class GradioInterface:
                 "model_type": self.supported_models[model][0],
                 "pregen_struct_yaml": pregen_struct.strip(),
                 "prewritten_paper_tex": prewritten_paper.strip(),
+                "use_ref_faiss": use_ref_faiss,
                 "no_review": no_review,
                 "config_path": config_path.strip(),
                 "use_nblm_generation": nblm_generate,

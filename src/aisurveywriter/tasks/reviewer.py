@@ -18,7 +18,7 @@ class PaperReviewer(PipelineTask):
     """
     A class abstraction for the process of reviewing a generated survey paper
     """
-    def __init__(self, llm: LLMHandler, review_prompt: str, apply_prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, request_cooldown_sec: int = 60 * 1.5, discard_ref_sections=True, summarize_refs=False, use_faiss=False, faiss_embeddings: str = "google"):
+    def __init__(self, llm: LLMHandler, review_prompt: str, apply_prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, request_cooldown_sec: int = 60 * 1.5, discard_ref_sections=True, summarize_refs=False, use_faiss=False, embeddings=None):
         """
         Intializes a PaperWriter
         
@@ -46,7 +46,7 @@ class PaperReviewer(PipelineTask):
         self._discard_ref_sections = discard_ref_sections
         self._summarize = summarize_refs
         self._use_faiss = use_faiss
-        self._faiss_embeddings = faiss_embeddings
+        self._embed = embeddings
         
     def pipeline_entry(self, input_data: Union[PaperData, dict]) -> PaperData:
         """
@@ -89,7 +89,8 @@ class PaperReviewer(PipelineTask):
             self.prompt = prompt
         
         # read reference content and initialize llm chain
-        refcontent = self._get_ref_content(self._discard_ref_sections, self._summarize, self._use_faiss, self._faiss_embeddings)
+        if not self._use_faiss:
+            refcontent = self._get_ref_content(self._discard_ref_sections, self._summarize, self._use_faiss)
         review_sys = SystemMessagePromptTemplate.from_template(self.review_prompt)
         review_hum = HumanMessagePromptTemplate.from_template("Section to review:\n- Title: {title}\n- Content:\n{content}")
         apply_sys = SystemMessagePromptTemplate.from_template(self.apply_prompt)
@@ -104,6 +105,9 @@ class PaperReviewer(PipelineTask):
             named_log(self, f"==> asking LLM for review points")
             # first get review from llm
             self.llm.init_chain_messages(review_sys, review_hum)
+            if self._use_faiss:
+                refcontent = self._get_ref_content(self._discard_ref_sections, use_faiss=self._use_faiss, section=section)
+
             elapsed, response = time_func(self.llm.invoke, {
                 "refcontents": refcontent,
                 "subject": self.paper.subject,
@@ -142,7 +146,7 @@ class PaperReviewer(PipelineTask):
         return self.paper
 
 
-    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, faiss_embeddings: str ="google") -> Union[str,None]:
+    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, section: SectionData = None) -> Union[str,None]:
         """
         Returns the content of all PDF references in a single string
         If the references weren't set in the constructor, return None
@@ -158,15 +162,8 @@ class PaperReviewer(PipelineTask):
         if summarize:
             content = pdfs.summarize_content(self.llm.llm, show_metadata=True)
         elif use_faiss:
-            match faiss_embeddings.strip().lower():
-                case "openai":
-                    embed = OpenAIEmbeddings()
-                case "google":
-                    embed = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
-                case _:
-                    raise ValueError(f"Invalid embeddings vendor {faiss_embeddings!r}")
-            vec = pdfs.vector_store(embed)
-            relevant = vec.similarity_search(f"Get useful, techinal, and analytical information on the subject {self.paper.subject}")
+            vec = pdfs.faiss(self._embed)
+            relevant = vec.similarity_search(f"Retrieve contextual, techinal, and analytical information on the subject {self.paper.subject} for a section titled \"{section.title}\", description:\n{section.description}")
             content = "\n".join([doc.page_content for doc in relevant])
         else:
             if discard_ref_section:

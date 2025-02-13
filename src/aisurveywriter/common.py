@@ -10,7 +10,7 @@ from aisurveywriter.core.text_embedding import load_embeddings
 from aisurveywriter.core.pipeline import PaperPipeline
 import aisurveywriter.tasks as tks
 from aisurveywriter.core.chatbots import NotebookLMBot
-from aisurveywriter.utils import init_driver
+from aisurveywriter.utils import init_driver, time_func
 from aisurveywriter.core.paper import PaperData
 
 def tex_filter_survey(tex_content: str):
@@ -36,6 +36,7 @@ def generate_paper_survey(
     save_path: str, 
     model: str = "gemini-1.5-flash", 
     model_type: str = "google", 
+    use_ref_faiss=False,
     pregen_struct_yaml: Optional[str] = None, 
     prewritten_paper_tex: Optional[str] = None,
     no_review: bool = False,
@@ -68,7 +69,7 @@ def generate_paper_survey(
     writer_llm = LLMHandler(
         model=model,
         model_type=model_type,
-        temperature=0.6,
+        temperature=0.4,
     )
     print(f"Loaded LLM: {model}")
     
@@ -107,7 +108,7 @@ def generate_paper_survey(
             nblm.login()
             gen_llm = nblm
         else:
-            gen_llm = writer_llm
+            gen_llm = LLMHandler(model="gemini-2.0-flash", model_type="google")
             
         first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
         first_name = "Paper Structure Generator"
@@ -130,13 +131,13 @@ def generate_paper_survey(
         next_write = tks.DeliverTask()
         next_write_name = "Input paper loaded to review"
     else:
-        write_step = tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True, request_cooldown_sec=request_cooldown_sec)
+        write_step = tks.PaperWriter(writer_llm, config.prompt_write, ref_paths=ref_paths, discard_ref_section=True, request_cooldown_sec=request_cooldown_sec, use_faiss=use_ref_faiss, embedding=embed)
         write_step_name = "Write Paper"
         next_write = tks.PaperSaver(save_path.replace(".tex", "-rawscratch.tex"), config.tex_template_path)
         next_write_name = "Save Paper"
 
     if not no_review:
-        review_step = tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths, request_cooldown_sec=request_cooldown_sec)
+        review_step = tks.PaperReviewer(writer_llm, config.prompt_review, config.prompt_apply_review, ref_paths=ref_paths, request_cooldown_sec=request_cooldown_sec, use_faiss=use_ref_faiss, embeddings=embed)
         review_step_name = "Review Paper"
         
         next_review = tks.PaperSaver(save_path.replace(".tex", "-rev.tex"), config.tex_template_path)
@@ -177,5 +178,5 @@ def generate_paper_survey(
     ], status_queue=pipeline_status_queue)
     
     print(f"==> BEGINNING PAPER SURVEY GENERATION PIPELINE WITH {len(pipe.steps)} STEPS")
-    pipe.run()
-    print("==> PAPER SURVEY GENRATION PIPELINE FINISHED")
+    elapsed, _ = time_func(pipe.run)
+    print(f"==> PAPER SURVEY GENRATION PIPELINE FINISHED | TIME TAKEN: {elapsed} s")

@@ -81,6 +81,11 @@ class PDFProcessor:
         
         return "\n".join(summaries)
         
-    def vector_store(self, embeddings) -> FAISS:
-        vector_store = FAISS.from_documents(self.pdf_documents, embeddings)
+    def faiss(self, embeddings, chunk_size: int = 4000) -> FAISS:
+        splitter = CharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
+        docs = self.pdf_documents[0]
+        for doc in self.pdf_documents:
+            docs.extend(doc)
+        docs = splitter.split_documents(docs)
+        vector_store = FAISS.from_documents(docs, embeddings)
         return vector_store
