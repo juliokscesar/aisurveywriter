@@ -49,6 +49,7 @@ class ConfigManager:
             self.prompt_ref_extract = cfg["reference_extract_prompt"]
             self.prompt_ref_add = cfg["add_reference_prompt"]
             self.prompt_refine = cfg["refine_prompt"]
+            self.prompt_fig_add = cfg["add_figures_prompt"]
         else:
             raise ValueError(f"Missing configuration items in {self.prompt_config_path}")
         
@@ -87,6 +88,7 @@ class ConfigManager:
             "reference_extract_prompt",
             "add_reference_prompt",
             "refine_prompt",
+            "add_figures_prompt",
         ]
         diff = list(set(cfg.keys()) - set(PROMPT_KEYS))
         if len(diff) != 0:

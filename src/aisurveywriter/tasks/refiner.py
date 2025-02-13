@@ -1,6 +1,8 @@
 from typing import Optional
 import re
 
+from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
+
 from .pipeline_task import PipelineTask
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.paper import PaperData, SectionData
@@ -33,7 +35,9 @@ class PaperRefiner(PipelineTask):
         named_log(self, f"==> asking LLM to produce title and abstract")
         # this prompts takes the whole paper content + subject
         # and outputs title and abstract, maybe in a JSON format ({"title": ..., "abstract": ...})
-        self.llm.init_chain(ctxmsg=None, prompt=self.prompt)
+        sysmsg = SystemMessagePromptTemplate.from_template(self.prompt)
+        hummsg = HumanMessagePromptTemplate.from_template("Produce Title and Abstract for this LaTeX:\n\n{content}")
+        self.llm.init_chain_messages(sysmsg, hummsg)
         elapsed, response = time_func(self.llm.invoke, {
             "subject": self.paper.subject,
             "content": self.paper.full_content(),

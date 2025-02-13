@@ -77,9 +77,11 @@ write_prompt: |
 
   - Figures and Tables:
     - If the section is too short (less than 500 words), you must include at least one visual element:
-      - Include tables that are adequate for the explanation of a topic
-      - If there is some visual topic to be explained, USE TIKZ TO CREATE A VISUALIZATION
       - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
+      - Include tables that are adequate for the explanation of a topic
+      - If there is some visual topic to be explained, consider using TikZ package to create a visual explanation
+      - It is recommended to have at least ONE Figure from the references (not TikZ) -- create a figure block (\begin{{figure}}) with a dummy figure and use a very descriptive caption
+      - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**, but DON'T say it's a placeholder or use \cite in this.
 
   - **Write in English only**.
 

@@ -3,6 +3,7 @@ import re
 from typing import Optional
 import bibtexparser
 from time import sleep
+import random
 
 from langchain_community.docstore.document import Document
 from langchain_community.vectorstores import FAISS
@@ -13,7 +14,7 @@ from aisurveywriter.core.paper import PaperData
 from aisurveywriter.utils import named_log, time_func, countdown_log
 
 class PaperFAISSReferencer(PipelineTask):
-    def __init__(self, embed_model, bibdb_path: str, paper: PaperData = None, local_faissdb_path=None, save_usedbib_path: str = None, save_faiss_path: str = None, max_per_section: int = 60, max_per_sentence: int = 1, confidence=0.9):
+    def __init__(self, embed_model, bibdb_path: str, paper: PaperData = None, local_faissdb_path=None, save_usedbib_path: str = None, save_faiss_path: str = None, max_per_section: int = 60, max_per_sentence: int = 1, confidence=0.9, max_same_ref: int = 10):
         self.llm = None
         self.paper = paper
         self.embed_model = embed_model
@@ -23,6 +24,7 @@ class PaperFAISSReferencer(PipelineTask):
         self.max_per_section = max_per_section
         self.max_per_sentence = max_per_sentence
         self.confidence = confidence
+        self.max_same_ref = max_same_ref
         self.save_faiss_path = save_faiss_path
         
         if local_faissdb_path:
@@ -46,49 +48,62 @@ class PaperFAISSReferencer(PipelineTask):
     def reference(self, paper: PaperData = None):
         if paper:
             self.paper = paper
-        used_keys = []
-        # go section by section
+        used_keys = {}
+        
+        # Probability distribution for number of citations per sentence
+        probabilities = {1: 0.6, 2: 0.2, 3: 0.12, 4: 0.08}  # Modify if max_per_sentence changes
+        
         for section in self.paper.sections:
             ref_count = 0
-            # best_for_section = self.vector_store.similarity_search(section.content, k=self.ref_per_section)
-            
-            # add according to the sentences
-            sentences = re.split(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s", section.content)
+            sentences = re.split(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)((?<=\.|\?)\s)", section.content)
             cited_sentences = []
+            
             for i, sentence in enumerate(sentences):
                 if ref_count >= self.max_per_section:
                     cited_sentences.extend(sentences[i:])
                     break
-
-                if '\\' in sentence or '{' in sentence or '}' in sentence: # skip sentences with commands
-                    cited_sentences.append(sentences[i])
+                
+                if '\\' in sentence or '{' in sentence or '}' in sentence:
+                    cited_sentences.append(sentence)
                     continue
                 
-                #embedding = self.embed_model.embed_documents([sentence])[0]
                 results, scores = zip(*self.vector_store.similarity_search_with_score(sentence, k=self.max_per_section))
                 valid = {}
+                
+                # Sample how many references to use based on the probability
+                num_references = random.choices(
+                    population=list(probabilities.keys()),
+                    weights=list(probabilities.values()),
+                    k=1
+                )[0]
+                
+                num_references = min(num_references, self.max_per_sentence)  # Ensure it doesn’t exceed max
+                
                 for res, score in zip(results, scores):
-                    if len(valid) >= self.max_per_sentence:
+                    if len(valid) >= num_references:
                         break
                     if score < self.confidence:
                         continue    
-
+                    
                     key = res.metadata["citation_key"]
-                    valid[key] = res.page_content
                     if key not in used_keys:
-                        used_keys.append(key)
+                        used_keys[key] = 0
+                    elif used_keys[key] >= self.max_same_ref:
+                        continue
+                    
+                    valid[key] = res.page_content
                     ref_count += 1
-                        
+                    used_keys[key] += 1
+                
                 if valid:
                     cite_command = f"\\cite{{{', '.join(list(valid.keys()))}}}"
-
                     if sentence.endswith(('.', ',', ';', '!', '?')):
                         sentence = sentence[:-1] + ' ' + cite_command + sentence[-1]
                     else:
                         sentence += f" {cite_command}"
-        
+                
                 cited_sentences.append(sentence)
-        
+            
             section.content = " ".join(cited_sentences)
             named_log(self, f"Added {ref_count} references to section {section.title}")
         

@@ -9,3 +9,4 @@ from .paper_reference import *
 from .paper_faiss_ref import *
 from .refiner import *
 from .figure_extractor import *
+from .figure_add import *

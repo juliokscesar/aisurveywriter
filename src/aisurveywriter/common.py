@@ -51,7 +51,7 @@ def generate_paper_survey(
     pipeline_status_queue: queue.Queue = None,
     request_cooldown_sec: int = int(60 * 1.5),
     embed_request_cooldown_sec: int = int(20),
-    faiss_confidence: float = 0.6,
+    faiss_confidence: float = 0.7,
 ):
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
@@ -149,6 +149,16 @@ def generate_paper_survey(
         next_review = tks.DeliverTask()
         next_review_name = "Skip review save"
         
+    if not faissfig_path:
+        faissfig_path = save_path.replace(".tex", f"-{embed_model}-imgfaiss")
+        fig_extract = tks.FigureExtractor(writer_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 
+                                        faiss_save_path=faissfig_path, local_faiss_path=faissfig_path,
+                                        imgs_dir=imgs_path, request_cooldown_sec=embed_request_cooldown_sec)
+        fig_extract_name = "Extract figures from references"
+    else:
+        fig_extract = tks.DeliverTask()
+        fig_extract_name = "Skip figure extract"
+        
     pipe = PaperPipeline([
         (first_name, first),
         
@@ -160,15 +170,13 @@ def generate_paper_survey(
         
         (ref_extract_name, ref_extract),
         
-        # ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
-        #                     prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
         ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, save_usedbib_path=save_path.replace(".tex", ".bib"), 
-                                                    save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), max_per_section=80, max_per_sentence=1, confidence=faiss_confidence)),
+                                            save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), max_per_section=80, max_per_sentence=4, confidence=faiss_confidence, max_same_ref=10)),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
-        ("Add figures from references", tks.FigureExtractor(writer_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 
-                                                            faiss_save_path=save_path.replace(".tex", f"-{embed_model}-imgfaiss"), local_faiss_path=faissfig_path,
-                                                            imgs_dir=imgs_path, request_cooldown_sec=embed_request_cooldown_sec)),
+        (fig_extract_name, fig_extract),
+        ("Add Figures", tks.PaperFigureAdd(gen_llm, embed, faissfig_path, imgs_path, ref_paths, config.prompt_fig_add, os.path.dirname(save_path), llm_cooldown=request_cooldown_sec, embed_cooldown=embed_request_cooldown_sec)),
+        
         ("Save paper with figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),

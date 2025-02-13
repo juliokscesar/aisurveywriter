@@ -43,13 +43,14 @@ class FigureExtractor(PipelineTask):
     def pipeline_entry(self, input_data: PaperData = None):
         if input_data:
             self.paper = input_data
+
         if not self.faiss:
             img_data = self.extract()
             with open("refextract_imgdata.yaml", "w", encoding="utf-8") as f:
                 yaml.safe_dump({"data": img_data}, f)
             
             self.faiss = self._imgdata_faiss(img_data, self.faiss_save_path)
-        self.paper = self.add_to_paper(self.faiss, self.imgs_dir, self.paper)
+
         return self.paper
     
     def __call__(self, input_data: PaperData = None):
@@ -120,50 +121,6 @@ class FigureExtractor(PipelineTask):
             vector_store.save_local(faiss_save_path)
             
         return vector_store
-
-
-    def add_to_paper(self, figure_faiss, imgs_dir: str, paper: Optional[PaperData] = None):
-        if paper:
-            self.paper = paper
-        if figure_faiss:
-            self.faiss = figure_faiss
-        
-        os.makedirs(os.path.join(self.save_dir, "used"), exist_ok=True)
-        
-        fig_pattern = r"\\begin\{figure\}[\s\S]+?\\includegraphics[\S]*[\s]*\]]*?\{([\s\S]+?)\}[\s\S]*?\\caption\{([\s\S]+?)\}"
-        
-        used_imgs = []
-        for section in self.paper.sections:
-            fig_matches = [(m.start(), m.end(), m.group(1), m.group(2)) for m in re.finditer(fig_pattern, section.content)]
-            
-            for start, end, figname, caption in fig_matches:
-                # use caption to retrieve an image
-                results = self.faiss.similarity_search(f"{figname}: {caption}", k=5)
-                named_log(self, f"Best match for caption {figname}: {caption!r} in section {section.title} is: {', '.join([re.metadata["path"] for re in results])}")
-                
-                path = None
-                for result in results:
-                    if result.metadata["path"] in used_imgs:
-                        continue
-                    used_imgs.append(result.metadata["path"])
-                    
-                    try:
-                        path = os.path.join(self.save_dir, result.metadata["path"])
-                        shutil.copy(os.path.join(self.imgs_dir, result.metadata["path"]), path)
-                    except Exception as e:
-                        path = result.metadata["path"]
-                        named_log(self, f"Couldn't copy {path} to save directory: {e}")
-                
-                if path:
-                    section.content = section.content.replace(figname, os.path.basename(path))
-                else:
-                    named_log(self, f"Couldn't find a match for {figname}: {caption!r} that wasn't used before")
-
-                if self._embed_cooldown:
-                    named_log(self, f"Initiating cooldown of {self._embed_cooldown} for Text Embedding model request")
-                    countdown_log("", self._embed_cooldown)
-            
-        return self.paper
         
     def divide_subtasks(self, n, input_data=None):
         raise NotImplemented()
