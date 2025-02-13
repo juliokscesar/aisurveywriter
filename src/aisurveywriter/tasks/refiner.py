@@ -51,7 +51,7 @@ class PaperRefiner(PipelineTask):
             self.paper.sections.insert(0, SectionData(
                 title="Abstract",
                 description="paper abstract",
-                content=f"\\section{{Abstract}}\n\n{resp['abstract']}"
+                content=f"\\begin{{abstract}}\n\n{resp['abstract']}\n\n\\end{{abstract}}"
             ))
             self.paper.title = resp["title"]
         except:

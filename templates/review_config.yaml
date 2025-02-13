@@ -121,6 +121,7 @@ apply_prompt: |
       - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
   - FIGURES FROM THE REFERENCES MUST ALSO BE ADDED - CITE THEM OR ADD THEM AS A BLANK FIGURE WITH A DESCRIPTIVE CAPTION.
     - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**, but DON'T say it's a placeholder or use \cite in this.
+    - It is recommended to have at least ONE Figure from the references -- create a figure block (\begin{{figure}}) with a dummy figure and use a very descriptive caption
 
   - PREFER TIKZ OVER REFERENCE FIGURES
   - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
