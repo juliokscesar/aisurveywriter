@@ -12,7 +12,7 @@ os.environ["GOOGLE_API_KEY"] = read_credentials(f"{path}/credentials.yaml")["goo
 img_data = read_yaml(f"{path}/bib/filtered-imgdata.yaml")["data"]
 
 llm = LLMHandler(model="gemini-2.0-flash", model_type="google")
-model = "BAAI/bge-m3"
+model = "Snowflake/snowflake-arctic-embed-l-v2.0"
 embed = load_embeddings(model, "huggingface")
 fig = FigureExtractor(
     llm, embed, 
