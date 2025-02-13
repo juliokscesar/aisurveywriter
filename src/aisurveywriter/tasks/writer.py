@@ -106,7 +106,7 @@ class PaperWriter(PipelineTask):
         for i, section in enumerate(self.paper.sections):
             named_log(self, f"==> begin writing section ({i+1}/{sz}): {section.title}")
             if self._use_faiss:
-                ref_content = self._get_ref_content(self._discard_ref_section, use_faiss=self._use_faiss, section=section)
+                ref_content = self._get_ref_content(self._discard_ref_section, use_faiss=self._use_faiss, section=section, faiss_k=8)
             elapsed, response = time_func(self.llm.invoke, {
                 "refcontents": ref_content,
                 "subject": self.paper.subject,
@@ -130,7 +130,7 @@ class PaperWriter(PipelineTask):
         return self.paper
 
 
-    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, section: SectionData = None) -> Union[str,None]:
+    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, section: SectionData = None, faiss_k: int = 4) -> Union[str,None]:
         """
         Returns the content of all PDF references in a single string
         If the references weren't set in the constructor, return None
@@ -149,7 +149,7 @@ class PaperWriter(PipelineTask):
             assert(section is not None)
             vec = pdfs.faiss(self._embed)
             # relevant = vec.similarity_search(f"Relation to {self.paper.subject}")
-            relevant = vec.similarity_search(f"Retrieve contextual, techinal, and analytical information on the subject {self.paper.subject} for a section titled \"{section.title}\", description:\n{section.description}")
+            relevant = vec.similarity_search(f"Retrieve contextual, technical, and analytical information on the subject {self.paper.subject} for a section titled \"{section.title}\", description:\n{section.description}", k=faiss_k)
             content = "\n".join([doc.page_content for doc in relevant])
         else:
             if discard_ref_section:

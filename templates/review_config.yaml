@@ -114,7 +114,7 @@ apply_prompt: |
   """
 
   - DO NOT USE ANY BIBLATEX COMMAND ANYWHERE (including \cite, \bibliography, \printbibliography, \begin{{thebibliography}}, etc)
-  - DO NOT FOCUS ON ADDING REFERENCES, ONLY IN FOLLOWING THE REVIEW DIRECTIVES (DONT USE \cite ANYWHERE)
+  - DO NOT ADD REFERENCES, ONLY FOLLOW STRICTLY THE REVIEW DIRECTIVES (DONT USE \cite ANYWHERE)
   - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT:
     - It is relevant to include figures where a topic can be easily explained visually
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
@@ -129,7 +129,7 @@ apply_prompt: |
   
   - If there is no clear directive to make a change, then don't change anything and output the section as-it-is.
 
-  - **TASK**: Follow these directives and apply improvements to the given section.
+  - **TASK**: Follow these directives strictly and apply improvements to the given section. Do not remove nor add any sections.
 
 # ## Section LaTeX content:
 # {content}

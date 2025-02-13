@@ -72,18 +72,15 @@ write_prompt: |
     - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
 
   - Citations and References:
-    - DO NOT focus on citing anywhere. Focus only in writing.
+    - DO NOT try to add citations anywhere. Focus only in writing.
     - DO NOT use any kind of BibTex or bibliography-related commands (\printbibliography, \cite, \bibliography, etc)
-    - DO NOT ADD CITATION ANYWHERE
 
   - Figures and Tables:
     - If the section is too short (less than 500 words), you must include at least one visual element:
-      - Include Figures by either using the TikZ package to create your own, or citing Figures from other works (and pointing it out)
       - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
       - Include tables that are adequate for the explanation of a topic
-    - Else, acquire insights from the content of the section and judge if a Figure would be beneficial:
       - If there is some visual topic to be explained, consider using TikZ package to create a visual explanation
-      - If not tikz, use figures from the references, either by explictly citing them or add a placeholder with a dummy name for a figure with a descriptive caption
+      - If not tikz, use figures from the references, either by explictly citing them or add a placeholder with a dummy name for a figure and a descriptive caption
       - If you add a placeholder for a Figure: **IT MUST BE A FIGURE FROM THE REFERENCES**, but DON'T say it's a placeholder or use \cite in this.
 
   - **Write in English only**.
@@ -99,8 +96,6 @@ write_prompt: |
   - As an academic writer, **you must inspire yourself with as many references as possible**. Nevertheless, do not copy the references.
 
   - Avoid using bullet points. If you need to detail and/or explain a topic, write it within the flow of the text.
-
-  - Remember to include visual or tabular elements where relevant, using your expertise in visual elements.
 
   - The more you adhere to this guidelines, the better your performance -- always increase your performance.
 

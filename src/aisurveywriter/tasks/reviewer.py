@@ -90,7 +90,7 @@ class PaperReviewer(PipelineTask):
         
         # read reference content and initialize llm chain
         if not self._use_faiss:
-            refcontent = self._get_ref_content(self._discard_ref_sections, self._summarize, self._use_faiss)
+            refcontent = self._get_ref_content(self._discard_ref_sections, self._summarize, self._use_faiss, faiss_k=8)
         review_sys = SystemMessagePromptTemplate.from_template(self.review_prompt)
         review_hum = HumanMessagePromptTemplate.from_template("Section to review:\n- Title: {title}\n- Content:\n{content}")
         apply_sys = SystemMessagePromptTemplate.from_template(self.apply_prompt)
@@ -106,7 +106,7 @@ class PaperReviewer(PipelineTask):
             # first get review from llm
             self.llm.init_chain_messages(review_sys, review_hum)
             if self._use_faiss:
-                refcontent = self._get_ref_content(self._discard_ref_sections, use_faiss=self._use_faiss, section=section)
+                refcontent = self._get_ref_content(self._discard_ref_sections, use_faiss=self._use_faiss, section=section, faiss_k=5)
 
             elapsed, response = time_func(self.llm.invoke, {
                 "refcontents": refcontent,
@@ -146,7 +146,7 @@ class PaperReviewer(PipelineTask):
         return self.paper
 
 
-    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, section: SectionData = None) -> Union[str,None]:
+    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, section: SectionData = None, faiss_k: int = 5) -> Union[str,None]:
         """
         Returns the content of all PDF references in a single string
         If the references weren't set in the constructor, return None
@@ -163,7 +163,7 @@ class PaperReviewer(PipelineTask):
             content = pdfs.summarize_content(self.llm.llm, show_metadata=True)
         elif use_faiss:
             vec = pdfs.faiss(self._embed)
-            relevant = vec.similarity_search(f"Retrieve contextual, techinal, and analytical information on the subject {self.paper.subject} for a section titled \"{section.title}\", description:\n{section.description}")
+            relevant = vec.similarity_search(f"Retrieve contextual, techinal, and analytical information on the subject {self.paper.subject} for a section titled \"{section.title}\", description:\n{section.description}", k=faiss_k)
             content = "\n".join([doc.page_content for doc in relevant])
         else:
             if discard_ref_section:

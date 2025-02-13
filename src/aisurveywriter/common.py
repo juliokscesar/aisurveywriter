@@ -163,7 +163,7 @@ def generate_paper_survey(
         # ("Add References", tks.PaperReferencer(refs_llm, bibdb_path=refdb_path,
         #                     prompt=config.prompt_ref_add, cooldown_sec=75, save_usedbib_path=save_path.replace(".tex", ".bib"))),
         ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, save_usedbib_path=save_path.replace(".tex", ".bib"), 
-                                                    save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), confidence=faiss_confidence)),
+                                                    save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), max_per_section=80, max_per_sentence=1, confidence=faiss_confidence)),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
         ("Add figures from references", tks.FigureExtractor(writer_llm, embed, subject, ref_paths, save_dir=save_path.replace(".tex", "-usedimgs"), 

@@ -5,6 +5,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 import fitz
 from pathlib import Path
+import re
 
 from aisurveywriter.utils import named_log
 
@@ -84,7 +85,12 @@ class PDFProcessor:
     def faiss(self, embeddings, chunk_size: int = 4000) -> FAISS:
         splitter = CharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
         docs = self.pdf_documents[0]
+        # first remove references
         for doc in self.pdf_documents:
+            for pg in doc:
+                ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", pg.page_content, re.IGNORECASE)
+                if ref_match:
+                    pg.page_content = pg.page_content[:ref_match.start()].strip()
             docs.extend(doc)
         docs = splitter.split_documents(docs)
         vector_store = FAISS.from_documents(docs, embeddings)
