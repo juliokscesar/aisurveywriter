@@ -106,7 +106,8 @@ class PaperWriter(PipelineTask):
         for i, section in enumerate(self.paper.sections):
             named_log(self, f"==> begin writing section ({i+1}/{sz}): {section.title}")
             if self._use_faiss:
-                ref_content = self._get_ref_content(self._discard_ref_section, use_faiss=self._use_faiss, section=section, faiss_k=8)
+                ref_content = self._get_ref_content(self._discard_ref_section, use_faiss=self._use_faiss, section=section, faiss_k=10)
+
             elapsed, response = time_func(self.llm.invoke, {
                 "refcontents": ref_content,
                 "subject": self.paper.subject,

@@ -106,7 +106,7 @@ class PaperReviewer(PipelineTask):
             # first get review from llm
             self.llm.init_chain_messages(review_sys, review_hum)
             if self._use_faiss:
-                refcontent = self._get_ref_content(self._discard_ref_sections, use_faiss=self._use_faiss, section=section, faiss_k=5)
+                refcontent = self._get_ref_content(self._discard_ref_sections, use_faiss=self._use_faiss, section=section, faiss_k=10)
 
             elapsed, response = time_func(self.llm.invoke, {
                 "refcontents": refcontent,
