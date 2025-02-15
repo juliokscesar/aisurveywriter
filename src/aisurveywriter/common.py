@@ -156,6 +156,13 @@ def generate_paper_survey(
         (write_step_name, write_step),
         (next_write_name, next_write),
         
+        (fig_extract_name, fig_extract),
+        ("Add Figures", tks.PaperFigureAdd(gen_llm, embed, faissfig_path, imgs_path, ref_paths, config.prompt_fig_add, os.path.dirname(save_path), 
+                                           llm_cooldown=request_cooldown_sec, embed_cooldown=embed_request_cooldown_sec, max_figures=15, confidence=0.75)),
+        
+        ("Save paper with figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
+
+        
         (review_step_name, review_step),
         (next_review_name, next_review),
         
@@ -164,12 +171,6 @@ def generate_paper_survey(
         ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, save_usedbib_path=save_path.replace(".tex", ".bib"), 
                                             save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), max_per_section=80, max_per_sentence=4, confidence=faiss_confidence, max_same_ref=10)),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
-        
-        (fig_extract_name, fig_extract),
-        ("Add Figures", tks.PaperFigureAdd(gen_llm, embed, faissfig_path, imgs_path, ref_paths, config.prompt_fig_add, os.path.dirname(save_path), 
-                                           llm_cooldown=request_cooldown_sec, embed_cooldown=embed_request_cooldown_sec, max_figures=15, confidence=0.75)),
-        
-        ("Save paper with figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
         

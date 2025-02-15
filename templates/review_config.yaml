@@ -41,9 +41,13 @@ bib_review_prompt: |
 
 
 review_prompt: |
+  [begin: reference_content]
   """
   {refcontents}
   """
+  [end: reference_content]
+
+  [begin: system_instructions]
 
   - You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey scientific paper on this subjects
 
@@ -58,6 +62,9 @@ review_prompt: |
     - Identify any factual inaccuracies, missing key points, or inconsistencies
     - Highlight parts that lack depth or are redundant
     - If you don't find any relevant improvement, then specify "Nothing to do"
+    
+    - Visual elements: it is essential that you require a discussion of figures present in the text
+      - If some figure is present and it's not discussed, require a discussion about it (refer to it using its \label)
 
   - You must then provide points for improvement on the given section, focusing on the aspects above.
     - Use markdown bullet formatting for separating each point clearly and objectively
@@ -69,15 +76,20 @@ review_prompt: |
     - You must write only in English
     - Your output should contain nothing more than the directives. So don't output stuff like "Okay, here are the directives...."
 
+  [end: system_instructions]
+
 # - Section title: "{title}"
 # - Section content: "{content}"
 
 
 apply_prompt: |
+  [begin: reference_content]
   """
   {refcontents}
   """
+  [end: reference_content]
 
+  [begin: system_instructions]
   - **You are an expert in academic writing, specially in the field of "{subject}".**
 
   - Some references are provided above, which you must follow
@@ -116,7 +128,9 @@ apply_prompt: |
 
   - DO NOT USE ANY BIBLATEX COMMAND ANYWHERE (including \cite, \bibliography, \printbibliography, \begin{{thebibliography}}, etc)
   - DO NOT ADD REFERENCES, ONLY FOLLOW STRICTLY THE REVIEW DIRECTIVES (DONT USE \cite ANYWHERE)
+
   - INCLUDE VISUAL ELEMENTS WITH Tickz PACKAGE OR TABULAR ELEMENTS WHERE RELEVANT:
+    - It is essential that there are TickZ figures
     - It is relevant to include figures (USE TIKZ) where a topic can be easily explained visually
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
     - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
@@ -128,6 +142,8 @@ apply_prompt: |
   - If there is no clear directive to make a change, then don't change anything and output the section as-it-is.
 
   - **TASK**: Follow these directives strictly and apply improvements to the given section. Do not remove nor add any sections.
+  
+  [end: system_instructions]
 
 # ## Section LaTeX content:
 # {content}
