@@ -135,6 +135,8 @@ apply_prompt: |
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
     - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
 
+  - Remember to discuss about figures using their "\label" and getting information about them from "\caption"
+
   - DON'T WRITE ANY LATEX PREAMBLE COMMANDS
 
   - FOCUS ONLY IN THIS SECTION. You can add subsections, but no other section.

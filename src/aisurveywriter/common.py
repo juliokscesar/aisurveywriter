@@ -174,7 +174,7 @@ def generate_paper_survey(
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
         
-        ("Review Tex", tks.TexReviewer(tex_review_llm, os.path.dirname(save_path), config.prompt_tex_review, bib_review_prompt=None, cooldown_sec=request_cooldown_sec)),
+        ("Review Tex", tks.TexReviewer(os.path.dirname(save_path), cooldown_sec=request_cooldown_sec)),
         ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, bib_path=save_path.replace(".tex", ".bib"), tex_filter_fn=tex_filter_survey)),
     ], status_queue=pipeline_status_queue)
     

@@ -76,3 +76,6 @@ options:
                         Cooldown between two consecutive requests made to the text
                         embedding model API
 ```
+
+## Flowchart
+![](survey-flowchart-crop.webp)
