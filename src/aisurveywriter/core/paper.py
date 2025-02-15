@@ -16,7 +16,7 @@ class PaperData:
     subject: str
     sections: List[SectionData]
     title: Union[None, str] = None
-    bib: Union[None, str] = None
+    bib_path: Union[None, str] = None
     
     @staticmethod
     def from_structure_yaml(subject: str, path: str):
@@ -52,12 +52,7 @@ class PaperData:
             sections.append(SectionData(title=sec_title, description=sec_title, content=sec_content))
 
         # Read bibliography if provided
-        bib_content = None
-        if bib_path:
-            with open(bib_path, "r", encoding="utf-8") as bib_file:
-                bib_content = bib_file.read()
-
-        return PaperData(subject=subject, sections=sections, bib=bib_content)
+        return PaperData(subject=subject, sections=sections, bib_path=bib_path)
             
     def full_content(self) -> str:
         content = ""

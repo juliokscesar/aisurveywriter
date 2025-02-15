@@ -1,13 +1,14 @@
 from typing import Optional, List
 import re
+import os
 
 from .pipeline_task import PipelineTask
 from aisurveywriter.core.llm_handler import LLMHandler
-from aisurveywriter.core.paper import PaperData
+from aisurveywriter.core.paper import PaperData, SectionData
 from aisurveywriter.utils import named_log, countdown_log, time_func
 
 class TexReviewer(PipelineTask):
-    def __init__(self, llm: LLMHandler, tex_review_prompt: str, bib_review_prompt: Optional[str] = None, paper: Optional[PaperData] = None, cooldown_sec: int = 40):
+    def __init__(self, llm: LLMHandler, out_dir: str, tex_review_prompt: str, bib_review_prompt: Optional[str] = None, paper: Optional[PaperData] = None, cooldown_sec: int = 40):
         """
         Initialize a TexReviewer
         
@@ -21,6 +22,7 @@ class TexReviewer(PipelineTask):
         self.bib_prompt = bib_review_prompt
         self.paper = paper
         self._cooldown_sec = int(cooldown_sec)
+        self.out_dir = out_dir
         
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
         if not isinstance(input_data, PaperData):
@@ -64,13 +66,51 @@ class TexReviewer(PipelineTask):
 
         return paper
 
+    def _remove_invalid_figures(self, section: SectionData):
+        fig_pattern =  r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}.*?\\caption\{([^}]+)\}"
+        img_dir = re.search(r"\\graphicspath{[\s\S]*\{([\s\S]*)\}", section.content, re.DOTALL)
+        if not img_dir:
+            named_log(self, "==> couldn't find image directory. Skipping _remove_invalid_figures")
+            return section
+        img_dir = os.path.abspath(os.path.join(self.out_dir, img_dir.group(1)))
+        
+        to_remove = []
+        for i in range(len(section.content)):
+            fig_start = section.content[i:].find("\\begin{figure}")
+            fig = section.content[fig_start:]
+            fig_end = fig.find("\\end{figure}") + len("\\end{figure}")
+            if fig_end == -1:
+                break
+            i = fig_end
+            
+            named_log(self, "==> DEBUG: CHECKING FIGURE:\n", fig[:fig_end], "\n")
+            fig_path = fig[:fig_end].find("\\includegraphics")
+            if fig_path > fig_end or fig_path == -1:
+
+                continue
+            
+            path_start = fig[fig_path:fig_end].find("{")
+            fig_path = fig[path_start:fig.find("}")]
+            named_log(self, "==> DEBUG: CHECKING IMAGE:", fig_path)
+            if not os.path.isfile(os.path.join(img_dir, fig_path)):
+                named_log(self, "==> removing invalid figure:", fig_path)
+                to_remove.append((fig_start, fig_end))
+                
+        for interval in to_remove[::-1]:
+            del section.content[interval[0]:interval[1]]
+    
+        return section
+    
+    def _remove_invalid_refs(self):
+        pass
+
     def review_bib(self, paper: PaperData):
         """
         Revew bib content
         """
         if self.bib_prompt is None:
             raise ValueError(f"The biblatex review prompt must be set (it's None)")
-        if paper.bib is None:
+        if paper.bib_path is None:
             named_log(self, f"Requested BibTex review, but paper's bib is None. Doing nothing")
             return paper
 
@@ -78,9 +118,9 @@ class TexReviewer(PipelineTask):
         
         named_log(self, "==> begin review of BibTex")
         elapsed, response = time_func(self.llm.invoke, {
-            "bibcontent": paper.bib,
+            "bibcontent": paper.bib_path,
         })
-        paper.bib = response.content
+        paper.bib_path = response.content
         named_log(self, "==> finished review of BibTex")
         named_log(self, f"==> response metadata:", response.usage_metadata)
 
@@ -97,12 +137,12 @@ class TexReviewer(PipelineTask):
         n_sections = len(paper.sections)
         per_task = n_sections // n
         for i in range(0, n, per_task):
-            subpaper = PaperData(paper.subject, paper.sections[i:i+per_task], paper.title, paper.bib)
+            subpaper = PaperData(paper.subject, paper.sections[i:i+per_task], paper.title, paper.bib_path)
             sub.append(TexReviewer(self.llm, self.tex_prompt, self.bib_prompt, subpaper, self._cooldown_sec))
         return sub
 
     def merge_subtasks_data(self, data: List[PaperData]):
-        paper = PaperData(data[0].subject, data[0].sections, data[0].title, data[0].bib)
+        paper = PaperData(data[0].subject, data[0].sections, data[0].title, data[0].bib_path)
         for subpaper in data[1:]:
             paper.sections.extend(subpaper.sections)
         return paper

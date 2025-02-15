@@ -36,7 +36,7 @@ gen_struct_prompt: |
     - Be as much objective as possible regarding the description of each section -- detail them thoroughly.
     - Minimum of 6 sections.
     
-    - Your sections must be structured in a logical and comprehensive flow -- base yourself on the references provided.
+    - Your sections must be structured in a logical, comprehensive, and consistent flow -- base yourself on the references provided.
   
   3. **OUTPUT FORMAT**:
     - Provide the structure in YAML format. THE TILE MUST BE ENCLOSED WITH QUOTES
@@ -155,7 +155,11 @@ refine_prompt: |
   ```
 
 add_figures_prompt: |
-  - You are an expert in {subject}. You are writing a survey paper on this subject.
+  """
+  {refcontent}
+  """
+
+  - You are an academic expert in "{subject}". You are writing a survey paper.
 
   - You are receiving: 
     - the content of references for this paper
@@ -169,15 +173,17 @@ add_figures_prompt: |
     
     - If adding a visual element is not relevant, do nothing
 
-    - THE FIGURE MUST BE WITHIN A PROPER FIGURE BODY IN LATEX, AS:
+    - THE FIGURES MUST BE WITHIN A PROPER FIGURE BODY IN LATEX, AS:
     \begin{{figure}}[h!]
     \includegraphics{{unique_name}}
-    \label{{fig:unique_label}}
     \caption{{Very descriptive caption}}
+    \label{{fig:unique_label}}
     \end{{figure}}
+
+  - The Figure MUST BE FROM ONE OF THE REFERENCES. Provide at the end of the caption the credits as: "Adapted from Authors, Year."
 
   - IT IS ESSENTIAL THAT YOU USE "\includegraphics{{name}}" AND "\caption{{descriptive caption}}" RIGHT AFTER
 
   - **YOU MUST NOT ALTER THE SECTION'S CONTENT, ONLY ADD THE FIGURES**
 
-  - **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is..." NEITHER CODE BLOCKS (with ``)
+  - **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is..."

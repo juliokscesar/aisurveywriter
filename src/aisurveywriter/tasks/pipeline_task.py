@@ -6,17 +6,14 @@ class PipelineTask(ABC):
     def __init__(self):
         self.no_divide = False
     
-    @abstractmethod
     def pipeline_entry(self, input_data):
-        pass
+        return input_data
 
-    @abstractmethod
     def divide_subtasks(self, n: int, input_data=None):
-        pass
+        return [self] * n
 
-    @abstractmethod
     def merge_subtasks_data(self, data):
-        pass
+        return data
 
 class DeliverTask(PipelineTask):
     """

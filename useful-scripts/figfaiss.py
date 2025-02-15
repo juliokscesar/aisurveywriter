@@ -12,7 +12,7 @@ os.environ["GOOGLE_API_KEY"] = read_credentials(f"{path}/credentials.yaml")["goo
 img_data = read_yaml(f"{path}/bib/nochu-imgdata.yaml")["data"]
 
 llm = LLMHandler(model="gemini-2.0-flash", model_type="google")
-model = "sentence-transformers/all-mpnet-base-v2"
+model = "intfloat/multilingual-e5-large-instruct"
 embed = load_embeddings(model, "huggingface")
 fig = FigureExtractor(
     llm, embed, 

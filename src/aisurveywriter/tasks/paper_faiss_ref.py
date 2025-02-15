@@ -63,7 +63,7 @@ class PaperFAISSReferencer(PipelineTask):
                     cited_sentences.extend(sentences[i:])
                     break
                 
-                if '\\' in sentence or '{' in sentence or '}' in sentence:
+                if '\\' in sentence or '{' in sentence or '}' in sentence or not sentence.strip():
                     cited_sentences.append(sentence)
                     continue
                 
@@ -109,7 +109,7 @@ class PaperFAISSReferencer(PipelineTask):
         
         if self.save_usedbib_path:
             self._dump_used_bib(used_keys, self.bibdb_path, self.save_usedbib_path)
-        
+            paper.bib_path = self.save_usedbib_path
         return paper
     
     def _dump_used_bib(self, used_keys: list, bibdb_path: str, save_path: str):
@@ -154,12 +154,12 @@ class PaperFAISSReferencer(PipelineTask):
         n_sections = len(self.paper.sections)
         per_task = n_sections // n
         for i in range(0, n, per_task):
-            paper = PaperData(subject=self.paper.subject, sections=self.paper.sections[i:i+per_task].copy(), title=self.paper.title, bib=self.paper.bib)
+            paper = PaperData(subject=self.paper.subject, sections=self.paper.sections[i:i+per_task].copy(), title=self.paper.title, bib_path=self.paper.bib_path)
             sub[i] = PaperFAISSReferencer(self.embed_model, self.bibdb_path, paper, self.local_faissdb_path, self.save_usedbib_path, self.save_faiss_path, self.max_per_section, self.max_per_sentence, self.confidence)
         return sub
 
     def merge_subtasks_data(self, data: List[PaperData]):
-        merged_paper = PaperData(data[0].subject, sections=data[0].sections, title=data[0].title, bib=data[0].bib)
+        merged_paper = PaperData(data[0].subject, sections=data[0].sections, title=data[0].title, bib_path=data[0].bib_path)
         for paper in data[1:]:
             merged_paper.sections.extend(paper.sections)
         return merged_paper

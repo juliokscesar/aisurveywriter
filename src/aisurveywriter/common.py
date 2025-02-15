@@ -51,7 +51,7 @@ def generate_paper_survey(
     pipeline_status_queue: queue.Queue = None,
     request_cooldown_sec: int = int(60 * 1.5),
     embed_request_cooldown_sec: int = int(20),
-    faiss_confidence: float = 0.7,
+    faiss_confidence: float = 0.6,
 ):
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
@@ -78,15 +78,8 @@ def generate_paper_survey(
     embed = load_embeddings(model=embed_model, model_type=embed_model_type)
     print(f"Loaded embeddings: {embed_model}")
     
-    # LLM used on LaTeX syntax review (deepseek is local)
-    # use deepseek only if there's enough memory
-    # if psutil.virtual_memory().available >= 9*1024:
-    #     tex_review_llm = LLMHandler(
-    #         model="deepseek-coder-v2:16b",
-    #         model_type="ollama",
-    #     )
-    # else:
     tex_review_llm = writer_llm
+    gen_llm = LLMHandler(model="gemini-2.0-flash", model_type="google")
     
     save_path = os.path.abspath(save_path)
     if not os.path.basename(save_path).endswith(".tex"):
@@ -107,8 +100,6 @@ def generate_paper_survey(
             )
             nblm.login()
             gen_llm = nblm
-        else:
-            gen_llm = LLMHandler(model="gemini-2.0-flash", model_type="google")
             
         first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
         first_name = "Paper Structure Generator"
@@ -175,13 +166,14 @@ def generate_paper_survey(
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         
         (fig_extract_name, fig_extract),
-        ("Add Figures", tks.PaperFigureAdd(gen_llm, embed, faissfig_path, imgs_path, ref_paths, config.prompt_fig_add, os.path.dirname(save_path), llm_cooldown=request_cooldown_sec, embed_cooldown=embed_request_cooldown_sec)),
+        ("Add Figures", tks.PaperFigureAdd(gen_llm, embed, faissfig_path, imgs_path, ref_paths, config.prompt_fig_add, os.path.dirname(save_path), 
+                                           llm_cooldown=request_cooldown_sec, embed_cooldown=embed_request_cooldown_sec, max_figures=15, confidence=0.75)),
         
         ("Save paper with figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
         
         ("Refine (Abstract+Tile)", tks.PaperRefiner(writer_llm, prompt=config.prompt_refine, cooldown_sec=request_cooldown_sec)),
         
-        ("Review Tex", tks.TexReviewer(tex_review_llm, config.prompt_tex_review, bib_review_prompt=None, cooldown_sec=request_cooldown_sec)),
+        ("Review Tex", tks.TexReviewer(tex_review_llm, os.path.dirname(save_path), config.prompt_tex_review, bib_review_prompt=None, cooldown_sec=request_cooldown_sec)),
         ("Save Final Paper", tks.PaperSaver(save_path, config.tex_template_path, bib_path=save_path.replace(".tex", ".bib"), tex_filter_fn=tex_filter_survey)),
     ], status_queue=pipeline_status_queue)
     

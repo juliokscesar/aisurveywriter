@@ -47,4 +47,4 @@ def read_latex(file_path: str, bib_path: Optional[str] = None) -> PaperData:
         with open(bib_path, "r", encoding="utf-8") as bib_file:
             bib_content = bib_file.read()
 
-    return PaperData(subject=subject, sections=sections, bib=bib_content)
+    return PaperData(subject=subject, sections=sections, bib_path=bib_content)

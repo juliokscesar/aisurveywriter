@@ -1,5 +1,6 @@
 from typing import Optional
 import re
+import json
 
 from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
@@ -7,7 +8,6 @@ from .pipeline_task import PipelineTask
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.paper import PaperData, SectionData
 from aisurveywriter.utils import named_log, time_func, countdown_log
-import json
 
 class PaperRefiner(PipelineTask):
     """
@@ -47,9 +47,8 @@ class PaperRefiner(PipelineTask):
         if self._cooldown_sec:
             named_log(self, f"==> initiating cooldown of {self._cooldown_sec} s")
             countdown_log("", self._cooldown_sec)
-
         try:
-            resp_json = re.search(r"\{.*?\}", response.content.strip()).group()
+            resp_json = re.search(r"```json\s*([\s\S]+?)\s*```|({[\s\S]+})", response.content.strip()).group()
             resp = resp_json[resp_json.find("{"):resp_json.rfind("}")+1]
             resp = json.loads(resp)
             self.paper.sections.insert(0, SectionData(

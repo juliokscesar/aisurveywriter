@@ -39,10 +39,9 @@ class GradioInterface:
             "SFR-Embedding-Mistral (HuggingFace)": ("huggingface", "Salesforce/SFR-Embedding-Mistral"),
             "all-MiniLM-L6-v2 (HuggingFace)": ("huggingface", "sentence-transformers/all-MiniLM-L6-v2"),
             "gte-Qwen2-1.5b (HuggingFace)": ("huggingface", "Alibaba-NLP/gte-Qwen2-1.5B-instruct"),
-            "stella-1.5B (HuggingFace)": ("huggingface", "dunzhang/stella_en_1.5B_v5"),
             "all-mpnet-base-v2": ("huggingface", "sentence-transformers/all-mpnet-base-v2"),
             "multilingual-e5-large-instruct": ("huggingface", "intfloat/multilingual-e5-large-instruct"),
-            "snowflake-arctc-embed-l-v2.0": ("hugginface", "Snowflake/snowflake-arctic-embed-l-v2.0"),
+            "snowflake-arctic-embed-l-v2.0": ("hugginface", "Snowflake/snowflake-arctic-embed-l-v2.0"),
         }
         self.gr_interface = gr.ChatInterface(
             fn=self.chat_fn,

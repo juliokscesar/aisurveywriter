@@ -106,7 +106,7 @@ class PaperWriter(PipelineTask):
         for i, section in enumerate(self.paper.sections):
             named_log(self, f"==> begin writing section ({i+1}/{sz}): {section.title}")
             if self._use_faiss:
-                ref_content = self._get_ref_content(self._discard_ref_section, use_faiss=self._use_faiss, section=section, faiss_k=10)
+                ref_content = self._get_ref_content(self._discard_ref_section, use_faiss=self._use_faiss, section=section, faiss_k=15)
 
             elapsed, response = time_func(self.llm.invoke, {
                 "refcontents": ref_content,
@@ -174,12 +174,12 @@ class PaperWriter(PipelineTask):
         n_sections = len(self.paper.sections)
         per_task = n_sections // n
         for i in range(0, n, per_task):
-            subpaper = PaperData(self.paper.subject, self.paper.sections[i:i+per_task], self.paper.title, self.paper.bib)
+            subpaper = PaperData(self.paper.subject, self.paper.sections[i:i+per_task], self.paper.title, self.paper.bib_path)
             sub.append(PaperWriter(self.llm, self.prompt, subpaper, self.ref_paths, self._discard_ref_section, self._cooldown_sec, self._summarize, self._use_faiss, self._faiss_embeddings))
         return sub    
     
     def merge_subtasks_data(self, data: List[PaperData]):
-        merged_paper = PaperData(data[0].subject, data[0].sections, data[0].title, data[0].bib)
+        merged_paper = PaperData(data[0].subject, data[0].sections, data[0].title, data[0].bib_path)
         for paper in data[1:]:
             merged_paper.sections.extend(paper.sections)
         return merged_paper

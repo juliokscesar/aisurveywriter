@@ -2,6 +2,21 @@
 
 An approach to automating the process of writing Survey Papers using state-of-the-art LLMs.
 
+## Usage:
+
+The tool can be used directly from the terminal. First, the installation commands are (a separate virtual environment is strongly recommended):
+
+```
+git clone https://github.com/juliokscesar/aisurveywriter.git
+cd aisurveywriter
+pip instal -e .
+```
+
+And then you can run it using 
+```
+python -m aisurveywriter
+```
+
 CLI help:
 ```
 usage: python -m aisurveywriter [-h] [--save-dir SAVE_DIR] [--llm {openai,google}]
