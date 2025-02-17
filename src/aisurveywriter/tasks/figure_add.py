@@ -2,6 +2,7 @@ import os
 import shutil
 import re
 from typing import List
+from PIL import Image
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
@@ -104,7 +105,15 @@ class PaperFigureAdd(PipelineTask):
                     break
             
             if dest:
-                content = content.replace(figname, os.path.basename(dest), 1)
+                img_basename = os.path.basename(dest)
+                scale_factor = self._compute_scale_factor(dest)
+
+                if scale_factor:
+                    replacement = f"\\includegraphics[scale={scale_factor:.2f}]{{{img_basename}}}"
+                else:
+                    replacement = f"\\includegraphics{{{img_basename}}}"
+            
+                content = content.replace(f"\\includegraphics{{{figname}}}", replacement, 1)
             else:
                 named_log(self, f"Couldn't find a match for {figname}: {caption!r} that wasn't used before")
 
@@ -126,3 +135,15 @@ class PaperFigureAdd(PipelineTask):
             content += "\n" 
 
         return content
+
+    def _compute_scale_factor(self, img_path: str, max_width: int = 1890, max_height: int = 2910):
+        with Image.open(img_path) as img:
+            width, height = img.size
+        
+        scale_width = max_width / width
+        scale_height = max_height / height
+        scale_factor = min(scale_width, scale_height, 1.0)
+        
+        return scale_factor if scale_factor < 1.0 else None
+        
+    
