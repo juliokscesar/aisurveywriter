@@ -78,4 +78,4 @@ options:
 ```
 
 ## Flowchart
-![](survey-flowchart-crop.webp)
+![](flowchart.webp)
