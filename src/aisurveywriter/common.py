@@ -52,6 +52,7 @@ def generate_paper_survey(
     request_cooldown_sec: int = int(60 * 1.5),
     embed_request_cooldown_sec: int = int(20),
     faiss_confidence: float = 0.6,
+    no_figures = False,
 ):
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
@@ -149,6 +150,20 @@ def generate_paper_survey(
     else:
         fig_extract = tks.DeliverTask()
         fig_extract_name = "Skip figure extract"
+
+    if no_figures:
+        fig_add = tks.DeliverTask()
+        fig_add_name = "Skip figure add"
+
+        fig_add_next = tks.DeliverTask()
+        fig_add_next_name = "Skip save paper with figures"
+    else:
+        fig_add = tks.PaperFigureAdd(gen_llm, embed, faissfig_path, imgs_path, ref_paths, config.prompt_fig_add, os.path.dirname(save_path), 
+                                    llm_cooldown=request_cooldown_sec, embed_cooldown=embed_request_cooldown_sec, max_figures=15, confidence=0.75)
+        fig_add_name = "Add Figures"
+        
+        fig_add_next = tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)
+        fig_add_next_name = "Save paper with figures"
         
     pipe = PaperPipeline([
         (first_name, first),
@@ -157,11 +172,9 @@ def generate_paper_survey(
         (next_write_name, next_write),
         
         (fig_extract_name, fig_extract),
-        ("Add Figures", tks.PaperFigureAdd(gen_llm, embed, faissfig_path, imgs_path, ref_paths, config.prompt_fig_add, os.path.dirname(save_path), 
-                                           llm_cooldown=request_cooldown_sec, embed_cooldown=embed_request_cooldown_sec, max_figures=15, confidence=0.75)),
-        
-        ("Save paper with figures", tks.PaperSaver(save_path.replace(".tex", "-figs.tex"), config.tex_template_path)),
 
+        (fig_add_name, fig_add),      
+        (fig_add_next_name, fig_add_next),
         
         (review_step_name, review_step),
         (next_review_name, next_review),
