@@ -65,6 +65,7 @@ review_prompt: |
     
     - Visual elements: it is essential that you require a discussion of figures present in the text
       - If some figure is present and it's not discussed, require a discussion about it (refer to it using its \label)
+      - DO NOT ask figures to be replaced. Only to be discussed, or, if applicable, to add a new TikZ figure
 
   - You must then provide points for improvement on the given section, focusing on the aspects above.
     - Use markdown bullet formatting for separating each point clearly and objectively
@@ -134,6 +135,7 @@ apply_prompt: |
     - It is relevant to include figures (USE TIKZ) where a topic can be easily explained visually
     - It is relevant to include tabular elements where a topic can be categorized and explained better in that way
     - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
+    - Standard figures (added using \begin{{figure}}..\includegraphics...\end{{figure}}) MUST NOT BE REPLACED BY TIKZ. YOU NEED TO DISCUSS THIS FIGURES BASED ON THEIR CAPTION
 
   - Remember to discuss about figures using their "\label" and getting information about them from "\caption"
 

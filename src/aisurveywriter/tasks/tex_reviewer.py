@@ -56,7 +56,7 @@ class TexReviewer(PipelineTask):
             start = time.time()
             
             section.content = re.sub(r"[`]+[\w]*", "", section.content)
-            section = self._remove_invalid_figures(section)
+            section = self._remove_invalid_figures(section, paper.fig_path)
             section = self._remove_invalid_refs(section, bib_content)
 
             elapsed = int(time.time() - start)
@@ -69,12 +69,11 @@ class TexReviewer(PipelineTask):
         return paper
 
 
-    def _remove_invalid_figures(self, section: SectionData):
-        img_dir = re.search(r"\\graphicspath{[\s\S]*\{([\s\S]*)\}", section.content, re.DOTALL)
-        if not img_dir:
-            named_log(self, "==> couldn't find image directory. Skipping _remove_invalid_figures")
-            return section
-        img_dir = os.path.abspath(os.path.join(self.out_dir, img_dir.group(1)))
+    def _remove_invalid_figures(self, section: SectionData, img_dir: str):
+        img_dir = os.path.abspath(os.path.join(self.out_dir, img_dir))
+        if not os.path.isdir(img_dir):
+            named_log(self, "==> invalid image directory:", img_dir)
+            return
         
         # Regex to find all \begin{figure} ... \end{figure} blocks
         figure_pattern = re.compile(r'\\begin{figure}.*?\\includegraphics(?:\[.*?\])?{(.*?)}.*?\\end{figure}', re.DOTALL)
@@ -98,7 +97,7 @@ class TexReviewer(PipelineTask):
         cite_pattern = re.compile(r"\\cite{([^}]+)}")
         def replace_invalid(match):
             keys = match.group(1).split(',')
-            valid_keys = [key.strip for key in keys if key.strip() in bib_content]
+            valid_keys = [key.strip() for key in keys if key.strip() in bib_content]
             if valid_keys:
                 return f"\\cite{{{', '.join(valid_keys)}}}"
             else:

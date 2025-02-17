@@ -39,7 +39,7 @@ class PaperFigureAdd(PipelineTask):
     def add_figures(self, paper: PaperData) -> PaperData:
         used_imgs_dest = os.path.join(os.path.abspath(self.out_path), "used-imgs")
         os.makedirs(used_imgs_dest, exist_ok=True)
-        
+        paper.fig_path = used_imgs_dest
         
         sysmsg = SystemMessagePromptTemplate.from_template(self.prompt)
         hummsg = HumanMessagePromptTemplate.from_template("Content for this section:\n- Title: {title}\n- Content:\n\n{content}")
