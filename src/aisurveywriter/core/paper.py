@@ -38,10 +38,14 @@ class PaperData:
             latex_content = doc_match.group()
     
         # Extract title (assuming \title{} is present)
-        if not subject:
-            title_match = re.search(r"\\title\{(.+?)\}", latex_content)
-            subject = title_match.group(1) if title_match else "Unknown Title"
+        title_match = re.search(r"\\title\{(.+?)\}", latex_content)
+        title = title_match.group(1) if title_match else None
         
+        # Extract image directory (assuming \graphicspath{} is present)
+        if not fig_path:
+            dir_match = re.search(r"\\graphicspath\s*\{\s*\{([^}]*)\}\s*\}", latex_content)
+            fig_path = dir_match.group(1) if dir_match else None
+
         # Extract sections
         sections = []
         section_matches = re.finditer(r"\\section\{(.+?)\}([\s\S]*?)(?=\\section|\Z)", latex_content)
