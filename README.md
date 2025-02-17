@@ -68,7 +68,7 @@ options:
                         the entire document.
   --no-figures          Skip step of adding figures to the written paper.
   --cooldown COOLDOWN, -w COOLDOWN
-                        Cooldown between two consecutive request made to the LLM API
+                        Cooldown between two consecutive requests made to the LLM API
   --embed-cooldown EMBED_COOLDOWN
                         Cooldown between two consecutive requests made to the text embedding model API
 ```

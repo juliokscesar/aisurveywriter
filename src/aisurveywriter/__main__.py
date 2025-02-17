@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument("--faissfig", "-ff", type=str, default=None, help="Path to FAISS vector store containing the metadata (id, path and description) for every image. If none is provided, one will be created")
     parser.add_argument("--faissref", "-fr", action="store_true", help="Use FAISS of references PDFs to retrieve only a piece of information, instead of sending the entire document.")
     parser.add_argument("--no-figures", action="store_true", help="Skip step of adding figures to the written paper.")
-    parser.add_argument("--cooldown", "-w", type=int, default=30, help="Cooldown between two consecutive request made to the LLM API")
+    parser.add_argument("--cooldown", "-w", type=int, default=30, help="Cooldown between two consecutive requests made to the LLM API")
     parser.add_argument("--embed-cooldown", type=int, default=0, help="Cooldown between two consecutive requests made to the text embedding model API")
 
     return parser.parse_args()
