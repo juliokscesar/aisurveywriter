@@ -57,7 +57,7 @@ class PaperData:
             sections.append(SectionData(title=sec_title, description=sec_title, content=sec_content))
 
         # Read bibliography if provided
-        return PaperData(subject=subject, sections=sections, bib_path=bib_path, fig_path=fig_path)
+        return PaperData(subject=subject, sections=sections, title=title, bib_path=bib_path, fig_path=fig_path)
             
     def full_content(self) -> str:
         content = ""

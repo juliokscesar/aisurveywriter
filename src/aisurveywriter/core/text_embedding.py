@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from typing import Union, List
+from dataclasses import dataclass
 
 from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
@@ -83,3 +84,18 @@ def load_embeddings(model: str, model_type: Union[EmbedModelType, str], **model_
             return HighMemoryEmbeddings(model_name=model, **model_kwargs)
         case _:
             raise ValueError("Invalid model type:", model_type)
+
+
+@dataclass
+class EmbeddingsHandler:
+    model: Embeddings = None
+    name: str = None
+    model_type: EmbedModelType = None
+
+    def __init__(self, name: str, model_type: Union[EmbedModelType, str], **model_kwargs):
+        self.load(name, model_type, **model_kwargs)
+
+    def load(self, name: str, model_type: Union[EmbedModelType, str], **model_kwargs):
+        self.model = load_embeddings(name,  model_type, **model_kwargs)
+        self.name = name
+        self.model_type = model_type

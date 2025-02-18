@@ -1,6 +1,7 @@
 from typing import List
 import os
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.docstore.document import Document
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 import fitz
@@ -11,9 +12,9 @@ from aisurveywriter.utils import named_log
 
 class PDFProcessor:
     def __init__(self, pdf_paths: List[str]):
-        self.pdf_paths = pdf_paths
-        self.pdf_documents = [None] * len(pdf_paths)
-        self.img_readers = [None] * len(pdf_paths)
+        self.pdf_paths: List[str] = pdf_paths
+        self.pdf_documents: List[List[Document]] = [None] * len(pdf_paths)
+        self.img_readers: List[fitz.Document] = [None] * len(pdf_paths)
         self._load()
         
 
