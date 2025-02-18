@@ -57,9 +57,11 @@ class LLMHandler:
             self.prompt = input_prompt
             self._chain = input_prompt | self.model
         else:
-            input_prompt = ChatPromptTemplate.from_messages([HumanMessagePromptTemplate.from_template(prompt)])
-            self.prompt = input_prompt
-            self._chain = input_prompt | self.model
+            self.init_chain(prompt)
+
+    def init_chain(self, prompt: ChatPromptTemplate):
+        self.prompt = prompt
+        self._chain = self.prompt | self.model
 
     def init_chain_messages(self, *msgs):
         input_prompt = ChatPromptTemplate.from_messages(msgs)

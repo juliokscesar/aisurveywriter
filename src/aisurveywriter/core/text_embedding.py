@@ -70,6 +70,7 @@ class EmbedModelType(Enum):
             case _:
                 return EmbedModelType.HuggingFace
 
+
 def load_embeddings(model: str, model_type: Union[EmbedModelType, str], **model_kwargs):
     if isinstance(model_type, str):
         model_type = EmbedModelType.from_str(model_type)

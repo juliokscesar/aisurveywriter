@@ -70,3 +70,6 @@ class ReferenceStore:
                 self._bibliographies.append(content)
     
         return self._bibliographies        
+
+    def extract_images(self, save_dir: str):
+        return self.pdf_proc.extract_images(save_dir)

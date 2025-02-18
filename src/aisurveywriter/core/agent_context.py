@@ -7,6 +7,7 @@ from langchain_core.prompts.chat import SystemMessage
 from .llm_handler import LLMHandler
 from .text_embedding import EmbeddingsHandler
 from .reference_store import ReferenceStore
+from .agent_rags import AgentRAG
 
 @dataclass
 class AgentContext:
@@ -19,4 +20,6 @@ class AgentContext:
 
     # Reference store (content, their bibliography, paths, pdf processor, etc)
     references: ReferenceStore = None
-
+    
+    # bib, content and figures RAGs
+    rags: AgentRAG = None

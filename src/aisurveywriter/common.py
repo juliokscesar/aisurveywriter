@@ -7,6 +7,7 @@ import aisurveywriter.core.file_handler as fh
 from aisurveywriter.core.config_manager import ConfigManager
 from aisurveywriter.core.reference_store import ReferenceStore
 from aisurveywriter.core.agent_context import AgentContext
+from aisurveywriter.core.agent_rags import AgentRAG
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.text_embedding import EmbeddingsHandler
 from aisurveywriter.core.pipeline import PaperPipeline
@@ -44,8 +45,8 @@ def generate_paper_survey(
     no_review: bool = False,
     config_path: Optional[str] = None, 
     use_nblm_generation=False,
-    refdb_path: str = None,
-    faissdb_path: str = None,
+    bibdb_path: str = None,
+    faissbibdb_path: str = None,
     faissfig_path: str = None,
     imgs_path: str = None,
     embed_model: str = "Salesforce/SFR-Embedding-Mistral",
@@ -105,6 +106,8 @@ def generate_paper_survey(
     # Create reference store
     references = ReferenceStore(ref_paths)
     
+    # Create/Load RAGs accordingly
+    shared_rag = AgentRAG(embed, faissbibdb_path, faissfig_path, )
     
     save_path = os.path.abspath(save_path)
     if not os.path.basename(save_path).endswith(".tex"):
@@ -129,13 +132,13 @@ def generate_paper_survey(
         first = tks.PaperStructureGenerator(gen_llm, ref_paths, subject, config.prompt_structure, save_path=save_path.replace(".tex", "-struct.yaml"))
         first_name = "Paper Structure Generator"
 
-    if not refdb_path:
+    if not bibdb_path:
         refs_llm = LLMHandler(model="gemini-2.0-flash", model_type="google", temperature=0.3) # use gemini-2.0-flash for references because of quota
-        refdb_path = save_path.replace(".tex", "-bibdb.bib")
+        bibdb_path = save_path.replace(".tex", "-bibdb.bib")
         ref_extract = tks.ReferenceExtractor(refs_llm, ref_paths, config.prompt_ref_extract,
                                              raw_save_path=save_path.replace(".tex", "-raw.ref"),
                                              rawbib_save_path=save_path.replace(".tex", "-raw.bib"),
-                                             bib_save_path=refdb_path)
+                                             bib_save_path=bibdb_path)
         ref_extract_name = "Reference Extractor"
     else:
         ref_extract = tks.DeliverTask()
@@ -205,7 +208,7 @@ def generate_paper_survey(
         
         (ref_extract_name, ref_extract),
         
-        ("Add References", tks.PaperFAISSReferencer(embed, refdb_path, local_faissdb_path=faissdb_path, save_usedbib_path=save_path.replace(".tex", ".bib"), 
+        ("Add References", tks.PaperFAISSReferencer(embed, bibdb_path, local_faissdb_path=faissbibdb_path, save_usedbib_path=save_path.replace(".tex", ".bib"), 
                                             save_faiss_path=save_path.replace(".tex", f"-{embed_model}-bibfaiss"), max_per_section=80, max_per_sentence=4, confidence=faiss_confidence, max_same_ref=10)),
         ("Save Paper with References", tks.PaperSaver(save_path.replace(".tex", "-revref.tex"), config.tex_template_path)),
         

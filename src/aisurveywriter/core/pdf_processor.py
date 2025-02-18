@@ -7,8 +7,15 @@ from langchain_community.vectorstores import FAISS
 import fitz
 from pathlib import Path
 import re
+from pydantic import BaseModel
 
 from aisurveywriter.utils import named_log
+
+class PDFImageData(BaseModel):
+    pdf_source: str
+    data: bytes
+    ext: str
+    path: str
 
 class PDFProcessor:
     def __init__(self, pdf_paths: List[str]):
@@ -32,7 +39,7 @@ class PDFProcessor:
             contents[i] = "\n".join([d.page_content for d in doc])
         return contents
 
-    def extract_images(self, save_dir: str = None):
+    def extract_images(self, save_dir: str = None) -> List[PDFImageData]:
         imgs = []
         if save_dir:
             save_dir = os.path.abspath(save_dir)
@@ -57,12 +64,12 @@ class PDFProcessor:
                         
                         named_log(self, f"Image saved: {path}")
 
-                    imgs.append({
-                        "pdf": self.pdf_paths[pdf_idx],
-                        "data": img_bytes,
-                        "ext": img_ext,
-                        "path": os.path.join(save_dir, img_name) if save_dir else img_name,
-                    })
+                    imgs.append(PDFImageData(
+                        pdf_source=self.pdf_paths[pdf_idx],
+                        data=img_bytes,
+                        ext=img_ext,
+                        path=os.path.join(save_dir, img_name) if save_dir else img_name
+                    ))
                     
         return imgs
             

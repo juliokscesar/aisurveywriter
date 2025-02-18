@@ -14,6 +14,11 @@ import html
 import base64
 from io import BytesIO
 from PIL import Image
+import random
+import string
+
+def random_str(length: int = 10):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 def image_to_base64(path: str):
     img = Image.open(path)

@@ -10,10 +10,9 @@ reference_extract_prompt: |
   
   - For every reference entry, you must take the Title and Author
   - DO NOT SKIP ANY REFERENCE
-  - **Output in THIS FORMAT STRICTLY (yaml format, each item is an item from a list):**
+  - **Output in THIS FORMAT STRICTLY (json format, each item is an item from a list):**
   """
-  - title: "REFERENCE_TITLE"
-    author: "REFERENCE_AUTHOR"
+  {{"bibliography": [{{"title": "REFERENCE_TITLE", "authors": "REFERENCE_AUTHORS"}}, {{"title": ..., "authors": ...}}, ...]}}
   """
   - Make sure every variable value (REFERENCE_TITLE and REFERENCE_AUTHOR) are enclosed in double-quotes
   - If there is no apparent reference entry, ignore and do nothing
