@@ -85,7 +85,7 @@ class PDFProcessor:
         
     def faiss(self, embeddings, chunk_size: int = 4000) -> FAISS:
         splitter = CharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
-        docs = self.pdf_documents[0]
+        docs = []
         # first remove references
         for doc in self.pdf_documents:
             for pg in doc:

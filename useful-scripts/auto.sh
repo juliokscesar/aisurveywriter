@@ -16,15 +16,18 @@ python -m aisurveywriter \
     -e Snowflake/snowflake-arctic-embed-l-v2.0 \
     -t huggingface -w 40 refexamples \
     "Langmuir and Langmuir-Blodgett Films" \
-    -s out/generated-struct.yaml
+    -s out/generated-struct.yaml \
+    -p out/generated-rev.tex \
+    --no-review --no-figures
+
 
 # Move files after first run
 mv refexamples/OliveiraO2022_PastAndFuture.pdf .
 mv out comchu
 
 # Edit YAML file
-sed -i 's/googe_key/google_key_jcdev/' credentials.yaml
-sed -i 's/google_key_jcmcs/google_key/' credentials.yaml
+sed -i 's/googe_key/google_key_jcmcs/' credentials.yaml
+sed -i 's/google_key_jc12/google_key/' credentials.yaml
 
 # Run the second command
 python -m aisurveywriter \

@@ -5,8 +5,10 @@ import re
 
 import aisurveywriter.core.file_handler as fh
 from aisurveywriter.core.config_manager import ConfigManager
+from aisurveywriter.core.reference_store import ReferenceStore
+from aisurveywriter.core.agent_context import AgentContext
 from aisurveywriter.core.llm_handler import LLMHandler
-from aisurveywriter.core.text_embedding import load_embeddings
+from aisurveywriter.core.text_embedding import EmbeddingsHandler
 from aisurveywriter.core.pipeline import PaperPipeline
 import aisurveywriter.tasks as tks
 from aisurveywriter.core.chatbots import NotebookLMBot
@@ -54,6 +56,7 @@ def generate_paper_survey(
     faiss_confidence: float = 0.6,
     no_figures = False,
 ):
+    # Initialize configuration and credentials
     if not config_path:
         config_path = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))
     try:
@@ -65,22 +68,43 @@ def generate_paper_survey(
     credentials = get_credentials(config)
     if save_path is None or save_path == "":
         save_path = config.out_tex_path
+        
+    # ensure save_path refers to the final .tex file, even if the user provided a directory as save path
+    save_path = os.path.abspath(save_path)
+    if not os.path.basename(save_path).endswith(".tex"):
+        os.makedirs(save_path, exist_ok=True)
+        save_path = os.path.join(save_path, "generated.tex")
+    ###########################################
 
-    # LLM used to write the paper
+    # Text embedding model. This is the same accross all tasks
+    print(f"Loading embed model: {embed_model}, {embed_model_type}")
+    embed = EmbeddingsHandler(model, model_type)
+    print(f"Loaded embeddings: {embed_model}")
+
+    # LLM used in generating sections outline
+    # ==> using gemini-2.0-flash as it has a very large context window, and we can use the entire PDFs content
+    outline_sections_llm = LLMHandler(
+        model="gemini-2.0-flash",
+        model_type="google",
+        temperature=0.4,
+    )
+    print(f"Loaded LLM (sections outline): gemini-2.0-flash")
+
+    # LLM used in writing
     writer_llm = LLMHandler(
         model=model,
         model_type=model_type,
         temperature=0.4,
     )
-    print(f"Loaded LLM: {model}")
+    print(f"Loaded LLM (writer): {model}")
     
-    # Embed Model used on paper reference
-    print(f"Loading embed model: {embed_model}, {embed_model_type}")
-    embed = load_embeddings(model=embed_model, model_type=embed_model_type)
-    print(f"Loaded embeddings: {embed_model}")
+    # LLM used in reviewing (TODO: some configuration to make this custom)
+    review_llm = writer_llm
+    print(f"Loaded LLM (reviewer): {model}")
     
-    tex_review_llm = writer_llm
-    gen_llm = LLMHandler(model="gemini-2.0-flash", model_type="google")
+    # Create reference store
+    references = ReferenceStore(ref_paths)
+    
     
     save_path = os.path.abspath(save_path)
     if not os.path.basename(save_path).endswith(".tex"):

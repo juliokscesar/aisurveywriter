@@ -145,7 +145,7 @@ class PaperWriter(PipelineTask):
         pdfs = PDFProcessor(self.ref_paths)
         
         if summarize:
-            content = pdfs.summarize_content(self.llm.llm, show_metadata=True)
+            content = pdfs.summarize_content(self.llm.model, show_metadata=True)
         elif use_faiss:
             assert(section is not None)
             vec = pdfs.faiss(self._embed)

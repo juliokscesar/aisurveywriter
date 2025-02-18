@@ -90,7 +90,7 @@ class FigureExtractor(PipelineTask):
                     {"type": "text", "text": prompt_template.replace("{pdfcontent}", content)},
                     {"type": "image_url", "image_url": {"url": img_input_template.replace("{imgb64}", imgb64)}}
                 ])
-                response = self.llm.llm.invoke([msg])
+                response = self.llm.model.invoke([msg])
                 
                 named_log(self, f"LLM response metadata for image {i+1} {os.path.basename(img["path"])}:", response.usage_metadata)
                 named_log(self, f"LLM description: {response.content}")
