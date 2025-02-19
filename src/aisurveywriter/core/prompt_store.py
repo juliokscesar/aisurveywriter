@@ -124,14 +124,17 @@ def default_prompt_store() -> PromptStore:
 - Most important: maintain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**."""
 
 
-    ADD_FIGURES_PROMPT = """\"\"\"
+    ADD_FIGURES_PROMPT = """
+[begin: reference_content]
+
 {refcontent}
-\"\"\"
+
+[end: reference_content]
 
 - You are an academic expert in "{subject}". You are writing a survey paper.
 
 - You are receiving: 
-- the content of references for this paper
+- the content of references for this paper (reference_content block)
 - the content of one section of this paper (in latex)
 
 - YOUR JOB:
@@ -158,9 +161,9 @@ def default_prompt_store() -> PromptStore:
 - **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is...\""""
 
     REVIEW_SECTION_PROMPT = """[begin: reference_content]
-\"\"\"
-{refcontents}
-\"\"\"
+    
+{refcontent}
+
 [end: reference_content]
 
 [begin: system_instructions]
@@ -196,9 +199,9 @@ def default_prompt_store() -> PromptStore:
 [end: system_instructions]"""
 
     APPLY_REVIEW_SECTION_PROMPT = """[begin: reference_content]
-\"\"\"
-{refcontents}
-\"\"\"
+
+{refcontent}
+
 [end: reference_content]
 
 [begin: system_instructions]

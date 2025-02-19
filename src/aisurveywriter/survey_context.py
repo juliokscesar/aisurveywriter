@@ -10,7 +10,10 @@ from aisurveywriter.core.reference_store import ReferenceStore
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.text_embedding import EmbeddingsHandler
 from aisurveywriter.core.prompt_store import PromptStore, PromptInfo
+from aisurveywriter.core.pipeline import PaperPipeline
 import aisurveywriter.tasks as tks
+from aisurveywriter.utils.logger import named_log
+from aisurveywriter.utils.helpers import time_func
 
 class SurveyAgentType(Enum):
     StructureGenerator = auto()
@@ -25,11 +28,15 @@ class SurveyContext:
         llms: Union[LLMHandler, dict[SurveyAgentType, LLMHandler]],
         embed: EmbeddingsHandler,
         prompts: PromptStore,
+        tex_template_path: str,
         save_path: str = "survey_out",
         
         no_ref_faiss = False,
         no_review = False,
         no_figures = False,
+        no_reference = False,
+        no_abstract = False,
+        no_tex_review = False,
         
         structure_json_path: Optional[str] = None,
         prewritten_tex_path: Optional[str] = None,
@@ -38,10 +45,14 @@ class SurveyContext:
         faissbib_path: Optional[str] = None,
         faissfig_path: Optional[str] = None,
         faisscontent_path: Optional[str] = None,
-        faiss_confidence: float = 0.6,
+        faiss_confidence: float = 0.7,
+        
+        images_dir: Optional[str] = None,
         
         llm_request_cooldown_sec: int = 30,
         embed_request_cooldown_sec: int = 0,
+        
+        **pipeline_kwargs,
     ):
         save_path = os.path.abspath(save_path)
         if not save_path.endswith(".tex"):
@@ -50,6 +61,7 @@ class SurveyContext:
         
         self.save_path = save_path
         self.output_dir = os.path.dirname(save_path)
+        self.tex_template_path = tex_template_path
         
         # Initialize paper and load structure and pre-written .tex if provided
         self.paper = PaperData(subject=subject)
@@ -77,7 +89,24 @@ class SurveyContext:
         self._embed_cooldown = embed_request_cooldown_sec
         
         self.rags = AgentRAG(self.embed, faissbib_path, faissfig_path, faisscontent_path, request_cooldown_sec=llm_request_cooldown_sec, output_dir=self.output_dir, confidence=faiss_confidence)
-        self.pipeline = None
+        self.images_dir = images_dir
+        if not self.images_dir:
+            self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
+        
+        self.pipe_steps: List[tks.PipelineTask] = None
+        self.pipeline: PaperPipeline = None
+        self._create_pipeline(
+            no_content_rag=no_ref_faiss, 
+            skip_struct=(structure_json_path is None),
+            skip_fill=(prewritten_tex_path is None),
+            skip_figures=no_figures,
+            skip_references=no_reference,
+            skip_review=no_review,
+            skip_abstract=no_abstract,
+            skip_tex_review=no_tex_review,
+            
+            **pipeline_kwargs,
+        )
     
     def _create_pipeline(
         self,
@@ -88,8 +117,12 @@ class SurveyContext:
         skip_references=False,
         skip_review=False, 
         skip_abstract=False,
-        skip_tex_review=False
+        skip_tex_review=False,
+        
+        **pipeline_kwargs,
     ):
+        self.pipe_steps = []
+
         # first ensure all rags are loaded/created
         using_rags = RAGType.All
         if no_content_rag:
@@ -109,18 +142,19 @@ class SurveyContext:
             embed_cooldown=self._embed_cooldown,
             references=self.references,
             rags=self.rags,
+            output_dir=self.output_dir,
         )
         self.common_agent_ctx._working_paper = self.paper
 
-        self.pipeline: List[tks.PipelineTask] = []
+        self.pipe_steps: List[tks.PipelineTask] = []
         if not skip_struct:
             self._check_input_variables(self.prompts.generate_struct, SurveyAgentType.StructureGenerator, tks.PaperStructureGenerator.required_input_variables)
                         
             struct_agent_ctx = self.common_agent_ctx.copy()
             struct_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator]
             struct_json_path = os.path.join(self.output_dir, "structure.yaml")
-            self.pipeline.append(
-                tks.PaperStructureGenerator(struct_agent_ctx, self.paper, struct_json_path)
+            self.pipe_steps.append(
+                ("Generate Structure", tks.PaperStructureGenerator(struct_agent_ctx, self.paper, struct_json_path))
             )
 
         if not skip_fill:
@@ -128,19 +162,76 @@ class SurveyContext:
             
             write_agent_ctx = self.common_agent_ctx.copy()
             write_agent_ctx.llm_handler = self.llms[SurveyAgentType.Writer]
-            self.pipeline.append(
-                tks.PaperWriter(write_agent_ctx, self.paper),
-            )
+            self.pipe_steps.extend([
+                ("Write paper", tks.PaperWriter(write_agent_ctx, self.paper)),
+                ("Save scratch", tks.PaperSaver(self.save_path.replace(".tex", "-scratch.tex"), self.tex_template_path)),
+            ])
             
+        if not skip_figures:
+            self._check_input_variables(self.prompts.add_figures, SurveyAgentType.StructureGenerator, tks.PaperFigureAdd.required_input_variables)
+
+            figures_agent_ctx = self.common_agent_ctx.copy()
+            figures_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator] # use llm from structure generation because we use the entire reference content
+            self.pipe_steps.extend([
+                ("Add figures", tks.PaperFigureAdd(figures_agent_ctx, self.paper, self.images_dir, self.confidence, max_figures=30)),
+                ("Save with figures", tks.PaperSaver(self.save_path.replace(".tex", "-figures.tex"), self.tex_template_path))
+            ])
+            
+        if not skip_review:
+            self._check_input_variables(self.prompts.review_section, SurveyAgentType.Reviewer, tks.PaperReviewer.required_input_variables)
+            self._check_input_variables(self.prompts.apply_review_section, SurveyAgentType.Reviewer, tks.PaperReviewer.required_input_variables)
+
+            review_agent_ctx = self.common_agent_ctx.copy()
+            review_agent_ctx.llm_handler = self.llms[SurveyAgentType.Reviewer]
+            self.pipe_steps.extend([
+                ("Review paper", tks.PaperReviewer(review_agent_ctx, self.paper)),
+                ("Save reviewed", tks.PaperSaver(self.save_path.replace(".tex", "-review.tex"), self.tex_template_path)),
+            ])
+            
+        if not skip_references:
+            # paper refrencer doesn't need a prompt
+            reference_agent_ctx = self.common_agent_ctx.copy()
+            self.pipe_steps.extend([
+                ("Reference paper", tks.PaperReferencer(reference_agent_ctx, self.paper, self.save_path.replace(".tex", ".bib"))),
+                ("Save referenced", tks.PaperSaver(self.save_path.replace(".tex", "-ref.tex"), self.tex_template_path))
+            ])
+
+        if not skip_abstract:
+            self._check_input_variables(self.prompts.abstract_and_title, SurveyAgentType.Writer, tks.PaperRefiner.required_input_variables)
+            
+            refine_agent_ctx = self.common_agent_ctx.copy()
+            refine_agent_ctx.llm_handler = self.llms[SurveyAgentType.Writer] # use writer LLM
+            self.pipe_steps.extend([
+                ("Refine paper (abstract and title)", tks.PaperRefiner(refine_agent_ctx, self.paper)),
+                ("Save refined", tks.PaperSaver(self.save_path.replace(".tex", "-refined.tex"), self.tex_template_path)),
+            ])
+
+        if not skip_tex_review:
+            # tex review doesn't need a prompt
+            tex_review_agent_ctx = self.common_agent_ctx.copy()
+            self.pipe_steps.append(tks.TexReviewer(tex_review_agent_ctx, self.paper))
+        
+        self.pipe_steps.append(("Save final paper", tks.PaperSaver(self.save_path, self.tex_template_path)))
+        self.pipeline = PaperPipeline(self.pipe_steps, **pipeline_kwargs)
 
     def _check_input_variables(self, prompt: PromptInfo, agent_type: SurveyAgentType, required_input_variables: List[str]):
         missing = set(prompt.input_variables - required_input_variables)
         assert(len(missing) == 0, f"Missing or additional input variables in prompt for {agent_type}: {missing}")
         
-        
     def _is_initialized(self):
         return (self.pipeline is not None)
         
     def generate(self) -> PaperData:
-       pass
-    
+        assert(self._is_initialized())
+        
+        named_log(self, "==> BEGIN SURVEY GENERATION PIPELINE")
+        named_log(self, "==> pipeline description:")
+        print(self.pipeline.describe_steps())
+        
+        elapsed, final_paper = time_func(self.pipeline.run, initial_data=self.paper)
+        
+        named_log(self, "==> FINISH SURVEY GENERATION PIPELINE")
+        named_log(self, f"==> time taken: {elapsed} s")
+        
+        return final_paper
+        

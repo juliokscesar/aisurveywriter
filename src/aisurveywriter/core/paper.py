@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Union, List, Optional
 import re
+import json
+import os
 
 from aisurveywriter.core.file_handler import read_yaml
 
@@ -25,6 +27,16 @@ class PaperData:
         paper = PaperData(
             subject=subject,
             sections=[SectionData(s["title"], s["description"]) for s in sections]              
+        )
+        return paper
+
+    @staticmethod
+    def from_structure_json(subject: str, path: str):
+        with open(path, "r", encoding="utf-8") as f:
+            sections = json.load(f)["sections"]
+        paper = PaperData(
+            subject=subject,
+            sections=[SectionData(s["title"], s["description"]) for s in sections]
         )
         return paper
 
@@ -74,7 +86,7 @@ class PaperData:
             self.sections = tex.sections.copy()
     
     def load_structure(self, structure_json_path: str):
-        struct = PaperData.from_structure_yaml(self.subject, structure_json_path)
+        struct = PaperData.from_structure_json(self.subject, structure_json_path)
         
         if self.sections and len(self.sections) == len(struct.sections):
             for section, struct_section in zip(self.sections, struct.sections):
@@ -92,3 +104,25 @@ class PaperData:
         for section in self.sections:
             content += section.content + "\n"
         return content  
+
+    def to_tex(self, template_path: str, save_path: str, bib_template_variable: Optional[str] = "bibresourcefile", figpath_template_variable: Optional[str] = "figspath"):
+        with open(template_path, "r", encoding="utf-8") as f:
+            template = f.read()
+            
+        paper_content = self.full_content()
+        if self.title:
+            paper_content = f"\\title{{{self.paper.title}}}\n\\maketitle\n\\tableofcontents\n\n" + paper_content
+
+        if self.bib_path:
+            bib_replace = f"{{{bib_template_variable}}}"
+            assert(bib_replace in template)
+            template = template.replace(bib_replace, os.path.basename(self.bib_path))
+        if self.fig_path:
+            fig_replace = f"{{{figpath_template_variable}}}"
+            assert(fig_replace in template)
+            template = template.replace(fig_replace, os.path.basename(self.fig_path))
+
+        tex_content = template.replace("{content}", paper_content)
+        with open(save_path, "w", encoding="utf-8") as f:
+            f.write(tex_content)
+        

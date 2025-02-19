@@ -85,19 +85,6 @@ def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False)
     return files
 
 
-def validate_credentials(credentials: dict):
-    REQUIRED_KEYS = [
-        "nblm_email",
-        "nblm_password",
-    ]
-
-    # First check if required keys are present
-    diff = [i for i in REQUIRED_KEYS if i not in list(credentials.keys())]
-    if len(diff) > 0:
-        raise ValueError(f"Credentials are missing keys: {", ".join(diff)}")
-
-    # TODO: check for api keys
-
 def search_crossref(title, author):
     """
     Search CrossRef API using title and author to retrieve the DOI.

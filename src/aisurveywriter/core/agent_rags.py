@@ -6,6 +6,7 @@ import operator
 from pydantic import BaseModel
 import os
 import bibtexparser
+import re
 
 from langchain_community.docstore.document import Document
 from langchain_community.vectorstores.faiss import FAISS
@@ -38,7 +39,7 @@ class BaseRAGData(ABC, BaseModel):
         pass
 
 
-class WorkReferenceData(BaseRAGData):
+class BibTexData(BaseRAGData):
     data_type: RAGType = RAGType.BibTex
     
     title:    str = ""
@@ -51,6 +52,28 @@ class WorkReferenceData(BaseRAGData):
             page_content=f"Title: {self.title}\nAbstract: {self.abstract}\nKeywords: {self.keywords}",
             metadata={"bibtex_key": self.bibtex_key}
         )
+
+    @staticmethod
+    def from_document(doc: Document):
+        # Regex pattern
+        pattern = r"Title:\s*(?P<title>.*?)\nAbstract:\s*(?P<abstract>.*?)\nKeywords:\s*(?P<keywords>.*)"
+
+        # Extract information
+        re_match = re.search(pattern, doc.page_content, re.DOTALL)
+        if re_match:
+            return BibTexData(
+                title=re_match.group("title"),
+                abstract=re_match.group("abstract"),
+                keywords=re_match.group("keywords"),
+                bibtex_key=doc.metadata["bibtex_key"]
+            )
+        else:
+            return BibTexData(
+                title="Unknown",
+                abstract=doc.page_content,
+                keywords="-",
+                bibtex_key=doc.metadata["bibtex_key"]
+            )
     
 
 class GeneralTextData(BaseRAGData):
@@ -59,6 +82,10 @@ class GeneralTextData(BaseRAGData):
 
     def to_document(self, *args, **kwargs):
         return Document(page_content=self.text)
+
+    @staticmethod
+    def from_document(doc: Document):
+        return GeneralTextData(text=doc.page_content)
 
 
 class ImageData(BaseRAGData):
@@ -72,6 +99,10 @@ class ImageData(BaseRAGData):
             page_content=self.description,
             metadata={"id": self.id, "basename": self.basename}
         )
+        
+    @staticmethod
+    def from_document(doc: Document):
+        return ImageData(id=doc.metadata["id"], basename=doc.metadata["basename"], description=doc.page_content)
 
 class AgentRAG:
     def __init__(self, embeddings: EmbeddingsHandler, bib_faiss_path: Optional[str] = None, figures_faiss_path: Optional[str] = None, content_faiss_path: Optional[str] = None, ref_bib_extractor: Optional[ReferencesBibExtractor] = None, figure_extractor: Optional[FigureExtractor] = None, request_cooldown_sec: int = 30, output_dir: str = "out", confidence: float = 0.6):
@@ -81,6 +112,11 @@ class AgentRAG:
         self.figures_faiss: FAISS = FAISS.load_local(figures_faiss_path, self._embed.model) if figures_faiss_path else None
         self.content_faiss: FAISS = FAISS.load_local(content_faiss_path, self._embed.model) if content_faiss_path else None
         
+        self.rag_type_data = {
+            RAGType.BibTex: BibTexData,
+            RAGType.GeneralText: GeneralTextData,
+            RAGType.ImageData: ImageData,
+        }
         self.faiss_rags = {
             RAGType.BibTex: self.bib_faiss,
             RAGType.GeneralText: self.content_faiss,
@@ -138,9 +174,9 @@ class AgentRAG:
             with open(references.bibtex_db_path, "r", encoding="utf-8") as f:
                 bibtex_db = bibtexparser.load(f)
 
-        bib_data: List[WorkReferenceData] = []
+        bib_data: List[BibTexData] = []
         for entry in bibtex_db.entries:
-            bib_data.append(WorkReferenceData(
+            bib_data.append(BibTexData(
                 title=entry.get("title", "Unknown"),
                 abstract=entry.get("abstract", ""),
                 keywords=entry.get("keyword", ""),
@@ -176,3 +212,21 @@ class AgentRAG:
         
         save_path = os.path.join(self.output_dir, "figures-rag.faiss")
         return AgentRAG.create_faiss(self._embed, figures_rag_data, save_path)
+
+    def retrieve(self, rag: RAGType, query: str, k: int = 10, confidence: Optional[float] = None):
+        assert(not self.is_disabled(rag))
+        
+        if not confidence:
+            results = self.faiss_rags[rag].similarity_search(query, k)
+            return [self.rag_type_data[rag].from_document(doc) for doc in results]
+    
+        assert(0.0 < confidence < 1.0)
+        results = self.faiss_rags[rag].similarity_search_with_score(query, k)
+        valid = []
+        for result, score in results:
+            if score < confidence:
+                continue
+            valid.append(self.rag_type_data[rag].from_document(result))
+        
+        return valid
+    

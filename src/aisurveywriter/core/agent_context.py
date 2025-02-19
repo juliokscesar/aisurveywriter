@@ -29,6 +29,8 @@ class AgentContext:
     # bib, content and figures RAGs
     rags: AgentRAG = None
 
+    output_dir: str = None
+
     _working_paper: PaperData = None
 
     def copy(self):
@@ -38,5 +40,6 @@ class AgentContext:
             embed_handler=self.embed_handler,
             references=self.references,
             rags=self.rags,
+            output_dir=self.output_dir,
             _working_paper=self._working_paper,
         )

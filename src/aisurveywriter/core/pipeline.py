@@ -37,3 +37,9 @@ class PaperPipeline:
         if self.status_queue:
             self.status_queue.put((idx, name, status))
     
+    def describe_steps(self) -> str:
+        desc = f"{self.__class__.__name__}, N steps: {len(self.steps)}\n"
+        for i, step in enumerate(self.steps):
+            desc += f"> Step {i+1}: {step[0]}, type: {step[1].__class__.__name__}\n"
+
+        return desc

@@ -4,9 +4,6 @@ from .writer import *
 from .reviewer import *
 from .tex_reviewer import *
 from .paper_saver import *
-from .reference_extract import *
-from .paper_reference import *
-from .paper_faiss_ref import *
+from .paper_referencer import *
 from .refiner import *
-from .figure_extractor import *
 from .figure_add import *

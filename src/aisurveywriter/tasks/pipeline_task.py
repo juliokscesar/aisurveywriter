@@ -22,8 +22,7 @@ class DeliverTask(PipelineTask):
     This is just a task that takes and returns the input as it is
     """
     def __init__(self, data_to_deliver=None):
-        super().__init__()
-        self.no_divide = True
+        super().__init__(no_divide=True)
         self.deliver = data_to_deliver
     
     def pipeline_entry(self, input_data):
@@ -39,7 +38,7 @@ class DeliverTask(PipelineTask):
 
 class LoadTask(PipelineTask):
     def __init__(self, tex_path: str, subject: str):
-        self.no_divide = True
+        super().__init__(no_divide=True)
         self.tex_path = tex_path
         self.subject = subject
 
