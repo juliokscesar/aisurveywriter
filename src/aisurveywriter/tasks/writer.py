@@ -8,11 +8,14 @@ from langchain_core.messages import SystemMessage
 from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 from aisurveywriter.core.paper import PaperData, SectionData
+from aisurveywriter.core.agent_context import AgentContext
+from aisurveywriter.core.agent_rags import RAGType
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.text_embedding import load_embeddings
 from aisurveywriter.core.pdf_processor import PDFProcessor
 from aisurveywriter.tasks.pipeline_task import PipelineTask
-from aisurveywriter.utils import named_log, countdown_log, diff_keys, time_func
+from aisurveywriter.utils.logger import named_log, countdown_log, cooldown_log, metadata_log
+from aisurveywriter.utils.helpers import diff_keys, time_func, assert_type
 
 class PaperWriter(PipelineTask):
     """
@@ -183,3 +186,57 @@ class PaperWriter(PipelineTask):
         for paper in data[1:]:
             merged_paper.sections.extend(paper.sections)
         return merged_paper
+
+        
+class PaperWriter(PipelineTask):
+    required_input_variables: List[str] = ["subject", "refcontent"]
+    
+    def __init__(self, agent_ctx: AgentContext, structured_paper: PaperData):
+        super().__init__(no_divide=False, agent_ctx=agent_ctx)
+        self.agent_ctx._working_paper = structured_paper
+    
+        self._system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.write_section)
+        self._human = HumanMessagePromptTemplate.from_template("Write the given section:\n-Title: {title}\n-Description:\n{description}")
+        self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
+    
+    def write(self) -> PaperData:
+        section_amount = len(self.agent_ctx._working_paper.sections)
+        total_words = 0
+        for i, section in enumerate(self.agent_ctx._working_paper):
+            assert(section.description is not None)
+
+            named_log(self, f"==> start writing content for section ({i+1}/{section_amount}): \"{section.title}\"")
+            
+            elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
+                "refcontent": self._get_reference_content(section),
+                "subject": self.agent_ctx._working_paper.subject,
+                "title": section.title,
+                "description": section.description,
+            })
+            metadata_log(self, elapsed, response)
+            
+            section.content = re.sub(r"[`]+[\w]*", "", response.content)
+            total_words += len(section.content)
+            named_log(self, f"==> finished writing section ({i+1}/{section_amount}) | total word count: {total_words}")
+
+            if self.agent_ctx.llm_cooldown:
+                cooldown_log(self, self.agent_ctx.llm_cooldown)
+
+        return self.agent_ctx._working_paper
+
+    def _get_reference_content(self, section: SectionData):
+        # use full content if content RAG is disabled
+        if self.agent_ctx.rags.is_disabled(RAGType.GeneralText):
+            return self.agent_ctx.references.full_content(discard_bibliography=True)
+        
+        # retrieve relevant blocks for this section from content RAG
+        k = 25
+        relevant = self.agent_ctx.rags.content_faiss.similarity_search(f"Retrieve contextual, technical, and analytical information on the subject {self.agent_ctx._working_paper.subject} for a section titled \"{section.title}\", description:\n{section.description}", k=k)
+        return "\n\n".join([doc.page_content for doc in relevant])
+
+    def pipeline_entry(self, input_data: PaperData):        
+        if input_data:
+            assert_type(self, input_data, PaperData, "input_data")
+            self.agent_ctx._working_paper = input_data
+
+        return self.write()

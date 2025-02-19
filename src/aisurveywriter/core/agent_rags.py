@@ -5,6 +5,7 @@ from functools import reduce
 import operator
 from pydantic import BaseModel
 import os
+import bibtexparser
 
 from langchain_community.docstore.document import Document
 from langchain_community.vectorstores.faiss import FAISS
@@ -13,8 +14,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .text_embedding import EmbeddingsHandler
 from .reference_store import ReferenceStore
 
-from aisurveywriter.tasks.new_reference_extract import ReferencesBibExtractor
+from aisurveywriter.res_extract import ReferencesBibExtractor, FigureExtractor
+
 from aisurveywriter.utils.helpers import random_str
+from aisurveywriter.utils.logger import named_log
 
 class RAGType(IntFlag):
     Null        = 0
@@ -71,7 +74,7 @@ class ImageData(BaseRAGData):
         )
 
 class AgentRAG:
-    def __init__(self, embeddings: EmbeddingsHandler, bib_faiss_path: Optional[str] = None, figures_faiss_path: Optional[str] = None, content_faiss_path: Optional[str] = None, ref_bib_extractor: Optional[ReferencesBibExtractor] = None, request_cooldown_sec: int = 30, output_dir: str = "out"):
+    def __init__(self, embeddings: EmbeddingsHandler, bib_faiss_path: Optional[str] = None, figures_faiss_path: Optional[str] = None, content_faiss_path: Optional[str] = None, ref_bib_extractor: Optional[ReferencesBibExtractor] = None, figure_extractor: Optional[FigureExtractor] = None, request_cooldown_sec: int = 30, output_dir: str = "out", confidence: float = 0.6):
         self._embed = embeddings
 
         self.bib_faiss:     FAISS = FAISS.load_local(bib_faiss_path, self._embed.model) if bib_faiss_path else None
@@ -85,20 +88,28 @@ class AgentRAG:
         }
         self.create_rags_funcmap = {
             RAGType.BibTex: self.create_bib_rag,
-            RAGType.GeneralText: self._create_content_rag,
-            RAGType.ImageData: self._create_figures_rag,
+            RAGType.GeneralText: self.create_content_rag,
+            RAGType.ImageData: self.create_figures_rag,
         }
 
+        self.confidence = confidence
+
         self.ref_bib_extractor = ref_bib_extractor
+        self.figure_extractor = figure_extractor
 
         self._cooldown = request_cooldown_sec
         self.output_dir = os.path.abspath(output_dir)
 
     def create_rags(self, rag_types: RAGType, references: ReferenceStore):
         for rag_type in rag_types:
-            func_create_rag = self.create_rags_funcmap[rag_type]
-            self.faiss_rags[rag_type] = func_create_rag(references)
-   
+            if self.faiss_rags[rag_type]:
+                named_log(f"FAISS type: {rag_type} already loaded, skipping creation...")
+                continue
+            create_rag_func = self.create_rags_funcmap[rag_type]
+            self.faiss_rags[rag_type] = create_rag_func(references)
+    
+    def is_disabled(self, rag_type: RAGType):
+        return (self.faiss_rags[rag_type] is None)
 
     @staticmethod
     def create_faiss(embed: EmbeddingsHandler, data_list: List[BaseRAGData], save_path: Optional[str] = None, *splitter_args, **splitter_kwargs):
@@ -118,9 +129,14 @@ class AgentRAG:
         if not self.ref_bib_extractor:
             self.ref_bib_extractor = ReferencesBibExtractor(self.llm, references, request_cooldown_sec=self._cooldown)
         
-        bib_info = self.ref_bib_extractor.extract()
-        save_path = os.path.join(self.output_dir, "refextract-bibdb.bib")
-        bibtex_db = self.ref_bib_extractor.to_bibtex_db(bib_info, save_path=save_path)
+        if not references.bibtex_db_path:
+            bib_info = self.ref_bib_extractor.extract()
+            references.bibtex_db_path = "refextract-bibdb.bib"
+            save_path = os.path.join(self.output_dir, references.bibtex_db_path)
+            bibtex_db = self.ref_bib_extractor.to_bibtex_db(bib_info, save_path=save_path)
+        else:
+            with open(references.bibtex_db_path, "r", encoding="utf-8") as f:
+                bibtex_db = bibtexparser.load(f)
 
         bib_data: List[WorkReferenceData] = []
         for entry in bibtex_db.entries:
@@ -133,6 +149,7 @@ class AgentRAG:
         
         return AgentRAG.create_faiss(self._embed, bib_data, save_path=save_path.replace(".bib", ".faiss"))
 
+
     def create_content_rag(self, references: ReferenceStore):
         content = references.full_content(discard_bibliography=True)
         splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=0)
@@ -143,3 +160,19 @@ class AgentRAG:
         save_path = os.path.join(self.output_dir, "content-rag.faiss")
         return AgentRAG.create_faiss(self._embed, content_data, save_path=save_path)
         
+
+    def create_figures_rag(self, references: ReferenceStore):
+        if not self.figure_extractor:
+            self.figure_extractor = FigureExtractor(self.llm, references, os.path.join(self.output_dir, "images"), request_cooldown_sec=self._cooldown)
+        
+        figures_info = self.figure_extractor.extract()
+        figures_rag_data: List[ImageData] = []
+        for figure in figures_info:
+            figures_rag_data.append(ImageData(
+                id=figure.id,
+                basename=figure.basename,
+                description=figure.description,
+            ))
+        
+        save_path = os.path.join(self.output_dir, "figures-rag.faiss")
+        return AgentRAG.create_faiss(self._embed, figures_rag_data, save_path)

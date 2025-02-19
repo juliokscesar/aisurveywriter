@@ -59,6 +59,34 @@ class PaperData:
         # Read bibliography if provided
         return PaperData(subject=subject, sections=sections, title=title, bib_path=bib_path, fig_path=fig_path)
             
+    def load_tex(self, tex_path: str):
+        tex = PaperData.from_tex(tex_path)
+        
+        if self.sections and len(self.sections) == len(tex.sections):
+            for section, loaded_section in zip(self.sectons, tex.sections):
+                section.content = loaded_section.content
+                section.title = loaded_section.title
+                
+        elif self.sections:
+            self.sections.extend(tex.sections)
+            
+        else:
+            self.sections = tex.sections.copy()
+    
+    def load_structure(self, structure_json_path: str):
+        struct = PaperData.from_structure_yaml(self.subject, structure_json_path)
+        
+        if self.sections and len(self.sections) == len(struct.sections):
+            for section, struct_section in zip(self.sections, struct.sections):
+                section.description = struct_section.description
+                section.title = struct_section.title
+    
+        elif self.sections:
+            self.sections.extend(struct.sections)
+        
+        else:
+            self.sections = struct.sections.copy()
+    
     def full_content(self) -> str:
         content = ""
         for section in self.sections:

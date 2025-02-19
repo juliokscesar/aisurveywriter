@@ -55,7 +55,7 @@ class PDFProcessor:
                     base_img = reader.extract_image(xref)
                     img_bytes = base_img["image"]
                     img_ext = base_img["ext"]
-                    img_name = f"{Path(self.pdf_paths[pdf_idx]).stem}_img{img_idx}page{page_idx}.{img_ext}"
+                    img_name = f"{Path(self.pdf_paths[pdf_idx]).stem}_page{page_idx}_image{img_idx}.{img_ext}"
                     
                     if save_dir:
                         path = os.path.join(save_dir, img_name)

@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 
 from aisurveywriter.core.paper import PaperData
+from aisurveywriter.core.agent_context import AgentContext
 
 class PipelineTask(ABC):
-    def __init__(self):
-        self.no_divide = False
+    def __init__(self, no_divide = False, agent_ctx: AgentContext = None):
+        self.no_divide = no_divide
+        self.agent_ctx: AgentContext = agent_ctx
     
     def pipeline_entry(self, input_data):
         return input_data

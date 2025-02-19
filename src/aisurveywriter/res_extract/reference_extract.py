@@ -63,7 +63,7 @@ class ReferencesBibExtractor:
             chunk_overlap=chunk_overlap,
         )
 
-        bib_docs = text_splitter.create_documents([bib_sections])
+        bib_docs = text_splitter.create_documents(bib_sections)
         n_chunks = len(bib_docs)
 
         bib_info: List[BibliographyInfo] = []

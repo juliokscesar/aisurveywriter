@@ -102,9 +102,6 @@ write_prompt: |
 
   - Most important: maintain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**.
 
-# - Here's what you know that must be included in the section "{title}":
-# {description}
-
 
 add_reference_prompt: |
   """

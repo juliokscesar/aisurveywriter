@@ -12,7 +12,10 @@ class ReferenceStore:
     pdf_paths: List[str] = None
     
     _full_contents: List[str] = None
+    
     _bibliographies: List[str] = None
+    bibtex_db_path: str = None
+    
     _no_bib_contents: List[str] = None
     
     def __init__(self, reference_paths: List[str]):
@@ -25,6 +28,7 @@ class ReferenceStore:
         try:
             cp._full_contents = self._full_contents.copy()
             cp._bibliographies = self._bibliographies.copy()
+            cp.bibtex_db_path = self.bibtex_db_path
             cp._no_bib_contents = self._no_bib_contents.copy()
         except:
             pass
