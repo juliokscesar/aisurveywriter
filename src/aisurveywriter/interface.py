@@ -42,7 +42,7 @@ class GradioInterface:
             "gte-Qwen2-1.5b (HuggingFace)": ("huggingface", "Alibaba-NLP/gte-Qwen2-1.5B-instruct"),
             "all-mpnet-base-v2": ("huggingface", "sentence-transformers/all-mpnet-base-v2"),
             "multilingual-e5-large-instruct": ("huggingface", "intfloat/multilingual-e5-large-instruct"),
-            "snowflake-arctic-embed-l-v2.0": ("hugginface", "Snowflake/snowflake-arctic-embed-l-v2.0"),
+            "snowflake-arctic-embed-l-v2.0": ("huggingface", "Snowflake/snowflake-arctic-embed-l-v2.0"),
         }
         self.gr_interface = gr.ChatInterface(
             fn=self.chat_fn,
