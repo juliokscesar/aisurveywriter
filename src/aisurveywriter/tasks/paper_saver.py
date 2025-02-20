@@ -3,8 +3,6 @@ from typing import Optional, Callable
 from .pipeline_task import PipelineTask
 
 from aisurveywriter.core.paper import PaperData
-import aisurveywriter.core.file_handler as fh
-import aisurveywriter.core.latex_handler as lh
 from aisurveywriter.utils.helpers import assert_type
 
 class PaperSaver(PipelineTask):

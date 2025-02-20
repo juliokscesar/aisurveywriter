@@ -11,7 +11,7 @@ python -m aisurveywriter \
     -b bib/refextract-21papers.bib \
     -fb bib/snowflake-arctic-embed-l-v2.0-bibfaiss/ \
     -ff bib/snowflake-arctic-embed-l-v2.0-allimgfaiss/ \
-    -fr -i bib/filteredimgs/ \
+    -i bib/filteredimgs/ \
     -m gemini-2.0-pro-exp \
     -e Snowflake/snowflake-arctic-embed-l-v2.0 \
     -t huggingface -w 40 refexamples \

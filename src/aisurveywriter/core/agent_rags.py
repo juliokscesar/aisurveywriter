@@ -162,7 +162,7 @@ class AgentRAG:
     
     def create_bib_rag(self, references: ReferenceStore): 
         if not self.ref_bib_extractor:
-            self.ref_bib_extractor = ReferencesBibExtractor(self._llm, references, request_cooldown_sec=self._cooldown)
+            self.ref_bib_extractor = ReferencesBibExtractor(self._llm, references, request_cooldown_sec=self._cooldown, n_batches=150)
         
         if not references.bibtex_db_path:
             bib_info = self.ref_bib_extractor.extract()
