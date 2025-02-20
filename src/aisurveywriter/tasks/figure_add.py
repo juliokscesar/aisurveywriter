@@ -2,130 +2,119 @@ import os
 import shutil
 import re
 from typing import List
-from PIL import Image
 
-from langchain_community.vectorstores import FAISS
 from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 from .pipeline_task import PipelineTask
-from aisurveywriter.core.llm_handler import LLMHandler
+from aisurveywriter.core.agent_context import AgentContext
+from aisurveywriter.core.agent_rags import RAGType, ImageData
 from aisurveywriter.core.paper import PaperData
-from aisurveywriter.core.pdf_processor import PDFProcessor
-from aisurveywriter.utils import time_func, named_log, countdown_log
+from aisurveywriter.utils.logger import named_log, cooldown_log, metadata_log
+from aisurveywriter.utils.helpers import time_func, assert_type
 
 class PaperFigureAdd(PipelineTask):
-    def __init__(self, llm: LLMHandler, embed, faiss_path: str, imgs_path: str, ref_paths: List[str], prompt: str, out_path: str, llm_cooldown: int = 40, embed_cooldown: int = 0, max_figures: int = 15, confidence: float = 0.9):
-        self.no_divide = True
+    required_input_variables: List[str] = ["refcontent", "subject"]
+    
+    def __init__(self, agent_ctx: AgentContext, written_paper: PaperData, images_dir: str, confidence: float = 0.8, max_figures: int = 30):
+        super().__init__(no_divide=True, agent_ctx=agent_ctx)
+        self.agent_ctx._working_paper = written_paper
         
-        self.llm = llm
-        self.embed = embed
-        self.faiss = FAISS.load_local(faiss_path, embed, allow_dangerous_deserialization=True)
-        self.imgs_path = imgs_path
-        self.prompt = prompt
-        self.out_path = out_path
-        self.ref_paths = ref_paths
-        self._llm_cooldown = llm_cooldown
-        self._embed_cooldown = embed_cooldown
+        self._system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.add_figures.text)
+        self._human = HumanMessagePromptTemplate.from_template("Add figures in the following section:\n- Section title: {title}\n- Section content:\n{content}")
+        self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
 
         self.confidence = confidence
         self.max_figures = max_figures
-        
-    def pipeline_entry(self, input_data: PaperData):
-        if not isinstance(input_data, PaperData):
-            raise TypeError(f"Task {self.__class__.__name__} requires input data type of PaperData in pipeline entry")
-        
-        paper = self.add_figures(input_data)
-        return paper
     
-    def add_figures(self, paper: PaperData) -> PaperData:
-        used_imgs_dest = os.path.join(os.path.abspath(self.out_path), "used-imgs")
-        os.makedirs(used_imgs_dest, exist_ok=True)
-        paper.fig_path = used_imgs_dest
+        self.images_dir = os.path.abspath(images_dir)
+        self.used_imgs_dest = os.path.join(self.agent_ctx.output_dir, "used-imgs")
+        os.makedirs(self.used_imgs_dest, exist_ok=True)
+        self.agent_ctx._working_paper.fig_path = self.used_imgs_dest
         
-        sysmsg = SystemMessagePromptTemplate.from_template(self.prompt)
-        hummsg = HumanMessagePromptTemplate.from_template("Content for this section:\n- Title: {title}\n- Content:\n\n{content}")
-        self.llm.init_chain_messages(sysmsg, hummsg)
+    def add_figures(self):
+        self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
+
+        # this task uses full pdf content
+        refcontent = "\n\n".join(self.agent_ctx.references.full_content())
         
-        refcontent = self.ref_contents()
-        
-        for i, section in enumerate(paper.sections):
-            named_log(self, f"==> begin adding figures for section ({i+1}/{len(paper.sections)}): {section.title}")
-            elapsed, response = time_func(self.llm.invoke, {
-                "refcontent": refcontent,
-                "subject": paper.subject,
-                "title": section.title,
-                "content": section.content,
-            })
-            named_log(self, "==> response metadata:", response.usage_metadata, f" | time elapsed: {elapsed} s")
+        section_amount = len(self.agent_ctx._working_paper.sections)
+        for i, section in enumerate(self.agent_ctx._working_paper.sections):
+            named_log(self, f"==> start adding figures in section ({i+1}/{section_amount}): \"{section.title}\"")
             
-            if self._llm_cooldown:
-                countdown_log("Cooldown (request limitations):", self._llm_cooldown)
+            content = self._llm_add_figures(refcontent, section.title, section.content)
+            content, used_imgs = self._replace_figures(content, retrieve_k=5)
             
-            content, used_imgs = self.replace_figures(response.content, used_imgs_dest)
-            named_log(self, f"==> replaced {len(used_imgs)} in section {section.title}")
+            named_log(self, f"==> finish adding figures in section ({i+1}/{section_amount}), replaced {len(used_imgs)} figures")
+            
+            section.content = re.sub(r"[`]+[\w]*", "", content)
+        
+        self.agent_ctx._working_paper.fig_path = self.used_imgs_dest
+        return self.agent_ctx._working_paper
+    
+    def _llm_add_figures(self, refcontent: str, title: str, content: str) -> str:
+        elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
+            "refcontent": refcontent,
+            "subject": self.agent_ctx._working_paper.subject,
+            "title": title,
+            "content": content,
+        })
+        named_log(self, "==> got section with figures from LLM")
+        metadata_log(self, elapsed, response)
+        if self.agent_ctx.llm_cooldown:
+            cooldown_log(self, self.agent_ctx.llm_cooldown)
+        
+        return response.content
 
-            if self._embed_cooldown:
-                countdown_log(f"Cooldown of {self._embed_cooldown} s (request limitations):", self._embed_cooldown)
-
-            section.content = re.sub(r"[`]+[\w]*", "", content) # remove markdown code block annotation
-
-            named_log(self, f"==> finish adding figures for section ({i+1}/{len(paper.sections)}): {section.title}")
-
-        return paper
-
-    def replace_figures(self, content: str, save_used_dir: str, max_figures: int = 5) -> PaperData:
+    def _replace_figures(self, content: str, retrieve_k: int = 5):
+        assert(not self.agent_ctx.rags.is_disabled(RAGType.ImageData))
+        
         fig_pattern =  r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}.*?\\caption\{([^}]+)\}"
         fig_matches = [(m.start(), m.end(), m.group(1), m.group(2)) for m in re.finditer(fig_pattern, content, re.DOTALL)]
-        used_imgs = []
+        used_imgs = set()
         for start, end, figname, caption in fig_matches:
-            if len(used_imgs) >= max_figures:
+            if len(used_imgs) >= self.max_figures:
                 break
 
             # use caption to retrieve an image
             query = f"{figname}: {caption}"
-            # results = self.faiss.similarity_search(query, k=5)
-            results, scores = zip(*self.faiss.similarity_search_with_score(query, k=5))
-            named_log(self, f"Best match for caption {figname}: {caption!r} is: {', '.join([re.metadata["path"] for re in results])}")
+            results: List[ImageData] = self.agent_ctx.rags.retrieve(RAGType.ImageData, query, k=retrieve_k, confidence=self.confidence)
+            if not results:
+                named_log(self, f"==> unable to find images for figure: {figname!r}, caption: {caption}")
+                if self.agent_ctx.embed_cooldown:
+                    cooldown_log(self, self.agent_ctx.embed_cooldown)
+                continue
             
-            dest = None
-            for result, score in zip(results, scores):
-                if score < self.confidence:
+            image_used = None
+            for result in results:
+                if result.basename in used_imgs:
                     continue
-                if result.metadata["path"] in used_imgs:
-                    continue
-                used_imgs.append(result.metadata["path"])
+                used_imgs.add(result.basename)
                 
                 try:
-                    dest = os.path.join(save_used_dir, result.metadata["path"])
-                    shutil.copy(os.path.join(self.imgs_path, result.metadata["path"]), dest)
+                    image_used = os.path.join(self.used_imgs_dest, result.basename)
+                    shutil.copy(os.path.join(self.images_dir, result.basename), image_used)
                     break
                 except Exception as e:
-                    dest = result.metadata["path"]
-                    named_log(self, f"Couldn't copy {dest} to save directory: {e}")
+                    image_used = result.basename
+                    named_log(self, f"==> couldn't copy {image_used} to save directory: {e}")
                     break
             
-            if dest:
-                img_basename = os.path.basename(dest)
-                replacement = f"\\includegraphics[width=0.97\\textwidth]{{{img_basename}}}"
-                content = content.replace(f"\\includegraphics{{{figname}}}", replacement, 1)
-            else:
-                named_log(self, f"Couldn't find a match for {figname}: {caption!r} that wasn't used before")
-
-            if self._embed_cooldown:
-                named_log(self, f"Initiating cooldown of {self._embed_cooldown} for Text Embedding model request")
-                countdown_log("", self._embed_cooldown)
-
-        return content, used_imgs        
+            if not image_used:
+                named_log(self, f"==> couldn't find a match for {figname}: {caption!r} that had confidence >= {self.confidence} or wasn't used before")
+                continue
             
-    def ref_contents(self) -> str:
-        pdfs = PDFProcessor(self.ref_paths).extract_content()
-        content = ""
-        for pdf in pdfs:
-            ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", pdf, re.IGNORECASE)
-            if ref_match:
-                content += pdf[:ref_match.start()].strip()
-            else:
-                content += pdf.strip()
-            content += "\n" 
+            replacement = f"\\includegraphics[width=0.97\\textwidth]{{{result.basename}}}"
+            content = content.replace(f"\\includegraphics{{{figname}}}", replacement, 1)
+            
+            if self.agent_ctx.embed_cooldown:
+                cooldown_log(self, self.agent_ctx.embed_cooldown)
+        
+        return content, used_imgs
+            
+    def pipeline_entry(self, input_data: PaperData) -> PaperData:
+        if input_data:
+            assert_type(self, input_data, PaperData, "input_data")
+            self.agent_ctx._working_paper = input_data
 
-        return content
+        return self.add_figures()
+    

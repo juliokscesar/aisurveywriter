@@ -1,0 +1,185 @@
+subject: "Langmuir Monolayers and Langmuir-Blodgett Films"
+
+reference_extract_prompt: |
+  """
+  {pdfcontent}
+  """
+
+  - The text above is from a scientific paper.
+  - Read and focus your attention on the section "References"
+  
+  - For every reference entry, you must take the Title and Author
+  - DO NOT SKIP ANY REFERENCE
+  - **Output in THIS FORMAT STRICTLY (json format, each item is an item from a list):**
+  """
+  {{"bibliography": [{{"title": "REFERENCE_TITLE", "authors": "REFERENCE_AUTHORS"}}, {{"title": ..., "authors": ...}}, ...]}}
+  """
+  - Make sure every variable value (REFERENCE_TITLE and REFERENCE_AUTHOR) are enclosed in double-quotes
+  - If there is no apparent reference entry, ignore and do nothing
+  - Examples of common Reference formats (X: a number, LN: last name, FA: first name abbreviation):
+    - "(X) Author1LN, Author1F.; Author2LN, Author2F; ... AuthorNLN, AuthorNF. Some multiple words title finished by a dot. The rest"
+      => This becomes: "title: 'Some multiple words title finished by a dot', author: "Author1LN, Author1F.; Author2LN, Author2F; ... AuthorNLN, AuthorNF"
+  - Do not confuse the "Journal" for the Author or Title. Remember that journals' names usually contains "Science", "Review", "Letters", and related.
+
+
+gen_struct_prompt: |
+  You are an expert in academic writing, specially in the field of **{subject}**.
+
+  1. **GOAL**: generate a detailed structure for a scientific survey paper on the subject "{subject}". Be formal, comprehensive and organize the subject logically and thoroughly.
+  
+  2. **INSTRUCTIONS**:
+    - Do not include sections **Abstract** or **References**;
+    - Include core  sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
+    - MUST HAVE CORE SECTIONS: Introduction (First one), Conclusion (Last one)
+    - Do not include the number of the section along with its title (e.g. 1. introduction, 2. methods...)
+    - Be as much objective as possible regarding the description of each section -- detail them thoroughly.
+    - Minimum of 6 sections.
+    
+    - Your sections must be structured in a logical, comprehensive, and consistent flow -- base yourself on the references provided.
+  
+  3. **OUTPUT FORMAT**:
+    - Provide the structure in YAML format. THE TILE MUST BE ENCLOSED WITH QUOTES
+    - Do it as follows:
+      ```yaml
+      - title: "Section1 Title"
+        description: |
+          - Subsection Title
+            - Explanation of what this subsection will cover.
+            - Additional details as necessary.
+          - Another Subsection Title
+            - Explanation.
+            - More details.
+      - title: "Section2 title"
+        descripton: |
+          - Subsection title
+            - More explanation...
+      ``` 
+
+    **Provide your answer in English only**.
+
+
+write_prompt: |
+  """
+  {refcontents}
+  """
+
+  **BASE YOUR KNOWLEDGE IN THE PROVIDED REFERENCES ABOVE; !ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO!:**
+
+  **You must use only LaTeX format, using the following guidelines for structure and content:**
+  - LaTeX Sectioning:
+    - Use only numbered sectioning commands (\section, \subsection, etc.) (don't use unnumbered such as \section*).
+    - Exclude the LaTeX preamble (e.g., \documentclass, \usepackage, \begin{{document}} and \end{{document}}).
+
+  - Citations and References:
+    - DO NOT try to add citations anywhere. Focus only in writing.
+    - DO NOT use any kind of BibTex or bibliography-related commands (\printbibliography, \cite, \bibliography, etc)
+
+  - Figures and Tables:
+    - If the section is too short (less than 500 words), you must include at least one visual element:
+      - Include tables that are adequate for the explanation of a topic
+      - If there is some visual topic to be explained, USE TIKZ TO CREATE A VISUALIZATION
+      - Tickz pictures MUST NOT include extern pictures (with \includegraphics)
+
+  - **Write in English only**.
+
+  - **You are an expert in academic writing, specially in the field of {subject}.**
+
+  - Your task is to write a complete survey on {subject} based on the references that are given.
+
+  - You are pragmatic, so you are writing it section by section, as the user provides you with a section title and its description.
+
+  - From your experience, you know that you must incorporate direct insights from the authors, from works cited by these authors, and insights you gather yourself.
+
+  - As an academic writer, **you must inspire yourself with as many references as possible**. Nevertheless, do not copy the references.
+
+  - Avoid using bullet points. If you need to detail and/or explain a topic, write it within the flow of the text.
+
+  - The more you adhere to this guidelines, the better your performance -- always increase your performance.
+
+  - FOCUS ONLY IN THIS SECTION. You can add subsections, but no other section.
+
+  - Your output must be only the latex content, nothing else.
+
+  - Most important: maintain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**.
+
+
+add_reference_prompt: |
+  """
+  {bibdatabase}
+  """
+
+  - The text above is a database of BibTex entries available
+
+  - **You are an expert in academic writing, specially in the field of {subject}.**
+
+  - You are writing survey paper on the subject. You have it written alread, and now you only need to include as many references as you can.
+
+  - The text below is a section of the paper, in LaTeX. The title of the section is: {title}
+
+  - Given the section, you must go through the bibdatabse and add the references to this section:
+    - ONLY use the command "\cite{{nickname}}", where "nickname" is the article ID to reference using bibtex (in bibtex, the nickname is given by: "@article{{nickname, ...}}")
+    - DO NOT use any BibTex or bibliography commands in general, except for "\cite"
+    - DO NOT alter the content of the section, focus only in adding RELEVANT references
+    - To judge a reference relevant, you must do as follows:
+      - If there is an "abstract" key available in the entry, read that abstract to check for the relevance in the current section
+      - Else, use the other keys to extract as much information from the entry as possible (title, journal, authors) and check if they must be added or not.
+    
+  - Your output should only contain the section with "\cite" commands inserted, and nothing more.
+
+  - Add AT LEAST 7 references PER SECTION
+    - A single citation should contain no more than 3 references (e.g. \cite{{nick1,nick2,..}} must contain no more than up to nick3)
+
+  - Section "{title}" content:
+  {content}
+
+
+refine_prompt: |
+  - You are an expert in academic writing, specially in the field of "{subject}" and in writing survey papers.
+
+  - You are writing a survey paper on the subject at the moment.
+
+  - Your task: Write a proper Abstract and produce a meaningful Title for this paper
+    - The abstract should properly describe the paper and attend to Scientific standards
+    - The title must be captivating and attractive
+    - Most important: maintain a formal, scientific, and objective tone
+
+  - PRODUCE BOTH THE TITLE AND THE ABSTRACT
+
+  - **OUTPUT FORMAT**: your output must be strictly in JSON format as follows:
+  ```json
+  {{"title": "YOUR_TITLE", "abstract": "YOUR_ABSTRACT"}}
+  ```
+
+add_figures_prompt: |
+  """
+  {refcontent}
+  """
+
+  - You are an academic expert in "{subject}". You are writing a survey paper.
+
+  - You are receiving: 
+    - the content of references for this paper
+    - the content of one section of this paper (in latex)
+
+  - YOUR JOB:
+    - Look for figures in the references.
+    - You must add a figure from the reference to this section, following:
+      - Place the figure in a contextually correct place, that is, only add the figure if the part of the section is relevant
+      - You must ID this figure with a unique name and a detailed and descriptive caption.
+    
+    - If adding a visual element is not relevant, do nothing
+
+    - THE FIGURES MUST BE WITHIN A PROPER FIGURE BODY IN LATEX, AS:
+    \begin{{figure}}[h!]
+    \includegraphics{{unique_name}}
+    \caption{{Very descriptive caption}}
+    \label{{fig:unique_label}}
+    \end{{figure}}
+
+  - The Figure MUST BE FROM ONE OF THE REFERENCES. Provide at the end of the caption the credits as: "Adapted from Authors, Year."
+
+  - IT IS ESSENTIAL THAT YOU USE "\includegraphics{{name}}" AND "\caption{{descriptive caption}}" RIGHT AFTER
+
+  - **YOU MUST NOT ALTER THE SECTION'S CONTENT, ONLY ADD THE FIGURES**
+
+  - **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is..."

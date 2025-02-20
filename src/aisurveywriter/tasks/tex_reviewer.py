@@ -4,79 +4,57 @@ import os
 import time
 
 from .pipeline_task import PipelineTask
-from aisurveywriter.core.llm_handler import LLMHandler
+from aisurveywriter.core.agent_context import AgentContext
 from aisurveywriter.core.paper import PaperData, SectionData
-from aisurveywriter.utils import named_log, countdown_log, time_func
+from aisurveywriter.utils.logger import named_log
+from aisurveywriter.utils.helpers import assert_type
 
 class TexReviewer(PipelineTask):
-    def __init__(self, out_dir: str, paper: Optional[PaperData] = None, cooldown_sec: int = 40):
-        # self.llm = llm
-        # self.tex_prompt = tex_review_prompt
-        # self.bib_prompt = bib_review_prompt
-        self.paper = paper
-        self._cooldown_sec = int(cooldown_sec)
-        self.out_dir = out_dir
+    def __init__(self, agent_ctx: AgentContext, paper: PaperData):
+        super().__init__(no_divide=True, agent_ctx=agent_ctx)
+        self.agent_ctx._working_paper = paper
+
+        self._figure_pattern = re.compile(r'\\begin{figure}.*?\\includegraphics(?:\[.*?\])?{(.*?)}.*?\\end{figure}', re.DOTALL)
+        self._cite_pattern = re.compile(r"\\cite{([^}]+)}")
         
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
-        if not isinstance(input_data, PaperData):
-            raise TypeError(f"{self.__class__.__name__} requires an input data of type PaperData in pipeline entry, got {type(input_data)} instead")
-        return self.review(input_data)
-
-    def review(self, paper: PaperData):
-        self.paper = paper
-        self.paper = self.review_tex(self.paper)
-        return self.paper
+        if input_data:
+            assert_type(self, input_data, PaperData, "input_data")
+            self.agent_ctx._working_paper = input_data
         
-    def review_tex(self, paper: PaperData):
+        return self.review_tex()
+        
+    def review_tex(self) -> PaperData:
         """
         Review LaTeX syntax and commands section by section
         """
-        # self.llm.init_chain(None, self.tex_prompt)
-        
-        sz = len(paper.sections)
-        
-        with open(paper.bib_path, "r", encoding="utf-8") as f:
+        with open(self.agent_ctx._working_paper.bib_path, "r", encoding="utf-8") as f:
             bib_content = f.read()
-        
-        for i, section in enumerate(paper.sections):
+
+        section_amount = len(self.agent_ctx._working_paper.sections)
+        for i, section in enumerate(self.agent_ctx._working_paper.sections):
             if section.content is None:
                 continue
             
-            named_log(self, f"==> begin review LaTeX syntax for section ({i+1}/{sz}): {section.title}")
-            # elapsed, response = time_func(self.llm.invoke, {
-            #     "content": section.content,
-            # })
-            # section.content = response.content
-            
-            # try:
-            #     named_log(self, f"==> response metadata:", response.usage_metadata)
-            # except:
-            #     named_log(self, f"==> (debug) reponse object:", response)
-            
+            named_log(self, f"==> begin review LaTeX syntax for section ({i+1}/{section_amount}): {section.title}")
+
             start = time.time()
-            
+
             section.content = re.sub(r"[`]+[\w]*", "", section.content)
-            section = self._remove_invalid_figures(section, paper.fig_path)
+            section = self._remove_invalid_figures(section, self.agent_ctx._working_paper.fig_path)
             section = self._remove_invalid_refs(section, bib_content)
 
             elapsed = int(time.time() - start)
             
-            # if self._cooldown_sec:
-            #     named_log(self, f"==> initiating cooldown of {self._cooldown_sec} s (request limitations)")
-            #     countdown_log("", self._cooldown_sec)
-            named_log(self, f"==> finished review LaTeX syntax for section ({i+1}/{sz}): {section.title} | time elapsed: {elapsed} s")
+            named_log(self, f"==> finished review LaTeX syntax for section ({i+1}/{section_amount}): {section.title} | time elapsed: {elapsed} s")
 
-        return paper
+        return self.agent_ctx._working_paper
 
 
     def _remove_invalid_figures(self, section: SectionData, img_dir: str):
-        img_dir = os.path.abspath(os.path.join(self.out_dir, img_dir))
         if not os.path.isdir(img_dir):
             named_log(self, "==> invalid image directory:", img_dir)
             return
-        
-        # Regex to find all \begin{figure} ... \end{figure} blocks
-        figure_pattern = re.compile(r'\\begin{figure}.*?\\includegraphics(?:\[.*?\])?{(.*?)}.*?\\end{figure}', re.DOTALL)
         
         def replace_invalid_figure(match):
             nonlocal img_dir
@@ -88,13 +66,12 @@ class TexReviewer(PipelineTask):
             return match.group(0)  # Keep the figure block if the image exists
         
         # Replace invalid figure blocks
-        section.content = figure_pattern.sub(replace_invalid_figure, section.content)
+        section.content = self._figure_pattern.sub(replace_invalid_figure, section.content)
     
         return section
     
 
     def _remove_invalid_refs(self, section: SectionData, bib_content: str):
-        cite_pattern = re.compile(r"\\cite{([^}]+)}")
         def replace_invalid(match):
             keys = match.group(1).split(',')
             valid_keys = [key.strip() for key in keys if key.strip() in bib_content]
@@ -103,36 +80,9 @@ class TexReviewer(PipelineTask):
             else:
                 return ""
         
-        section.content = cite_pattern.sub(replace_invalid, section.content)
+        section.content = self._cite_pattern.sub(replace_invalid, section.content)
         return section
 
-
-    def review_bib(self, paper: PaperData):
-        """
-        Revew bib content
-        """
-        if self.bib_prompt is None:
-            raise ValueError(f"The biblatex review prompt must be set (it's None)")
-        if paper.bib_path is None:
-            named_log(self, f"Requested BibTex review, but paper's bib is None. Doing nothing")
-            return paper
-
-        self.llm.init_chain(None, self.bib_prompt)
-        
-        named_log(self, "==> begin review of BibTex")
-        elapsed, response = time_func(self.llm.invoke, {
-            "bibcontent": paper.bib_path,
-        })
-        paper.bib_path = response.content
-        named_log(self, "==> finished review of BibTex")
-        named_log(self, f"==> response metadata:", response.usage_metadata)
-
-        if self._cooldown_sec:
-            countdown = max(0, self._cooldown_sec - elapsed)
-            named_log(self, f"==> initiating cooldown of {countdown} s (request limitations)")
-            countdown_log("", countdown)
-
-        return paper
 
     def divide_subtasks(self, n, input_data: PaperData =None):
         paper = input_data

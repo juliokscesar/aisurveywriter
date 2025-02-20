@@ -1,19 +1,27 @@
 from typing import List
 import os
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.docstore.document import Document
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 import fitz
 from pathlib import Path
 import re
+from pydantic import BaseModel
 
 from aisurveywriter.utils import named_log
 
+class PDFImageData(BaseModel):
+    pdf_source: str
+    data: bytes
+    ext: str
+    path: str
+
 class PDFProcessor:
     def __init__(self, pdf_paths: List[str]):
-        self.pdf_paths = pdf_paths
-        self.pdf_documents = [None] * len(pdf_paths)
-        self.img_readers = [None] * len(pdf_paths)
+        self.pdf_paths: List[str] = pdf_paths
+        self.pdf_documents: List[List[Document]] = [None] * len(pdf_paths)
+        self.img_readers: List[fitz.Document] = [None] * len(pdf_paths)
         self._load()
         
 
@@ -31,7 +39,7 @@ class PDFProcessor:
             contents[i] = "\n".join([d.page_content for d in doc])
         return contents
 
-    def extract_images(self, save_dir: str = None):
+    def extract_images(self, save_dir: str = None) -> List[PDFImageData]:
         imgs = []
         if save_dir:
             save_dir = os.path.abspath(save_dir)
@@ -47,7 +55,7 @@ class PDFProcessor:
                     base_img = reader.extract_image(xref)
                     img_bytes = base_img["image"]
                     img_ext = base_img["ext"]
-                    img_name = f"{Path(self.pdf_paths[pdf_idx]).stem}_img{img_idx}page{page_idx}.{img_ext}"
+                    img_name = f"{Path(self.pdf_paths[pdf_idx]).stem}_page{page_idx}_image{img_idx}.{img_ext}"
                     
                     if save_dir:
                         path = os.path.join(save_dir, img_name)
@@ -56,12 +64,12 @@ class PDFProcessor:
                         
                         named_log(self, f"Image saved: {path}")
 
-                    imgs.append({
-                        "pdf": self.pdf_paths[pdf_idx],
-                        "data": img_bytes,
-                        "ext": img_ext,
-                        "path": os.path.join(save_dir, img_name) if save_dir else img_name,
-                    })
+                    imgs.append(PDFImageData(
+                        pdf_source=self.pdf_paths[pdf_idx],
+                        data=img_bytes,
+                        ext=img_ext,
+                        path=os.path.join(save_dir, img_name) if save_dir else img_name
+                    ))
                     
         return imgs
             
@@ -84,7 +92,7 @@ class PDFProcessor:
         
     def faiss(self, embeddings, chunk_size: int = 4000) -> FAISS:
         splitter = CharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
-        docs = self.pdf_documents[0]
+        docs = []
         # first remove references
         for doc in self.pdf_documents:
             for pg in doc:

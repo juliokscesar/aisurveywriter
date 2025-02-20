@@ -14,6 +14,15 @@ import html
 import base64
 from io import BytesIO
 from PIL import Image
+import random
+import string
+
+def assert_type(owner, obj, required_type, param_name: str):
+    if not isinstance(obj, required_type):
+        raise TypeError(f"{owner.__class__name} requires {param_name} to be of type {required_type}")
+
+def random_str(length: int = 10):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 def image_to_base64(path: str):
     img = Image.open(path)
@@ -75,19 +84,6 @@ def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False)
         files = sorted(files, key=sort_stem)
     return files
 
-
-def validate_credentials(credentials: dict):
-    REQUIRED_KEYS = [
-        "nblm_email",
-        "nblm_password",
-    ]
-
-    # First check if required keys are present
-    diff = [i for i in REQUIRED_KEYS if i not in list(credentials.keys())]
-    if len(diff) > 0:
-        raise ValueError(f"Credentials are missing keys: {", ".join(diff)}")
-
-    # TODO: check for api keys
 
 def search_crossref(title, author):
     """

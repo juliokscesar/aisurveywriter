@@ -1,185 +1,67 @@
 from typing import List, Union, Optional
-from time import time
 import re
 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.messages import SystemMessage
 from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 from aisurveywriter.core.paper import PaperData, SectionData
-from aisurveywriter.core.llm_handler import LLMHandler
-from aisurveywriter.core.text_embedding import load_embeddings
-from aisurveywriter.core.pdf_processor import PDFProcessor
+from aisurveywriter.core.agent_context import AgentContext
+from aisurveywriter.core.agent_rags import RAGType, GeneralTextData
 from aisurveywriter.tasks.pipeline_task import PipelineTask
-from aisurveywriter.utils import named_log, countdown_log, diff_keys, time_func
-
+from aisurveywriter.utils.logger import named_log, cooldown_log, metadata_log
+from aisurveywriter.utils.helpers import time_func, assert_type
+        
 class PaperWriter(PipelineTask):
-    """
-    A class abstraction for the process of writing a survey paper
-    """
-    def __init__(self, llm: LLMHandler, prompt: str, paper: Optional[PaperData] = None, ref_paths: Optional[List[str]] = None, discard_ref_section=True, request_cooldown_sec: int = 60 * 1.4, summarize_refs=False, use_faiss=False, embedding=None):
-        """
-        Intializes a PaperWriter
-        
-        Parameters:
-            llm (LLMHandler): the LLMHandler object with the LLM model to use
-            
-            prompt (str): the prompt to give specific instructions for the LLM to write this paper. The prompt must have the placeholders: {subject}, {title}, {description}
-            
-            paper (Optional[PaperData]): a PaperData object containing the paper information. Each section in paper.section must have the 'title' and 'description' filled, and 'content' will be filled by this task.
-             if this is None, a PaperData must be provided when calling write()
-            
-            ref_paths (List[str]): a List of the path of every PDF reference for this paper.
-            
-            discard_ref_section (bool): discard the "References" section from every PDF
-            
-            request_cooldown_sec (int): cooldown time in seconds between two requests to the LLM API.
-            summarize_refs (bool): summarize references before sending to the LLM (using the LLM itself to first summarize it)
-            use_faiss (bool): use FAISS vector store to retrieve "similar" information from the references
-            faiss_embeddings (str): vendor of embedding (google, openai). Will only have an effect if 'use_faiss' is True.
-        """
-        self.llm = llm
-        self.paper = paper
-        self.prompt = prompt
-        self.ref_paths = ref_paths.copy()
-        
-        self._discard_ref_section = discard_ref_section
-        self._cooldown_sec = int(request_cooldown_sec)
-        self._summarize = summarize_refs
-        self._use_faiss = use_faiss
-        self._embed = embedding
-        
-    def pipeline_entry(self, input_data: Union[PaperData, dict]) -> PaperData:
-        """
-        This is the entry point in the pipeline. 
-        The input of this task should be either a PaperData with a "subject" set, and the "title" and "description" fields for every SectionData set;
-        or it can be a dictionary with the format: {"subject": str, "sections": [{"title": str, "description": str}, {"title": str, "description": str}, ...]}
-
-        Parameters:
-            input_data (Union[PaperData, dict]): the input from the previous task (or from the first call).
-        """
-        if isinstance(input_data, dict):
-            if diff := diff_keys(list(PaperData.__dict__.keys()), input_data):
-                raise TypeError(f"Missing keys for input data (task {PaperWriter.__class__.__name__}): {", ".join(diff)}")
-            
-            paper = PaperData(
-                subject=input_data["subject"],
-                sections=[SectionData(title=s["title"], description=s["description"]) for s in input_data["sections"]],
-            )
-        else:
-            paper = input_data
-        
-        paper = self.write(paper)
-        return paper
+    required_input_variables: List[str] = ["subject", "refcontent"]
     
-    def write(self, paper: Optional[PaperData] = None, prompt: Optional[str] = None):
-        """
-        Write the provided paper.
+    def __init__(self, agent_ctx: AgentContext, structured_paper: PaperData):
+        super().__init__(no_divide=False, agent_ctx=agent_ctx)
+        self.agent_ctx._working_paper = structured_paper
+    
+        self._system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.write_section.text)
+        self._human = HumanMessagePromptTemplate.from_template("Write the given section:\n-Title: {title}\n-Description:\n{description}")
+        self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
+    
+    def write(self) -> PaperData:
+        self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
         
-        Parameters:
-            paper (Optional[PaperData]): a PaperData object containing "subject" and each section "title" and "description". If this is None, try to use the one that was set in the constructor.
-            
-            prompt (Optional[str]): the prompt to invoke langchain's chain. If this is None, try to use the one set in the constructor. The prompt must have the placeholders "{subject}", "{title}" and "{description}"
-        """
-        # use parameters if provided
-        if paper:
-            self.paper = paper
-        if self.paper is None:
-            raise RuntimeError("The PaperData (PaperWriter.paper) must be set to write")
-        if prompt:
-            self.prompt = prompt
-        
-        # read reference content and initialize llm chain
-        if not self._use_faiss:
-            ref_content = self._get_ref_content(self._discard_ref_section, self._summarize, self._use_faiss)
-            
-        self.llm.init_chain_messages(
-            SystemMessagePromptTemplate.from_template(self.prompt),
-            HumanMessagePromptTemplate.from_template("Write the currrent section:\n- Title: {title}\n- Description:\n{description}")
-        )
-        
-        sz = len(self.paper.sections)
-        word_count = 0
-        
-        # write section by section
-        for i, section in enumerate(self.paper.sections):
-            named_log(self, f"==> begin writing section ({i+1}/{sz}): {section.title}")
-            if self._use_faiss:
-                ref_content = self._get_ref_content(self._discard_ref_section, use_faiss=self._use_faiss, section=section, faiss_k=15)
+        section_amount = len(self.agent_ctx._working_paper.sections)
+        total_words = 0
+        for i, section in enumerate(self.agent_ctx._working_paper.sections):
+            assert(section.description is not None)
 
-            elapsed, response = time_func(self.llm.invoke, {
-                "refcontents": ref_content,
-                "subject": self.paper.subject,
+            named_log(self, f"==> start writing content for section ({i+1}/{section_amount}): \"{section.title}\"")
+            
+            elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
+                "refcontent": self._get_reference_content(section),
+                "subject": self.agent_ctx._working_paper.subject,
                 "title": section.title,
                 "description": section.description,
             })
-            section.content = response.content
-            section.content = re.sub(r"[`]+[\w]*", "", section.content) # remove markdown code blocks if any
-            word_count += len(section.content.split())
-            named_log(self, f"==> finished writing section ({i+1}/{sz}): {section.title} | total words count: {word_count} | time elapsed: {int(elapsed)} s")
-
-            try:
-                named_log(self, f"==> response metadata:", response.usage_metadata)
-            except:
-                named_log(self, f"==> (debug) reponse object:", response)
-
-            if self._cooldown_sec:
-                named_log(self, f"==> initiating cooldown of {self._cooldown_sec} s (request limitations)")
-                countdown_log("", self._cooldown_sec)
-
-        return self.paper
-
-
-    def _get_ref_content(self, discard_ref_section=True, summarize=False, use_faiss=False, section: SectionData = None, faiss_k: int = 4) -> Union[str,None]:
-        """
-        Returns the content of all PDF references in a single string
-        If the references weren't set in the constructor, return None
-
-        Parameters:
-            summarize (bool): summarize the content of every reference, instead of using the whole PDF.
             
-            use_faiss (bool): use FAISS to create a vector store and retrieve only a part of the information using text embedding.
-            faiss_embeddings (str): vendor of embedding (google, openai). Will only have an effect if 'use_faiss' is True.
-        """
-        pdfs = PDFProcessor(self.ref_paths)
+            section.content = re.sub(r"[`]+[\w]*", "", response.content)
+            total_words += len(section.content.split())
+
+            named_log(self, f"==> finished writing section ({i+1}/{section_amount}) | total word count: {total_words}")
+            metadata_log(self, elapsed, response)
+            if self.agent_ctx.llm_cooldown:
+                cooldown_log(self, self.agent_ctx.llm_cooldown)
+
+        return self.agent_ctx._working_paper
+
+    def _get_reference_content(self, section: SectionData):
+        # use full content if content RAG is disabled
+        if self.agent_ctx.rags.is_disabled(RAGType.GeneralText):
+            return "\n\n".join(self.agent_ctx.references.full_content())
         
-        if summarize:
-            content = pdfs.summarize_content(self.llm.llm, show_metadata=True)
-        elif use_faiss:
-            assert(section is not None)
-            vec = pdfs.faiss(self._embed)
-            # relevant = vec.similarity_search(f"Relation to {self.paper.subject}")
-            relevant = vec.similarity_search(f"Retrieve contextual, technical, and analytical information on the subject {self.paper.subject} for a section titled \"{section.title}\", description:\n{section.description}", k=faiss_k)
-            content = "\n".join([doc.page_content for doc in relevant])
-        else:
-            if discard_ref_section:
-                pdf_contents = pdfs.extract_content()
-                content = ""
-                for pdf_content in pdf_contents:
-                    ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", pdf_content, re.IGNORECASE)
-                    if ref_match:
-                        content += pdf_content[:ref_match.start()].strip()
-                    else:
-                        content += pdf_content.strip()
-                    content += "\n"
-            else:
-                content = "\n".join(pdfs.extract_content())
-        
-        return content
-        
-    def divide_subtasks(self, n: int, input_data: PaperData = None):
-        self.paper = input_data
-        sub = []
-        n_sections = len(self.paper.sections)
-        per_task = n_sections // n
-        for i in range(0, n, per_task):
-            subpaper = PaperData(self.paper.subject, self.paper.sections[i:i+per_task], self.paper.title, self.paper.bib_path)
-            sub.append(PaperWriter(self.llm, self.prompt, subpaper, self.ref_paths, self._discard_ref_section, self._cooldown_sec, self._summarize, self._use_faiss, self._faiss_embeddings))
-        return sub    
-    
-    def merge_subtasks_data(self, data: List[PaperData]):
-        merged_paper = PaperData(data[0].subject, data[0].sections, data[0].title, data[0].bib_path)
-        for paper in data[1:]:
-            merged_paper.sections.extend(paper.sections)
-        return merged_paper
+        # retrieve relevant blocks for this section from content RAG
+        k = 25
+        query = f"Retrieve contextual, technical, and analytical information on the subject {self.agent_ctx._working_paper.subject} for a section titled \"{section.title}\", description:\n{section.description}"
+        relevant: List[GeneralTextData] = self.agent_ctx.rags.retrieve(RAGType.GeneralText, query, k)
+        return "\n\n".join([data.text for data in relevant])
+
+    def pipeline_entry(self, input_data: PaperData) -> PaperData:
+        if input_data:
+            assert_type(self, input_data, PaperData, "input_data")
+            self.agent_ctx._working_paper = input_data
+
+        return self.write()

@@ -30,17 +30,17 @@ class LLMType(Enum):
 
 class LLMHandler:
     def __init__(self, model: str, model_type: Union[LLMType, str], temperature: float = 0.5):
-        self.model = model
+        self.name = model
         if isinstance(model_type, str):
             model_type = LLMType.from_str(model_type)
         self.model_type = model_type
         match model_type:
             case LLMType.OpenAI:
-                self.llm = ChatOpenAI(model=model, temperature=temperature, max_tries=3, request_timeout=120)
+                self.model = ChatOpenAI(model=model, temperature=temperature, max_tries=3, request_timeout=120)
             case LLMType.Google:
-                self.llm = ChatGoogleGenerativeAI(model=model, temperature=temperature, max_tries=3, request_timeout=120)
+                self.model = ChatGoogleGenerativeAI(model=model, temperature=temperature, max_tries=3, request_timeout=120)
             case LLMType.Ollama:
-                self.llm = ChatOllama(model=model, temperature=temperature)
+                self.model = ChatOllama(model=model, temperature=temperature)
             case _:
                 raise ValueError(f"Invalid model type: {model_type}")
 
@@ -55,15 +55,17 @@ class LLMHandler:
             ])
 
             self.prompt = input_prompt
-            self._chain = input_prompt | self.llm
+            self._chain = input_prompt | self.model
         else:
-            input_prompt = ChatPromptTemplate.from_messages([HumanMessagePromptTemplate.from_template(prompt)])
-            self.prompt = input_prompt
-            self._chain = input_prompt | self.llm
+            self.init_chain(prompt)
+
+    def init_chain(self, prompt: ChatPromptTemplate):
+        self.prompt = prompt
+        self._chain = self.prompt | self.model
 
     def init_chain_messages(self, *msgs):
         input_prompt = ChatPromptTemplate.from_messages(msgs)
-        self._chain = input_prompt | self.llm
+        self._chain = input_prompt | self.model
     
     def set_prompt_template(self, prompt: str):
         self.prompt = prompt
@@ -105,7 +107,7 @@ class LLMHandler:
         while try_count <= max_tries: # handle with '429 (res. exhausted)' because of request timeout
             try:
                 try_count += 1
-                resp = self.llm.invoke(prompt)
+                resp = self.model.invoke(prompt)
                 break
             except Exception as e:
                 if "429" in str(e):
