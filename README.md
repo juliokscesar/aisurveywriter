@@ -43,7 +43,7 @@ options:
   -h, --help            show this help message and exit
   --save-dir SAVE_DIR   Path to output directory
   --llm {openai,google}, -l {openai,google}
-                        Specify LLM to use. Either 'google' or 'openai'. Default is google
+                        Specify LLM to use. Either 'google', 'openai' or 'ollama'. Default is google
   --llm-model LLM_MODEL, -m LLM_MODEL
                         Specific LLM model to use. Default is gemini-2.0-flash
   --credentials CREDENTIALS
@@ -90,3 +90,12 @@ and then you can access it at "localhost:7860" in your browser.
 
 ## Flowchart
 ![](flowchart.webp)
+
+### Step-by-step details
+
+#### Step 0: RAGs Creation
+
+Before starting the process of actually writing each section of the paper, we create three different resource RAGs that are essential for other steps.
+Each RAG is a vector database created with FAISS for similarity search of queries.
+
+1. Content RAG: 

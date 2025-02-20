@@ -10,7 +10,7 @@ def parse_args():
     parser.add_argument("references_dir", help="Path to directory containg all PDF references")
     parser.add_argument("subject", help="Main subject of the survey. Can be the Title too")
     parser.add_argument("--save-dir", type=str, default="./out", help="Path to output directory")
-    parser.add_argument("--llm", "-l", choices=["openai", "google"], default="google", help="Specify LLM to use. Either 'google' or 'openai'. Default is google")
+    parser.add_argument("--llm", "-l", choices=["openai", "google"], default="google", help="Specify LLM to use. Either 'google', 'openai' or 'ollama'. Default is google")
     parser.add_argument("--llm-model", "-m", dest="llm_model", default="gemini-2.0-flash", help="Specific LLM model to use. Default is gemini-2.0-flash")
     parser.add_argument("--credentials", default="credentials.yaml", help="YAML file containing your API keys")
     parser.add_argument("--structure", "-s", default=None, type=str, help="JSON file containing the structure to use. If provided, this will skip the structure generation process.")
