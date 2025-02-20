@@ -96,6 +96,51 @@ and then you can access it at "localhost:7860" in your browser.
 #### Step 0: RAGs Creation
 
 Before starting the process of actually writing each section of the paper, we create three different resource RAGs that are essential for other steps.
-Each RAG is a vector database created with FAISS for similarity search of queries.
+Each RAG is a vector database created with FAISS for similarity search using queries.
 
-1. Content RAG: 
+1. **Content RAG**: we create a vector database by embedding all the contents accross the references' PDFs provided by the user.
+This is intended to be used in steps where the LLM must have information retrieved from the references. The query used for similarity searching is the description provided for the section by the Outline generator LLM (Step 1), which retrieves a `k` amount of chunks from the database. This approach not only reduces drastically the amount of tokens per request, but also redirects the LLM to focus only in relevant content for the current section.
+
+2. **References BibTex RAG**: this is a vector database created to retrieve BibTex entries based on similarity with their abstract and keywords. This database is created in three steps: first, we send the content of "References/Bibliography" section from every reference's PDF to an LLM to retrieve every cited work's Title and Authors accross all PDFs; then, the Title and Author are used to retrieve a BibTex entry using [Crossref's API](https://www.crossref.org/); finally, we filter for duplicate entries and then save each entry's DOI, Title, Abstract and Keywords in the vector database.
+
+3. **Figures RAG**: this vector database contains an unique ID and a description for every image extracted accross all PDFs. The description is obtained by using the PDF content along with the specific image base64 and asking one LLM agent to describe it.
+
+To retrieve and create the RAGs, a Text Embedding model is needed. The best results were obtained using [Snowflake's Arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0). Also, a parameter of "confidence" with value 0.9 is used as a threshold score when retrieving content using similarity search, meaning that if the score is below 0.9 then the retrieved data is discarded.
+
+#### Step 1: Generate sections outline
+
+This step handles the first directives to structuring the paper. We use an LLM agent with the entire PDFs' contents (no RAG) to ensure that the structure is perfectly aligned with the entire content. For that, a big context window is required, and the best results were obtained by using Google's gemini-2.0-flash model as the agent in this step.
+
+The LLM outputs a JSON containing a list with the key "sections". Each item in this list is a section object with the keys "title" and "description". The "description" usually contains divisions of subsections too.
+
+
+#### Step 2: Fill sections' bodies
+
+With the structure provided in Step 1, we use a second LLM agent and, section by section, ask it to write the section given it's description and `k` chunks of text from the **Content RAG**, obtained by similarity search using the section's description as query. The best results were obtained using `k=30` and Google's gemini-2.0-pro-exp.
+
+#### Step 3: Add References + Figures
+
+To add the figures, each section, now filled, is given to an LLM along with all the PDFs' contents and we ask it to add a Figure LaTeX body with the name and caption from a figure of the references, if a visual element is indeed relevant to the section. Then, using the **Figures RAG** we run a similarity search using the Figure's caption that's compared to every image description in the database and add the local path to the best matching image.
+
+Then, to add the references we retrieve the best matching entries from the **References BibTex RAG** using each sentence in the section, and add it to the text accordingly.
+
+#### Step 4: Review/Refine
+
+This step is intended to refine the first scratch of the paper and add and improve its content. It's divided between two substeps: Obtain review directives, and Apply review directives.
+
+- Obtain review directives: for every section, we send its content alongside `k` chunks of text retrieved from the **Content RAG** to an LLM agent, and ask it to focus only in pointing out directives for what can/should be changed in the text, including detailing more a topic, discussing a figure, etc.
+
+- Apply review directives: with the review directives obtained, we send it to another LLM agent (could also be the same) alongisde the same `k` chunks of data, and ask it to update the content following the review directives.
+
+
+#### Step 5: Add Abstract + Title
+
+With the entire paper now written and refined, we send it's content to an LLM agent and ask it to write the abstract and produce a title.
+
+#### Step 6: Review TEX Syntax
+
+This step is entirely done by the system, i.e. only using built-in functionality from Python or related libraries, such as bibtexparser and regex. This filters elements such as Markdown code block's (like "\`\`\`latex") that LLMs tend to add in the response, and invalid citation keys used.
+
+#### Final paper
+
+The output is the final paper .tex and .bib, already with all LaTeX configuration set, including the images path and the .bib path. So it's conveniently easy to just run `pdflatex survey` and produce the PDF.
