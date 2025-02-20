@@ -31,8 +31,8 @@ python -m aisurveywriter -l google -m gemini-2.0-pro-exp ./refexamples "Langmuir
 
 CLI help:
 ```
-usage: python -m aisurveywriter [-h] [--save-dir SAVE_DIR] [--llm {openai,google}] [--llm-model LLM_MODEL] [-c CONFIG] [--credentials CREDENTIALS] [--structure STRUCTURE] [--paper PAPER] [--embed-model EMBED_MODEL] [--embed-type EMBED_TYPE] [--bibdb BIBDB] [--faissbib FAISSBIB]
-                   [--images IMAGES] [--faissfig FAISSFIG] [--faissref FAISSREF] [--no-ref-rag] [--no-figures] [--no-reference] [--no-abstract] [--no-tex-review] [--no-review] [--cooldown COOLDOWN] [--embed-cooldown EMBED_COOLDOWN] [--tex-template TEX_TEMPLATE]
+usage: python -m aisurveywriter [-h] [--save-dir SAVE_DIR] [--llm {openai,google}] [--llm-model LLM_MODEL] [--credentials CREDENTIALS] [--structure STRUCTURE] [--paper PAPER] [--embed-model EMBED_MODEL] [--embed-type EMBED_TYPE] [--bibdb BIBDB] [--faissbib FAISSBIB] [--images IMAGES]
+                   [--faissfig FAISSFIG] [--faissref FAISSREF] [--no-ref-rag] [--no-figures] [--no-reference] [--no-abstract] [--no-tex-review] [--no-review] [--cooldown COOLDOWN] [--embed-cooldown EMBED_COOLDOWN] [--tex-template TEX_TEMPLATE]
                    references_dir subject
 
 positional arguments:
@@ -43,11 +43,9 @@ options:
   -h, --help            show this help message and exit
   --save-dir SAVE_DIR   Path to output directory
   --llm {openai,google}, -l {openai,google}
-                        Specify LLM to use. Either 'google' (gemini-1.5-pro by default) or 'openai' (o1 by default)
+                        Specify LLM to use. Either 'google' or 'openai'. Default is google
   --llm-model LLM_MODEL, -m LLM_MODEL
-                        Specific LLM model to use.
-  -c CONFIG, --config CONFIG
-                        YAML file containg your configuration parameters
+                        Specific LLM model to use. Default is gemini-2.0-flash
   --credentials CREDENTIALS
                         YAML file containing your API keys
   --structure STRUCTURE, -s STRUCTURE
