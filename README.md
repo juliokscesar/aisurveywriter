@@ -80,5 +80,13 @@ options:
                         Path to custom .tex template
 ```
 
+### Example usage (Gradio Interface)
+There's a [gradio](https://www.gradio.app/docs) interface built around this tool, just a quick wrapper around the CLI usage. To run it, execute:
+```
+python -m aisurveywriter.interface
+```
+
+and then you can access it at "localhost:7860" in your browser.
+
 ## Flowchart
 ![](flowchart.webp)
