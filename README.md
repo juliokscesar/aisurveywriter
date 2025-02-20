@@ -105,7 +105,7 @@ This is intended to be used in steps where the LLM must have information retriev
 
 3. **Figures RAG**: this vector database contains an unique ID and a description for every image extracted accross all PDFs. The description is obtained by using the PDF content along with the specific image base64 and asking one LLM agent to describe it.
 
-To retrieve and create the RAGs, a Text Embedding model is needed. The best results were obtained using [Snowflake's Arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0). Also, a parameter of "confidence" with value 0.9 is used as a threshold score when retrieving content using similarity search, meaning that if the score is below 0.9 then the retrieved data is discarded.
+To retrieve and create the RAGs, a Text Embedding model is needed. The best results were obtained using [Snowflake's Arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0). Also, a parameter of "confidence" with value 0.9 is used as a threshold score when retrieving content using similarity search, meaning that if the score is below 0.9 then the retrieved data won't be used.
 
 #### Step 1: Generate sections outline
 
