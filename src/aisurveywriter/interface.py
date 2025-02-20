@@ -53,18 +53,22 @@ class GradioInterface:
                 gr.Textbox(label="Save path and name", placeholder="Enter the full path to save the paper (including its filename)", value=os.path.join(os.getcwd(), "out")),
                 gr.Dropdown(label="Writer LLM model", choices=list(self.supported_models.keys())),
                 gr.Dropdown(label="Text embedding model", choices=list(self.supported_text_embedding.keys()), info="Text embedding model used in retrieving relevant references from the FAISS (RAG) in the step of adding them to the paper."),
-                gr.Number(label="Request cooldown (seconds)", info="Cooldown time between two consecutive requests. It is important to adjust this according to the amount of tokens, since depending on the LLM it may take a while to reset", value=int(90)),
+                gr.Number(label="LLM Request cooldown (seconds)", info="Cooldown time between two consecutive requests to LLM API. It is important to adjust this according to the amount of tokens, since depending on the LLM it may take a while to reset", value=int(40)),
+                gr.Number(label="Text Embedding request cooldown (seconds)", value=int(0)),
                 gr.Textbox(label="Pre-generated JSON structure (one will be generated if none is provided)", placeholder="Full path to pre-generated structure"),
                 gr.Textbox(label="Pre-written .TEX paper (one will be written from the structure if none is provided)", placeholder="Full path to pre-written paper .tex"),
                 gr.Checkbox(label="Skip review step"),
-                gr.Textbox(label="Path to YAML configuration file", placeholder="Full path to configuration", value = os.path.abspath(os.path.join(__file__, "../../../config.yaml"))),
-                gr.Checkbox(label="Use NotebookLM to generate the paper structure", info="Slow compared to bare LLM models, but supports up to 50 PDFs", value=False),
+                gr.Checkbox(label="Skip add figures step"),
+                gr.Checkbox(label="Skip add references step"),
+                gr.Checkbox(label="Skip add abstract and title step"),
+                gr.Checkbox(label="Skip TEX review step"),
                 gr.Textbox(label="Path to .bib database to use (one will be generated from the references, if none is provided)", placeholder="Full path to BibTex database", value=os.path.abspath(os.path.join(__file__, "../../../out/generated-bibdb.bib"))),
                 gr.Textbox(label="Path to a local FAISS vector store from the .bib database. If not provided, one will be created"),
                 gr.Textbox(label="Path to local FAISS vector store of every figure and its description, accross all references (if none is provided, one will be created)"),
                 gr.Textbox(label="Path to directory containing images used in FAISS figure. If none is provided, one will be created"),
+                gr.Textbox(label="Path to local FAISS vector store of references' content. If not provided, one will be created"),
+                gr.Checkbox(label="Don't use FAISS for PDF references", info="Use the entire PDFs' content instead of creating a RAG (not recommended, as it explodes the number of tokens)", value=False),
                 gr.Number(value=float(0.6), label="Confidence score threshold for FAISS similarity search"),
-                gr.Checkbox(label="Use FAISS for PDF references", info="Use FAISS to retrieve only a part of the references, instead of the entire PDF", value=False),
             ],
             title="Survey Paper Writer",
             description="Provide a subject, reference PDFs, and a save path to generate and save a survey paper.",
@@ -74,15 +78,15 @@ class GradioInterface:
     def launch(self, *args, **kwargs):
         self.gr_interface.launch(*args, **kwargs)
 
-    def chat_fn(self, message, history, refs, save_path, model, embed_model, req_cooldown_sec, pregen_struct, prewritten_paper, no_review, config_path, nblm_generate, bibdb_path, faissdb_path, faissfig_path, imgs_dir, faiss_confidence, use_ref_faiss):
+    def chat_fn(self, message, history, refs, save_path, llm_model, embed_model, llm_request_cooldown, embed_request_cooldown, 
+                pregen_json_struct, prewritten_tex_paper, no_review, no_figures, no_reference, no_abstract, no_tex_review, 
+                bibdb_path, faissbib_path, faissfig_path, images_dir, faisscontent_path, no_ref_faiss, faiss_confidence):
         if self._is_running:
             return "A paper survey generation is already running. Please wait -- this really takes a long time."
         if len(refs) == 0:
             return "Please provide at least one PDF reference"
         subject = message
 
-        named_log(self, "DEBUG:", message, history, refs, save_path, model, req_cooldown_sec, pregen_struct, prewritten_paper, no_review, config_path, nblm_generate, bibdb_path)
-        
         status_queue = queue.Queue()
         worker_thread = threading.Thread(
             target=run_generation, 
@@ -90,23 +94,38 @@ class GradioInterface:
             kwargs={
                 "subject": subject,
                 "ref_paths": refs,
-                "save_path": save_path.strip(),
-                "model": self.supported_models[model][1],
-                "model_type": self.supported_models[model][0],
-                "pregen_struct_yaml": pregen_struct.strip(),
-                "prewritten_paper_tex": prewritten_paper.strip(),
-                "use_ref_faiss": use_ref_faiss,
+                "save_path": save_path,
+                
+                "writer_model": llm_model[1],
+                "writer_model_type": llm_model[0],
+                "reviewer_model": llm_model[1], # use same model for write and review for now
+                "reviewer_model_type": llm_model[0],
+                
+                "embed_model": embed_model[1],
+                "embed_model_type": embed_model[0],
+                
+                "no_ref_faiss": no_ref_faiss,
                 "no_review": no_review,
-                "config_path": config_path.strip(),
-                "use_nblm_generation": nblm_generate,
-                "refdb_path": bibdb_path,
-                "faissdb_path": faissdb_path,
+                "no_figures": no_figures,
+                "no_reference": no_reference,
+                "no_abstract": no_abstract,
+                "no_tex_review": no_tex_review,
+                
+                "pregen_struct_json_path": pregen_json_struct,
+                "prewritten_tex_path": prewritten_tex_paper,
+                
+                "bibdb_path": bibdb_path,
+                "faissbib_path": faissbib_path,
                 "faissfig_path": faissfig_path,
-                "imgs_path": imgs_dir,
-                "embed_model": self.supported_text_embedding[embed_model][1],
-                "embed_model_type": self.supported_text_embedding[embed_model][0],
-                "request_cooldown_sec": int(req_cooldown_sec),
-                "faiss_confidence": float(faiss_confidence),
+                "faisscontent_path": faisscontent_path,
+                "faiss_confidence": faiss_confidence,
+                
+                "images_dir": images_dir,
+                
+                "llm_request_cooldown_sec": llm_request_cooldown,
+                "embed_request_cooldown_sec": embed_request_cooldown,
+
+                "pipeline_status_queue": status_queue
             }
         )
         worker_thread.start()
