@@ -4,8 +4,9 @@ from pydantic.json import pydantic_encoder
 import json
 import os
 
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
+from langchain_core.prompts.image import ImagePromptTemplate
 
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.reference_store import ReferenceStore
@@ -35,14 +36,8 @@ FIGURE_EXTRACTOR_HUMAN_PROMPT = """- PDF paper content:
 
 {pdf_content}
 
-[end: pdf_content]
+[end: pdf_content]"""
 
-- Image Base64:
-[begin: image_base64]
-
-{image_base64}
-
-[end: image_base64]"""
 
 class FigureExtractor:
     def __init__(self, llm: LLMHandler, references: ReferenceStore, output_dir: str, system_prompt: str = FIGURE_EXTRACTOR_SYSTEM_PROMPT, human_prompt: str = FIGURE_EXTRACTOR_HUMAN_PROMPT, request_cooldown_sec: int = 30):
@@ -53,8 +48,8 @@ class FigureExtractor:
         self.output_dir = os.path.abspath(output_dir)
         
         self._system = SystemMessage(content=system_prompt)
-        self._human = HumanMessagePromptTemplate.from_template(human_prompt)
-        self.llm.init_chain_messages(self._system, self._human)
+        self._human_template = human_prompt
+        self._image_template = "data:image/png;base64,{imgb64}"
         
     def extract(self, dump_data=True):
         images = self.references.extract_images(self.output_dir)
@@ -70,10 +65,12 @@ class FigureExtractor:
             pdf_idx = self.references.pdf_paths.index(image.pdf_source)
             pdf_content = pdf_contents[pdf_idx]
     
-            elapsed, response = time_func(self.llm.invoke, {
-                "pdf_content": pdf_content,
-                "image_base64": image_base64,
-            })
+            image_prompt = HumanMessage(content=[
+                {"type": "text", "text": self._human_template.replace("{pdf_content}", pdf_content)},
+                {"type": "image_url", "image_url": {"url": self._image_template.replace("{imgb64}", image_base64)}}
+            ])
+    
+            elapsed, response = time_func(self.llm.model.invoke, [self._system, image_prompt])
 
             figures_info.append(FigureInfo(
                 id=i,
@@ -81,7 +78,7 @@ class FigureExtractor:
                 description=response.content,
             ))
 
-            named_log(self, f"==> finish describing image {i+1}/{images_amount}")
+            named_log(self, f"==> finish describing image {i+1}/{images_amount} ({figures_info[-1].basename})")
             metadata_log(self, elapsed, response)
 
             if self._cooldown:

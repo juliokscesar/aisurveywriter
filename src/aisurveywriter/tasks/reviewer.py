@@ -32,8 +32,8 @@ class PaperReviewer(PipelineTask):
             assert(section.content is not None)
             section_reference = self._get_reference_content(section)
             
-            named_log(f"==> start reviewing section ({i+1}/{section_amount}): \"{section.title}\"")
-            named_log(f"==> getting review points from LLM")
+            named_log(self, f"==> start reviewing section ({i+1}/{section_amount}): \"{section.title}\"")
+            named_log(self, f"==> getting review points from LLM")
     
             self.agent_ctx.llm_handler.init_chain_messages(self._review_system, self._review_human)
             elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
@@ -43,12 +43,12 @@ class PaperReviewer(PipelineTask):
                 "content": section.content,
             })
             
-            named_log(f"==> review points gathered (word count: {len(response.content.split())})")
+            named_log(self, f"==> review points gathered (word count: {len(response.content.split())})")
             metadata_log(self, elapsed, response)
             if self.agent_ctx.llm_cooldown:
                 cooldown_log(self, self.agent_ctx.llm_cooldown)
                 
-            named_log(f"==> sending directives for LLM to apply")
+            named_log(self, f"==> sending directives for LLM to apply")
             
             self.agent_ctx.llm_handler.init_chain_messages(self._apply_system, self._apply_human)
             elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
@@ -61,7 +61,7 @@ class PaperReviewer(PipelineTask):
             section.content = re.sub(r"[`]+[\w]*", "", response.content)
             total_words += len(section.content.split())
 
-            named_log(f"==> finish reviewing section ({i+1}/{section_amount}) | total word count: {total_words}")
+            named_log(self, f"==> finish reviewing section ({i+1}/{section_amount}) | total word count: {total_words}")
             
             metadata_log(self, elapsed, response)
             if self.agent_ctx.llm_cooldown:

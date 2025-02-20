@@ -35,9 +35,12 @@ class AgentContext:
 
     def copy(self):
         return AgentContext(
+            prompts=self.prompts,
             sys_instructions=self.sys_instructions.copy() if self.sys_instructions else None,
             llm_handler=self.llm_handler,
             embed_handler=self.embed_handler,
+            llm_cooldown=self.llm_cooldown,
+            embed_cooldown=self.embed_cooldown,
             references=self.references,
             rags=self.rags,
             output_dir=self.output_dir,

@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 import bibtexparser
 from langchain_core.prompts.chat import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
@@ -7,12 +7,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.reference_store import ReferenceStore
-from aisurveywriter.utils.logger import named_log, time_func, metadata_log, cooldown_log
+from aisurveywriter.utils.logger import named_log, metadata_log, cooldown_log
+from aisurveywriter.utils.helpers import time_func
 from aisurveywriter.utils.helpers import get_bibtex_entry, bib_entries_to_str
 
 class BibliographyInfo(BaseModel):
-    title: str = Field(description="Title of the referenced work")
-    authors: str = Field(description="Authors of the referenced work")
+    title: str | None = Field(description="Title of the referenced work")
+    authors: str | None = Field(description="Authors of the referenced work")
 
 class BibExtractorOutput(BaseModel):
     bibliography: List[BibliographyInfo]
@@ -69,7 +70,7 @@ class ReferencesBibExtractor:
         bib_info: List[BibliographyInfo] = []
         
         for i, bib_doc in enumerate(bib_docs):
-            named_log(self, f"==> start extracting title and author from batch {i}/{n_chunks}")
+            named_log(self, f"==> start extracting title and author from batch {i+1}/{n_chunks}")
             
             elapsed, response = time_func(self.llm.invoke, {
                 "references": bib_doc.page_content,
@@ -77,7 +78,7 @@ class ReferencesBibExtractor:
             bib_output: BibExtractorOutput = self.parser.invoke(response)
             bib_info.extend(bib_output.bibliography)
             
-            named_log(self, f"==> finish extracting title and author from batch {i}/{n_chunks}")
+            named_log(self, f"==> finish extracting title and author from batch {i+1}/{n_chunks}")
             named_log(self, f"==> got {len(bib_output.bibliography)} references | total: {len(bib_info)}")
             metadata_log(self, elapsed, response)
             

@@ -66,6 +66,8 @@ class PaperData:
             sec_title = match.group(1).strip()
             sec_content = match.group(2).strip()
             sec_content = f"\n\\section{{{sec_title}}}\n\n" + sec_content
+            if "\\printbibliography" in sec_content:
+                sec_content = sec_content[:sec_content.rfind("\\printbibliography")]
             sections.append(SectionData(title=sec_title, description=sec_title, content=sec_content))
 
         # Read bibliography if provided
@@ -75,7 +77,7 @@ class PaperData:
         tex = PaperData.from_tex(tex_path)
         
         if self.sections and len(self.sections) == len(tex.sections):
-            for section, loaded_section in zip(self.sectons, tex.sections):
+            for section, loaded_section in zip(self.sections, tex.sections):
                 section.content = loaded_section.content
                 section.title = loaded_section.title
                 
@@ -111,7 +113,7 @@ class PaperData:
             
         paper_content = self.full_content()
         if self.title:
-            paper_content = f"\\title{{{self.paper.title}}}\n\\maketitle\n\\tableofcontents\n\n" + paper_content
+            paper_content = f"\\title{{{self.title}}}\n\\maketitle\n\\tableofcontents\n\n" + paper_content
 
         if self.bib_path:
             bib_replace = f"{{{bib_template_variable}}}"

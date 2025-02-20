@@ -22,6 +22,10 @@ class ReferenceStore:
         self.pdf_paths = reference_paths.copy()
         self.pdf_proc = PDFProcessor(self.pdf_paths)
 
+        # call functions to initialize values
+        self.full_content(discard_bibliography=False)
+        self.extract_bib_sections()
+
     def copy(self):
         cp = ReferenceStore(self.pdf_paths)
         
@@ -49,7 +53,9 @@ class ReferenceStore:
             self._full_contents = self.pdf_proc.extract_content()
         
         if discard_bibliography:
-            return self.extract_bib_sections()
+            if not self._no_bib_contents:
+                self.extract_bib_sections()
+            return self._no_bib_contents
 
         return self._full_contents
     
@@ -61,17 +67,22 @@ class ReferenceStore:
         if self._bibliographies:
             return self._bibliographies
 
-        assert(self._full_contents is not None)
+        if not self._full_contents:
+            self.full_content(discard_bibliography=False)
+
         # Initialize bibliographies content
         self._bibliographies = []
+        self._no_bib_contents = []
         for i, content in enumerate(self._full_contents):
             # extract bibliography section with regex
             ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", content, re.IGNORECASE)
             if ref_match:
                 self._bibliographies.append(content[ref_match.start():].strip())
+                self._no_bib_contents.append(content[:ref_match.start()])
             else:
                 named_log(self, f"couldn't match references regex for pdf {os.path.basename(self.pdf_paths[i])}, using entire content")
                 self._bibliographies.append(content)
+                self._no_bib_contents.append(content)
     
         return self._bibliographies        
 

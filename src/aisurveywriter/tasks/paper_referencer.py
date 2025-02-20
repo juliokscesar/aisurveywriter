@@ -19,6 +19,7 @@ class PaperReferencer(PipelineTask):
         self.max_per_section = max_per_section
         self.max_per_sentence = max_per_sentence
         self.max_same_ref = max_same_ref
+        self.confidence = confidence
         
     def reference(self) -> PaperData:
         assert(not self.agent_ctx.rags.is_disabled(RAGType.BibTex))
@@ -32,9 +33,10 @@ class PaperReferencer(PipelineTask):
             sentences = re.split(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)((?<=\.|\?)\s)", section.content)
             cited_sentences = []
 
-            for i, sentence in enumerate(sentences):
+            for j, sentence in enumerate(sentences):
                 if ref_count >= self.max_per_section:
-                    cited_sentences.extend(sentences[i:])
+                    cited_sentences.extend(sentences[j:])
+                    break
                     
                 if '\\' in sentence or '{' in sentence or '}' in sentence or not sentence.strip():
                     cited_sentences.append(sentence)
@@ -45,10 +47,11 @@ class PaperReferencer(PipelineTask):
                     continue
                 
                 valid = set()    
-                num_references = random.choice(
+                num_references = random.choices(
                     population=list(probabilities.keys()),
                     weights=list(probabilities.values()),
-                )
+                    k=1
+                )[0]
                 num_references = min(num_references, self.max_per_sentence)
                 
                 for result in results:

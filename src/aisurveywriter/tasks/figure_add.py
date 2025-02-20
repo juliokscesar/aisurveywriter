@@ -2,9 +2,7 @@ import os
 import shutil
 import re
 from typing import List
-from PIL import Image
 
-from langchain_community.vectorstores import FAISS
 from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 from .pipeline_task import PipelineTask
@@ -34,6 +32,8 @@ class PaperFigureAdd(PipelineTask):
         self.agent_ctx._working_paper.fig_path = self.used_imgs_dest
         
     def add_figures(self):
+        self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
+
         # this task uses full pdf content
         refcontent = "\n\n".join(self.agent_ctx.references.full_content())
         
@@ -46,7 +46,7 @@ class PaperFigureAdd(PipelineTask):
             
             named_log(self, f"==> finish adding figures in section ({i+1}/{section_amount}), replaced {len(used_imgs)} figures")
             
-            section.content = content
+            section.content = re.sub(r"[`]+[\w]*", "", content)
         
         self.agent_ctx._working_paper.fig_path = self.used_imgs_dest
         return self.agent_ctx._working_paper

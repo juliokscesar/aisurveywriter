@@ -64,7 +64,7 @@ class SurveyContext:
         self.tex_template_path = tex_template_path
         
         # Initialize paper and load structure and pre-written .tex if provided
-        self.paper = PaperData(subject=subject)
+        self.paper = PaperData(subject=subject, sections=None)
         if structure_json_path:
             self.paper.load_structure(structure_json_path)
         if prewritten_tex_path:
@@ -88,17 +88,20 @@ class SurveyContext:
         self._llm_cooldown = llm_request_cooldown_sec
         self._embed_cooldown = embed_request_cooldown_sec
         
-        self.rags = AgentRAG(self.embed, faissbib_path, faissfig_path, faisscontent_path, request_cooldown_sec=llm_request_cooldown_sec, output_dir=self.output_dir, confidence=faiss_confidence)
+        self.rags = AgentRAG(self.embed, self.llms[SurveyAgentType.StructureGenerator], faissbib_path, faissfig_path, faisscontent_path, request_cooldown_sec=llm_request_cooldown_sec, output_dir=self.output_dir, confidence=faiss_confidence)
         self.images_dir = images_dir
         if not self.images_dir:
             self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
+        self.paper.fig_path = self.images_dir
+        
+        self.confidence = faiss_confidence
         
         self.pipe_steps: List[tks.PipelineTask] = None
         self.pipeline: PaperPipeline = None
         self._create_pipeline(
             no_content_rag=no_ref_faiss, 
-            skip_struct=(structure_json_path is None),
-            skip_fill=(prewritten_tex_path is None),
+            skip_struct=(structure_json_path and structure_json_path.strip()),
+            skip_fill=(prewritten_tex_path and prewritten_tex_path.strip()),
             skip_figures=no_figures,
             skip_references=no_reference,
             skip_review=no_review,
@@ -152,7 +155,7 @@ class SurveyContext:
                         
             struct_agent_ctx = self.common_agent_ctx.copy()
             struct_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator]
-            struct_json_path = os.path.join(self.output_dir, "structure.yaml")
+            struct_json_path = os.path.join(self.output_dir, "structure.json")
             self.pipe_steps.append(
                 ("Generate Structure", tks.PaperStructureGenerator(struct_agent_ctx, self.paper, struct_json_path))
             )
@@ -209,14 +212,14 @@ class SurveyContext:
         if not skip_tex_review:
             # tex review doesn't need a prompt
             tex_review_agent_ctx = self.common_agent_ctx.copy()
-            self.pipe_steps.append(tks.TexReviewer(tex_review_agent_ctx, self.paper))
+            self.pipe_steps.append(("Tex Review", tks.TexReviewer(tex_review_agent_ctx, self.paper)))
         
         self.pipe_steps.append(("Save final paper", tks.PaperSaver(self.save_path, self.tex_template_path)))
         self.pipeline = PaperPipeline(self.pipe_steps, **pipeline_kwargs)
 
     def _check_input_variables(self, prompt: PromptInfo, agent_type: SurveyAgentType, required_input_variables: List[str]):
-        missing = set(prompt.input_variables - required_input_variables)
-        assert(len(missing) == 0, f"Missing or additional input variables in prompt for {agent_type}: {missing}")
+        missing = set(prompt.input_variables) - set(required_input_variables)
+        assert len(missing) == 0, f"Missing or additional input variables in prompt for {agent_type}: {missing}"
         
     def _is_initialized(self):
         return (self.pipeline is not None)

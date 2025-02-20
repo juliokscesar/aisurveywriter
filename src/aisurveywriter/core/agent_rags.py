@@ -13,6 +13,7 @@ from langchain_community.vectorstores.faiss import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .text_embedding import EmbeddingsHandler
+from .llm_handler import LLMHandler
 from .reference_store import ReferenceStore
 
 from aisurveywriter.res_extract import ReferencesBibExtractor, FigureExtractor
@@ -26,10 +27,7 @@ class RAGType(IntFlag):
     GeneralText = auto()
     ImageData   = auto()
 
-    @property
-    def All(self):
-        return reduce(operator.or_, self.__class__)
-
+RAGType.All = reduce(operator.or_, RAGType)
 
 class BaseRAGData(ABC, BaseModel):
     data_type: RAGType = RAGType.Null
@@ -105,12 +103,13 @@ class ImageData(BaseRAGData):
         return ImageData(id=doc.metadata["id"], basename=doc.metadata["basename"], description=doc.page_content)
 
 class AgentRAG:
-    def __init__(self, embeddings: EmbeddingsHandler, bib_faiss_path: Optional[str] = None, figures_faiss_path: Optional[str] = None, content_faiss_path: Optional[str] = None, ref_bib_extractor: Optional[ReferencesBibExtractor] = None, figure_extractor: Optional[FigureExtractor] = None, request_cooldown_sec: int = 30, output_dir: str = "out", confidence: float = 0.6):
+    def __init__(self, embeddings: EmbeddingsHandler, llm: LLMHandler = None, bib_faiss_path: Optional[str] = None, figures_faiss_path: Optional[str] = None, content_faiss_path: Optional[str] = None, ref_bib_extractor: Optional[ReferencesBibExtractor] = None, figure_extractor: Optional[FigureExtractor] = None, request_cooldown_sec: int = 30, output_dir: str = "out", confidence: float = 0.6):
         self._embed = embeddings
+        self._llm = llm
 
-        self.bib_faiss:     FAISS = FAISS.load_local(bib_faiss_path, self._embed.model) if bib_faiss_path else None
-        self.figures_faiss: FAISS = FAISS.load_local(figures_faiss_path, self._embed.model) if figures_faiss_path else None
-        self.content_faiss: FAISS = FAISS.load_local(content_faiss_path, self._embed.model) if content_faiss_path else None
+        self.bib_faiss:     FAISS = FAISS.load_local(bib_faiss_path, self._embed.model, allow_dangerous_deserialization=True) if bib_faiss_path else None
+        self.figures_faiss: FAISS = FAISS.load_local(figures_faiss_path, self._embed.model, allow_dangerous_deserialization=True) if figures_faiss_path else None
+        self.content_faiss: FAISS = FAISS.load_local(content_faiss_path, self._embed.model, allow_dangerous_deserialization=True) if content_faiss_path else None
         
         self.rag_type_data = {
             RAGType.BibTex: BibTexData,
@@ -139,7 +138,7 @@ class AgentRAG:
     def create_rags(self, rag_types: RAGType, references: ReferenceStore):
         for rag_type in rag_types:
             if self.faiss_rags[rag_type]:
-                named_log(f"FAISS type: {rag_type} already loaded, skipping creation...")
+                named_log(self, f"FAISS type: {rag_type.name} already loaded, skipping creation...")
                 continue
             create_rag_func = self.create_rags_funcmap[rag_type]
             self.faiss_rags[rag_type] = create_rag_func(references)
@@ -163,7 +162,7 @@ class AgentRAG:
     
     def create_bib_rag(self, references: ReferenceStore): 
         if not self.ref_bib_extractor:
-            self.ref_bib_extractor = ReferencesBibExtractor(self.llm, references, request_cooldown_sec=self._cooldown)
+            self.ref_bib_extractor = ReferencesBibExtractor(self._llm, references, request_cooldown_sec=self._cooldown)
         
         if not references.bibtex_db_path:
             bib_info = self.ref_bib_extractor.extract()
@@ -199,7 +198,7 @@ class AgentRAG:
 
     def create_figures_rag(self, references: ReferenceStore):
         if not self.figure_extractor:
-            self.figure_extractor = FigureExtractor(self.llm, references, os.path.join(self.output_dir, "images"), request_cooldown_sec=self._cooldown)
+            self.figure_extractor = FigureExtractor(self._llm, references, os.path.join(self.output_dir, "images"), request_cooldown_sec=self._cooldown)
         
         figures_info = self.figure_extractor.extract()
         figures_rag_data: List[ImageData] = []

@@ -35,7 +35,7 @@ class PaperStructureGenerator(PipelineTask):
         try:
             resp_json = re.search(r"```json\s*([\s\S]+?)\s*```|({[\s\S]+})", response.content.strip()).group()
             resp_json = resp_json[resp_json.find("{"):resp_json.rfind("}")+1]
-            structure = json.loads(structure)
+            structure = json.loads(resp_json)
         except Exception as e:
             named_log(self, f"==> failed to parse JSON from LLM response. Raising exception")
             raise e

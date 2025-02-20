@@ -40,11 +40,11 @@ def generate_paper_survey(
     reviewer_model: str = "gemini-2.0-pro-exp",
     reviewer_model_type: str = "google",
     
-    embed_model: str = "Salesforce/SFR-Embedding-Mistral",
+    embed_model: str = "sentence-transformers/all-MiniLM-L6-v2",
     embed_model_type: str = "huggingface",
     
     custom_prompt_store: Optional[PromptStore] = None,
-    tex_template_path: str = os.path.join(__file__, "../../../templates/paper_template.tex"),
+    tex_template_path: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../templates/paper_template.tex")),
     
     no_ref_faiss = False,
     no_review = False,
@@ -68,7 +68,7 @@ def generate_paper_survey(
     embed_request_cooldown_sec: int = 0,
     
     pipeline_status_queue: queue.Queue = None,
-    credentials_yaml_path: str = os.path.join(__file__, "../../../credentials.yaml")
+    credentials_yaml_path: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../credentials.yaml"))
 ):
     setup_credentials(credentials_yaml_path)
     
@@ -90,7 +90,7 @@ def generate_paper_survey(
         no_tex_review, pregen_struct_json_path, prewritten_tex_path, bibdb_path,
         faissbib_path, faissfig_path, faisscontent_path, faiss_confidence,
         images_dir, llm_request_cooldown_sec, embed_request_cooldown_sec, 
-        pipeline_status_queue=pipeline_status_queue
+        status_queue=pipeline_status_queue
     )
     return survey_ctx.generate()
 

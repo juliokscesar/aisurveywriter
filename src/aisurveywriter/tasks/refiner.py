@@ -6,10 +6,9 @@ from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessag
 
 from .pipeline_task import PipelineTask
 from aisurveywriter.core.agent_context import AgentContext
-from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.paper import PaperData, SectionData
-from aisurveywriter.utils.logger import named_log, time_func, countdown_log, cooldown_log, metadata_log
-from aisurveywriter.utils.helpers import assert_type
+from aisurveywriter.utils.logger import named_log, cooldown_log, metadata_log
+from aisurveywriter.utils.helpers import assert_type, time_func
 
 class PaperRefiner(PipelineTask):
     required_input_variables: List[str] = ["subject"]
@@ -23,6 +22,8 @@ class PaperRefiner(PipelineTask):
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
         
     def refine(self) -> PaperData:
+        self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
+
         named_log(self, f"==> asking LLM to produce title and abstract")
         
         elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {

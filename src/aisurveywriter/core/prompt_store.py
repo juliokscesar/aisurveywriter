@@ -35,7 +35,7 @@ class PromptStore(BaseModel):
 
 ##########################################################################################
 def default_prompt_store() -> PromptStore:
-    GENERATE_STRUCT_PROMPT = """
+    GENERATE_STRUCT_PROMPT = r"""
 [begin: references_content]
 
 {refcontent}
@@ -65,11 +65,11 @@ def default_prompt_store() -> PromptStore:
         "sections": [
         {{ 
             "title": "Section1 Title",
-            "description": "- Subsection Title\\n\\t- Explanation of what this subsection will cover.\\n\\t- Additional details as necessary.\\n- Another Subsection Title\\n\\t- Explanation.\\n\\t- More details."
+            "description": "- Subsection Title\n\t- Explanation of what this subsection will cover.\n\t- Additional details as necessary.\n- Another Subsection Title\n\t- Explanation.\n\t- More details."
         }},
         {{
             "title": "Section2 title",
-            "descripton": "- Subsection title\\n- More explanation..."
+            "descripton": "- Subsection title\n- More explanation..."
         }}
         ]
     }}
@@ -77,7 +77,7 @@ def default_prompt_store() -> PromptStore:
 
 **Provide your answer in English only**."""
 
-    WRITE_SECTION_PROMPT = """
+    WRITE_SECTION_PROMPT = r"""
 [begin: reference_content]
 
 {refcontent}
@@ -124,7 +124,7 @@ def default_prompt_store() -> PromptStore:
 - Most important: maintain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**."""
 
 
-    ADD_FIGURES_PROMPT = """
+    ADD_FIGURES_PROMPT = r"""
 [begin: reference_content]
 
 {refcontent}
@@ -149,10 +149,11 @@ def default_prompt_store() -> PromptStore:
 \begin{{figure}}[h!]
 \includegraphics{{unique_name}}
 \caption{{Very descriptive caption}}
-\label{{fig:unique_label}}
+\label{{fig:unique_random_label}}
 \end{{figure}}
 
 - The Figure MUST BE FROM ONE OF THE REFERENCES. Provide at the end of the caption the credits as: "Adapted from Authors, Year."
+  - Do not enumerate unique_label like unique_label_1, unique_label_2, etc. Either create a unique random label, or assign a label related to the figure
 
 - IT IS ESSENTIAL THAT YOU USE "\includegraphics{{name}}" AND "\caption{{descriptive caption}}" RIGHT AFTER
 
@@ -160,7 +161,7 @@ def default_prompt_store() -> PromptStore:
 
 - **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is...\""""
 
-    REVIEW_SECTION_PROMPT = """[begin: reference_content]
+    REVIEW_SECTION_PROMPT = r"""[begin: reference_content]
     
 {refcontent}
 
@@ -198,7 +199,7 @@ def default_prompt_store() -> PromptStore:
 
 [end: system_instructions]"""
 
-    APPLY_REVIEW_SECTION_PROMPT = """[begin: reference_content]
+    APPLY_REVIEW_SECTION_PROMPT = r"""[begin: reference_content]
 
 {refcontent}
 
@@ -263,7 +264,7 @@ def default_prompt_store() -> PromptStore:
 
 [end: system_instructions]"""
 
-    REFINE_PROMPT = """- You are an expert in academic writing, specially in the field of "{subject}" and in writing survey papers.
+    REFINE_PROMPT = r"""- You are an expert in academic writing, specially in the field of "{subject}" and in writing survey papers.
 
 - You are writing a survey paper on the subject at the moment.
 
@@ -280,11 +281,11 @@ def default_prompt_store() -> PromptStore:
 ```"""
 
     store = PromptStore(
-        generate_struct=GENERATE_STRUCT_PROMPT,
-        write_section=WRITE_SECTION_PROMPT,
-        add_figures=ADD_FIGURES_PROMPT,
-        review_section=REVIEW_SECTION_PROMPT,
-        apply_review_section=APPLY_REVIEW_SECTION_PROMPT,
-        abstract_and_title=REFINE_PROMPT,
+        generate_struct=PromptInfo.from_template(GENERATE_STRUCT_PROMPT),
+        write_section=PromptInfo.from_template(WRITE_SECTION_PROMPT),
+        add_figures=PromptInfo.from_template(ADD_FIGURES_PROMPT),
+        review_section=PromptInfo.from_template(REVIEW_SECTION_PROMPT),
+        apply_review_section=PromptInfo.from_template(APPLY_REVIEW_SECTION_PROMPT),
+        abstract_and_title=PromptInfo.from_template(REFINE_PROMPT),
     )
     return store
