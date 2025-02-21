@@ -5,8 +5,6 @@ import json
 import os
 
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
-from langchain_core.prompts.image import ImagePromptTemplate
 
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.reference_store import ReferenceStore
@@ -25,9 +23,9 @@ FIGURE_EXTRACTOR_SYSTEM_PROMPT = """- You are an academic writer and peer review
     - The image belongs to the PDF content provided. Base your description in context with the this content.
     - Prioritize the use of keywords that would link to this image (specially by similarity)
     
-    - Attention: some images may be not related at all to the content (such as copyright images, journal cover, pictures of people, blank/single-color images).
-        - In this case, just describe this image as \"NOT RELATED\" 
-        - If the image does not appear to have anything to do with the paper's context, also describe as \"NOT RELATED\"
+    - Attention: some images may be not related at all to the content (such as copyright images, license symbols, journal cover, pictures of people, blank/single-color images).
+        - In this case, just describe this image as \"NOT RELATED\" and don't need to describe it
+        - If the image does not appear to have anything to do with the paper's context, also just respond \"NOT RELATED\" and don't need to describe it
 
 - The image description must be between 100-300 words."""
 

@@ -116,6 +116,7 @@ class ReferencesBibExtractor:
             doi = entry.get("doi", None)
             if doi and doi in seen_dois:
                 continue
+            seen_dois.add(doi)
             unique_entries.append(entry)
             
         new_db = bibtexparser.bibdatabase.BibDatabase()
