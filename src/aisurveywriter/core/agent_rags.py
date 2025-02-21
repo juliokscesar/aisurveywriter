@@ -140,6 +140,7 @@ class AgentRAG:
             if self.faiss_rags[rag_type]:
                 named_log(self, f"FAISS type: {rag_type.name} already loaded, skipping creation...")
                 continue
+            named_log(self, f"Creating FAISS: {rag_type.name}")
             create_rag_func = self.create_rags_funcmap[rag_type]
             self.faiss_rags[rag_type] = create_rag_func(references)
     
@@ -166,9 +167,8 @@ class AgentRAG:
         
         if not references.bibtex_db_path:
             bib_info = self.ref_bib_extractor.extract()
-            references.bibtex_db_path = "refextract-bibdb.bib"
-            save_path = os.path.join(self.output_dir, references.bibtex_db_path)
-            bibtex_db = self.ref_bib_extractor.to_bibtex_db(bib_info, save_path=save_path)
+            references.bibtex_db_path = os.path.join(self.output_dir, "refextract-bibdb.bib")
+            bibtex_db = self.ref_bib_extractor.to_bibtex_db(bib_info, save_path=references.bibtex_db_path)
         else:
             with open(references.bibtex_db_path, "r", encoding="utf-8") as f:
                 bibtex_db = bibtexparser.load(f)
@@ -182,7 +182,7 @@ class AgentRAG:
                 bibtex_key=entry.get("ID", random_str()),
             ))
         
-        return AgentRAG.create_faiss(self._embed, bib_data, save_path=save_path.replace(".bib", ".faiss"))
+        return AgentRAG.create_faiss(self._embed, bib_data, save_path=references.bibtex_db_path.replace(".bib", ".faiss"))
 
 
     def create_content_rag(self, references: ReferenceStore):

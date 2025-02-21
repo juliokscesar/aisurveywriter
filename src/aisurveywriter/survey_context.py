@@ -128,7 +128,7 @@ class SurveyContext:
 
         # first ensure all rags are loaded/created
         using_rags = RAGType.All
-        if no_content_rag:
+        if no_content_rag or (skip_fill and skip_review):
             using_rags &= ~RAGType.GeneralText
         if skip_figures:
             using_rags &= ~RAGType.ImageData
