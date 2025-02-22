@@ -26,7 +26,7 @@ The only two positional arguments are "references_dir" and "subject", respective
 For example, to generate a paper on the subject "Langmuir and Langmuir-Blodgett films" with PDF references in the directory "./refexamples", using Google's gemini-2.0-pro-exp, it's simply done by:
 
 ```
-python -m aisurveywriter -l google -m gemini-2.0-pro-exp ./refexamples "Langmuir and Langmuir-Blodgetts films"
+python -m aisurveywriter -l google -m gemini-2.0-pro-exp ./refexamples "Langmuir and Langmuir-Blodgett films"
 ```
 
 CLI help:
