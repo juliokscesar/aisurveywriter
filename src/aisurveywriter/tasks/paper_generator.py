@@ -3,7 +3,7 @@ import yaml
 import re
 import json
 
-from langchain_core.prompts.chat import HumanMessagePromptTemplate
+from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 from aisurveywriter.core.paper import PaperData, SectionData
 from aisurveywriter.core.agent_context import AgentContext
@@ -13,7 +13,7 @@ from aisurveywriter.utils.helpers import time_func, assert_type
 from .pipeline_task import PipelineTask
 
 class PaperStructureGenerator(PipelineTask):
-    required_input_variables: List[str] = ["subject", "refcontent"]
+    required_input_variables: List[str] = ["subject"]
     
     def __init__(self, agent_ctx: AgentContext, paper_with_subject: PaperData, save_json_path: Optional[str] = None):
         super().__init__(no_divide=True, agent_ctx=agent_ctx)
@@ -25,7 +25,8 @@ class PaperStructureGenerator(PipelineTask):
         named_log(self, f"==> start generating structure for paper on subject {self.agent_ctx._working_paper.subject!r}")
         
         self.agent_ctx.llm_handler.init_chain_messages(
-            HumanMessagePromptTemplate.from_template(self.agent_ctx.prompts.generate_struct.text),
+            SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.generate_struct.text),
+            HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n{refcontent}\n\n[end: references_content]")
         )
         elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
             "subject": self.agent_ctx._working_paper.subject,

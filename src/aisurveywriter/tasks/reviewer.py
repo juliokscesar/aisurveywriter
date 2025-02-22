@@ -13,17 +13,20 @@ from aisurveywriter.utils.logger import named_log, cooldown_log, metadata_log
 from aisurveywriter.utils.helpers import time_func, assert_type
 
 class PaperReviewer(PipelineTask):
-    required_input_variables: List[str] = ["refcontent", "subject"]
+    required_input_variables: List[str] = ["subject"]
     
     def __init__(self, agent_ctx: AgentContext, written_paper: PaperData):
         super().__init__(no_divide=False, agent_ctx=agent_ctx)
         self.agent_ctx._working_paper = written_paper
         
         self._review_system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.review_section.text)
-        self._review_human = HumanMessagePromptTemplate.from_template("Review the following section:\nSection title: {title}\nSection content:\n{content}")
+        self._review_human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n{refcontent}\n\n[end: references_content]\n\n"+
+                                                                      "Review the following section:\nSection title: {title}\nSection content:\n{content}")
 
         self._apply_system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.apply_review_section.text)
-        self._apply_human = HumanMessagePromptTemplate.from_template("[begin: review_directives]\n\n{review_directives}\n\n[end: review_directives]\n\n- Apply the review directives to the following section:\nSection title: {title}\nSection content:\n{content}")
+        self._apply_human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n{refcontent}\n\n[end: references_content]\n\n"+
+                                                                     "[begin: review_directives]\n\n{review_directives}\n\n[end: review_directives]\n\n"+
+                                                                     "- Apply the review directives to the following section:\nSection title: {title}\nSection content:\n{content}")
     
     def review(self) -> PaperData:
         section_amount = len(self.agent_ctx._working_paper.sections)

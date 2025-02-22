@@ -11,14 +11,21 @@ from aisurveywriter.utils.logger import named_log, cooldown_log, metadata_log
 from aisurveywriter.utils.helpers import time_func, assert_type
         
 class PaperWriter(PipelineTask):
-    required_input_variables: List[str] = ["subject", "refcontent"]
+    required_input_variables: List[str] = ["subject"]
     
     def __init__(self, agent_ctx: AgentContext, structured_paper: PaperData):
         super().__init__(no_divide=False, agent_ctx=agent_ctx)
         self.agent_ctx._working_paper = structured_paper
     
         self._system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.write_section.text)
-        self._human = HumanMessagePromptTemplate.from_template("Write the given section:\n-Title: {title}\n-Description:\n{description}")
+        self._human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n"+
+                                                               "{refcontent}\n\n"+
+                                                               "[end: references_content]\n\n"+
+                                                               "[begin: section]\n\n"+
+                                                               "- Section title: {title}\n"+
+                                                               "- Section description:\n{description}\n\n"+
+                                                               "[end: section]")
+
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
     
     def write(self) -> PaperData:

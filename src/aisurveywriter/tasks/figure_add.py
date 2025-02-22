@@ -13,14 +13,19 @@ from aisurveywriter.utils.logger import named_log, cooldown_log, metadata_log
 from aisurveywriter.utils.helpers import time_func, assert_type
 
 class PaperFigureAdd(PipelineTask):
-    required_input_variables: List[str] = ["refcontent", "subject"]
+    required_input_variables: List[str] = ["subject"]
     
     def __init__(self, agent_ctx: AgentContext, written_paper: PaperData, images_dir: str, confidence: float = 0.8, max_figures: int = 30):
         super().__init__(no_divide=True, agent_ctx=agent_ctx)
         self.agent_ctx._working_paper = written_paper
         
         self._system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.add_figures.text)
-        self._human = HumanMessagePromptTemplate.from_template("Add figures in the following section:\n- Section title: {title}\n- Section content:\n{content}")
+        self._human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n"+
+                                                               "{refcontent}\n\n"+
+                                                               "[end: references_content]\n\n"+
+                                                               "Add figures to this section:\n"+
+                                                               "- Section title: {title}\n"+
+                                                               "- Section content:\n{content}")
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
 
         self.confidence = confidence

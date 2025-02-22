@@ -36,12 +36,6 @@ class PromptStore(BaseModel):
 ##########################################################################################
 def default_prompt_store() -> PromptStore:
     GENERATE_STRUCT_PROMPT = r"""
-[begin: references_content]
-
-{refcontent}
-
-[end: references_content]
-
 - You are an expert in academic writing, specially in the field of **{subject}**.
 
 1. **GOAL**: generate a detailed structure for a scientific survey paper on the subject "{subject}". Be formal, comprehensive and organize the subject logically and thoroughly.
@@ -77,14 +71,7 @@ def default_prompt_store() -> PromptStore:
 
 **Provide your answer in English only**."""
 
-    WRITE_SECTION_PROMPT = r"""
-[begin: reference_content]
-
-{refcontent}
-
-[end: reference_content]
-
-**BASE YOUR KNOWLEDGE IN THE PROVIDED REFERENCES ABOVE; !ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO!:**
+    WRITE_SECTION_PROMPT = r"""**BASE YOUR KNOWLEDGE IN THE REFERENCES PROVIDED BY THE HUMAN; !ALL YOUR FOLLOWING OUTPUT MUST ADHERE TO!:**
 
 **You must use only LaTeX format, using the following guidelines for structure and content:**
 - LaTeX Sectioning:
@@ -124,16 +111,9 @@ def default_prompt_store() -> PromptStore:
 - Most important: maintain a formal, scientific, and objective tone. **THE MORE YOU WRITE, THE BETTER. YOU SHOULD WRITE AT LEAST 500 WORDS IN A SECTIION**."""
 
 
-    ADD_FIGURES_PROMPT = r"""
-[begin: reference_content]
+    ADD_FIGURES_PROMPT = r"""- You are an academic expert in "{subject}". You are writing a survey paper.
 
-{refcontent}
-
-[end: reference_content]
-
-- You are an academic expert in "{subject}". You are writing a survey paper.
-
-- You are receiving: 
+- You are receiving from the human: 
 - the content of references for this paper (reference_content block)
 - the content of one section of this paper (in latex)
 
@@ -161,15 +141,7 @@ def default_prompt_store() -> PromptStore:
 
 - **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is...\""""
 
-    REVIEW_SECTION_PROMPT = r"""[begin: reference_content]
-    
-{refcontent}
-
-[end: reference_content]
-
-[begin: system_instructions]
-
-- You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey scientific paper on this subjects
+    REVIEW_SECTION_PROMPT = r"""- You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey scientific paper on this subjects
 
 - The survey is thoroughly based on the provided references.
 
@@ -195,18 +167,9 @@ def default_prompt_store() -> PromptStore:
 - You must be directive, objective, and clear. Remember that your directives will be strictly followed, so it is essential that you are directive and clear.
 - You must be concise
 - You must write only in English
-- Your output should contain nothing more than the directives. So don't output stuff like "Okay, here are the directives...."
+- Your output should contain nothing more than the directives. So don't output stuff like 'Okay, here are the directives....' """
 
-[end: system_instructions]"""
-
-    APPLY_REVIEW_SECTION_PROMPT = r"""[begin: reference_content]
-
-{refcontent}
-
-[end: reference_content]
-
-[begin: system_instructions]
-- **You are an expert in academic writing, specially in the field of "{subject}".**
+    APPLY_REVIEW_SECTION_PROMPT = r"""- **You are an expert in academic writing, specially in the field of "{subject}".**
 
 - Some references are provided above, which you must follow
 
@@ -260,9 +223,7 @@ def default_prompt_store() -> PromptStore:
 
 - If there is no clear directive to make a change, then don't change anything and output the section as-it-is.
 
-- **TASK**: Follow these directives strictly and apply improvements to the given section. Do not remove nor add any sections.
-
-[end: system_instructions]"""
+- **TASK**: Follow these directives strictly and apply improvements to the given section. Do not remove nor add any sections."""
 
     REFINE_PROMPT = r"""- You are an expert in academic writing, specially in the field of "{subject}" and in writing survey papers.
 
