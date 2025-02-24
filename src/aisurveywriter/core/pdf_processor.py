@@ -39,7 +39,7 @@ class PDFProcessor:
             contents[i] = "\n".join([d.page_content for d in doc])
         return contents
 
-    def extract_images(self, save_dir: str = None) -> List[PDFImageData]:
+    def extract_images(self, save_dir: str = None, verbose=True) -> List[PDFImageData]:
         imgs = []
         if save_dir:
             save_dir = os.path.abspath(save_dir)
@@ -62,7 +62,8 @@ class PDFProcessor:
                         with open(path, "wb") as f:
                             f.write(img_bytes)
                         
-                        named_log(self, f"Image saved: {path}")
+                        if verbose:
+                            named_log(self, f"Image saved: {path}")
 
                     imgs.append(PDFImageData(
                         pdf_source=self.pdf_paths[pdf_idx],
