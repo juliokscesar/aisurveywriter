@@ -3,8 +3,8 @@ from typing import List
 import re
 import os
 
-from .pdf_processor import PDFProcessor
-from aisurveywriter.utils.logger import named_log
+from ..core.pdf_processor import PDFProcessor
+from ..utils.logger import named_log
 
 @dataclass
 class ReferenceStore:

@@ -6,10 +6,10 @@ import os
 from aisurveywriter.core.paper import PaperData
 from aisurveywriter.core.agent_context import AgentContext
 from aisurveywriter.core.agent_rags import AgentRAG, RAGType
-from aisurveywriter.core.reference_store import ReferenceStore
+from aisurveywriter.store.reference_store import ReferenceStore
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.text_embedding import EmbeddingsHandler
-from aisurveywriter.core.prompt_store import PromptStore, PromptInfo
+from aisurveywriter.store.prompt_store import PromptStore, PromptInfo
 from aisurveywriter.core.pipeline import PaperPipeline
 import aisurveywriter.tasks as tks
 from aisurveywriter.utils.logger import named_log

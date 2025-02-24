@@ -8,7 +8,7 @@ from aisurveywriter.survey_context import SurveyContext, SurveyAgentType
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.text_embedding import EmbeddingsHandler
 
-from aisurveywriter.core.prompt_store import PromptStore, default_prompt_store
+from aisurveywriter.store.prompt_store import PromptStore, default_prompt_store
 
 def tex_filter_survey(tex_content: str):
     tex_content = re.sub(r"[`]+[\w]*", "", tex_content)

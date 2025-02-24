@@ -6,10 +6,10 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from aisurveywriter.core.llm_handler import LLMHandler
-from aisurveywriter.core.reference_store import ReferenceStore
+from aisurveywriter.store.reference_store import ReferenceStore
 from aisurveywriter.utils.logger import named_log, metadata_log, cooldown_log
 from aisurveywriter.utils.helpers import time_func
-from aisurveywriter.utils.helpers import get_bibtex_entry, bib_entries_to_str
+from aisurveywriter.utils.helpers import get_bibtex_entry
 
 class BibliographyInfo(BaseModel):
     title: str | None = Field(description="Title of the referenced work")

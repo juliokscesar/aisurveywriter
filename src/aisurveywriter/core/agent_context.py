@@ -6,10 +6,10 @@ from langchain_core.prompts.chat import SystemMessage
 
 from .llm_handler import LLMHandler
 from .text_embedding import EmbeddingsHandler
-from .reference_store import ReferenceStore
+from ..store.reference_store import ReferenceStore
 from .agent_rags import AgentRAG
 from .paper import PaperData
-from .prompt_store import PromptStore
+from ..store.prompt_store import PromptStore
 
 @dataclass
 class AgentContext:

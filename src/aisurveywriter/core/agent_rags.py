@@ -14,7 +14,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .text_embedding import EmbeddingsHandler
 from .llm_handler import LLMHandler
-from .reference_store import ReferenceStore
+from ..store.reference_store import ReferenceStore
 
 from aisurveywriter.res_extract import ReferencesBibExtractor, FigureExtractor
 
