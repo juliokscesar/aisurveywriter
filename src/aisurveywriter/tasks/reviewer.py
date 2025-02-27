@@ -21,15 +21,20 @@ class PaperReviewer(PipelineTask):
         
         self._review_system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.review_section.text)
         self._review_human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n{refcontent}\n\n[end: references_content]\n\n"+
+                                                                      "[begin: survey_info]\n\nALL_SECTIONS: {paper_sections}\n\nREVIEWED: {paper_reviewed_sections}\n\n[end: survey_info]\n\n"+
                                                                       "Review the following section:\nSection title: {title}\nSection content:\n{content}")
 
         self._apply_system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.apply_review_section.text)
         self._apply_human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n{refcontent}\n\n[end: references_content]\n\n"+
                                                                      "[begin: review_directives]\n\n{review_directives}\n\n[end: review_directives]\n\n"+
+                                                                      "[begin: survey_info]\n\nALL_SECTIONS: {paper_sections}\n\nREVIEWED: {paper_reviewed_sections}\n\n[end: survey_info]\n\n"+
                                                                      "- Apply the review directives to the following section:\nSection title: {title}\nSection content:\n{content}")
     
     def review(self) -> PaperData:
         section_amount = len(self.agent_ctx._working_paper.sections)
+        all_sections = [f"{i}. {s.title}" for i, s in enumerate(self.agent_ctx._working_paper.sections)]
+        reviewed_sections = []
+        
         total_words = 0
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
             assert(section.content is not None)
@@ -42,6 +47,8 @@ class PaperReviewer(PipelineTask):
             elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
                 "refcontent": section_reference,
                 "subject": self.agent_ctx._working_paper.subject,
+                "paper_sections": "; ".join(all_sections),
+                "paper_reviewed_sections": "; ".join(reviewed_sections),
                 "title": section.title,
                 "content": section.content,
             })
@@ -57,6 +64,8 @@ class PaperReviewer(PipelineTask):
             elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
                 "refcontent": section_reference,
                 "subject": self.agent_ctx._working_paper.subject,
+                "paper_sections": "; ".join(all_sections),
+                "paper_reviewed_sections": "; ".join(reviewed_sections),
                 "review_directives": response.content,
                 "title": section.title,
                 "content": section.content,
@@ -69,6 +78,8 @@ class PaperReviewer(PipelineTask):
             metadata_log(self, elapsed, response)
             if self.agent_ctx.llm_cooldown:
                 cooldown_log(self, self.agent_ctx.llm_cooldown)
+
+            reviewed_sections.append(f"{i}. {section.title}")
         
         return self.agent_ctx._working_paper
     
@@ -78,7 +89,7 @@ class PaperReviewer(PipelineTask):
             return "\n\n".join(self.agent_ctx.references.full_content())
         
         # retrieve relevant blocks for this section from content RAG
-        k = 25
+        k = 23
         query = f"Retrieve contextual, technical, and analytical information on the subject {self.agent_ctx._working_paper.subject} for a section titled \"{section.title}\", description:\n{section.description}"
         relevant: List[GeneralTextData] = self.agent_ctx.rags.retrieve(RAGType.GeneralText, query, k)
         return "\n\n".join([data.text for data in relevant])

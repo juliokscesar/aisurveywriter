@@ -40,7 +40,7 @@ class TexReviewer(PipelineTask):
 
             start = time.time()
 
-            section.content = re.sub(r"[`]+[\w]*", "", section.content)
+            section = self._convert_markdown(section)
             section = self._remove_invalid_figures(section, self.agent_ctx._working_paper.fig_path)
             section = self._remove_invalid_refs(section, bib_content)
 
@@ -81,6 +81,14 @@ class TexReviewer(PipelineTask):
                 return ""
         
         section.content = self._cite_pattern.sub(replace_invalid, section.content)
+        return section
+
+
+    def _convert_markdown(self, section: SectionData):
+        section.content = re.sub(r"[`]+[\w]*", "", section.content) # remove markdown code block
+        section.content = re.sub(r"\*\*(.*?)\*\*", r"\\textbf{\1}", section.content) # replace bold text
+        section.content = re.sub(r"\*(.*?)\*", r"\\textit{\1}", section.content) # replace italic text
+
         return section
 
 

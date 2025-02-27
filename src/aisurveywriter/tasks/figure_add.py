@@ -80,7 +80,12 @@ class PaperFigureAdd(PipelineTask):
             if len(used_imgs) >= self.max_figures:
                 break
 
-            # use caption to retrieve an image
+            # cut "Adapted from..." from caption (don't include it as query)
+            idx = caption.lower().rfind("adapted from")
+            if idx != -1:
+                caption = caption[:idx].strip()
+
+            # use caption to retrieve an image            
             query = f"{figname}: {caption}"
             results: List[ImageData] = self.agent_ctx.rags.retrieve(RAGType.ImageData, query, k=retrieve_k, confidence=self.confidence)
             if not results:
@@ -107,9 +112,12 @@ class PaperFigureAdd(PipelineTask):
             if not image_used:
                 named_log(self, f"==> couldn't find a match for {figname}: {caption!r} that had confidence >= {self.confidence} or wasn't used before")
                 continue
+            else:
+                named_log(self, f"==> best match for {figname}: {os.path.basename(image_used)}")
             
-            replacement = f"\\includegraphics[width=0.97\\textwidth]{{{result.basename}}}"
-            content = content.replace(f"\\includegraphics{{{figname}}}", replacement, 1)
+            replacement = rf"\\includegraphics[width=0.97\\textwidth]{{{os.path.basename(image_used)}}}"
+            re_pattern = rf"\\includegraphics(\[[^\]]*\])?{{{re.escape(figname)}}}"
+            content = re.sub(re_pattern, replacement, content, count=1)
             
             if self.agent_ctx.embed_cooldown:
                 cooldown_log(self, self.agent_ctx.embed_cooldown)

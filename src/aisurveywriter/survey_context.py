@@ -203,7 +203,7 @@ class SurveyContext:
             self._check_input_variables(self.prompts.abstract_and_title, SurveyAgentType.Writer, tks.PaperRefiner.required_input_variables)
             
             refine_agent_ctx = self.common_agent_ctx.copy()
-            refine_agent_ctx.llm_handler = self.llms[SurveyAgentType.Writer] # use writer LLM
+            refine_agent_ctx.llm_handler = self.llms[SurveyAgentType.Writer] # use struct gen LLM becase of tokens
             self.pipe_steps.extend([
                 ("Refine paper (abstract and title)", tks.PaperRefiner(refine_agent_ctx, self.paper)),
                 ("Save refined", tks.PaperSaver(self.save_path.replace(".tex", "-refined.tex"), self.tex_template_path)),

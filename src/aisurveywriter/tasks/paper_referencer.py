@@ -38,7 +38,7 @@ class PaperReferencer(PipelineTask):
                     cited_sentences.extend(sentences[j:])
                     break
                     
-                if '\\' in sentence or '{' in sentence or '}' in sentence or not sentence.strip():
+                if '\\' in sentence or '{' in sentence or '}' in sentence or sentence[0].isdigit() or sentence[0] == '-' or sentence[0] == '*' or not sentence.strip():
                     cited_sentences.append(sentence)
                     continue
                 

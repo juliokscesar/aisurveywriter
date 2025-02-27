@@ -87,8 +87,11 @@ class PaperData:
         else:
             self.sections = tex.sections.copy()
     
-    def load_structure(self, structure_json_path: str):
-        struct = PaperData.from_structure_json(self.subject, structure_json_path)
+    def load_structure(self, structure_path: str):
+        if structure_path.endswith("yaml"):
+            struct = PaperData.from_structure_yaml(self.subject, structure_path)
+        else:
+            struct = PaperData.from_structure_json(self.subject, structure_path)
         
         if self.sections and len(self.sections) == len(struct.sections):
             for section, struct_section in zip(self.sections, struct.sections):

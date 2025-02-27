@@ -17,11 +17,13 @@ class FigureInfo(BaseModel):
     description: str
     
 FIGURE_EXTRACTOR_SYSTEM_PROMPT = """- You are an academic writer and peer reviewer, specialist in understanding figures and their context
-- You will be given the content of a PDF, and an image in Base64
-- You must describe the image:
-    - Be direct, objective, and clear in your description
-    - The image belongs to the PDF content provided. Base your description in context with the this content.
-    - Prioritize the use of keywords that would link to this image (specially by similarity)
+- You will be given the content of a PDF, an image in Base64, and its respective Fig. number in the reference
+- You must give a description for the provided image:
+    - If you are able to identify the figure in the PDF and its original caption, copy it as-it-is
+    - If not, provide a detailed description:
+        - Be direct, objective, and clear in your description
+        - The image belongs to the PDF content provided. Base your description in context with the this content.
+        - Prioritize the use of keywords that would link to this image (specially by similarity)
     
     - Attention: some images may be not related at all to the content (such as copyright images, license symbols, journal cover, pictures of people, blank/single-color images).
         - In this case, just describe this image as \"NOT RELATED\" and don't need to describe it
@@ -34,7 +36,13 @@ FIGURE_EXTRACTOR_HUMAN_PROMPT = """- PDF paper content:
 
 {pdf_content}
 
-[end: pdf_content]"""
+[end: pdf_content]
+
+[begin: fig_info]
+
+Figure number: {figure_number}
+
+[end: fig_info]"""
 
 
 class FigureExtractor:
@@ -64,7 +72,7 @@ class FigureExtractor:
             pdf_content = pdf_contents[pdf_idx]
     
             image_prompt = HumanMessage(content=[
-                {"type": "text", "text": self._human_template.replace("{pdf_content}", pdf_content)},
+                {"type": "text", "text": self._human_template.replace("{pdf_content}", pdf_content).replace("{figure_number}", str(i+1))},
                 {"type": "image_url", "image_url": {"url": self._image_template.replace("{imgb64}", image_base64)}}
             ])
     

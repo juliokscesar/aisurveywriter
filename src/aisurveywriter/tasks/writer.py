@@ -21,6 +21,10 @@ class PaperWriter(PipelineTask):
         self._human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n"+
                                                                "{refcontent}\n\n"+
                                                                "[end: references_content]\n\n"+
+                                                               "[begin: survey_info]\n\n"+
+                                                               "ALL_SECTIONS: {paper_sections}\n"+
+                                                               "WRITTEN: {paper_written_sections}\n\n"+
+                                                               "[end: survey_info]\n\n"+
                                                                "[begin: section]\n\n"+
                                                                "- Section title: {title}\n"+
                                                                "- Section description:\n{description}\n\n"+
@@ -32,6 +36,9 @@ class PaperWriter(PipelineTask):
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
         
         section_amount = len(self.agent_ctx._working_paper.sections)
+        all_sections = [f"{i}. {s.title}" for i, s in enumerate(self.agent_ctx._working_paper.sections)]
+        written_sections = []
+        
         total_words = 0
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
             assert(section.description is not None)
@@ -41,6 +48,8 @@ class PaperWriter(PipelineTask):
             elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
                 "refcontent": self._get_reference_content(section),
                 "subject": self.agent_ctx._working_paper.subject,
+                "paper_sections": "; ".join(all_sections),
+                "paper_written_sections": "; ".join(written_sections),
                 "title": section.title,
                 "description": section.description,
             })
@@ -53,6 +62,8 @@ class PaperWriter(PipelineTask):
             if self.agent_ctx.llm_cooldown:
                 cooldown_log(self, self.agent_ctx.llm_cooldown)
 
+            written_sections.append(f"{i}. {section.title}")
+
         return self.agent_ctx._working_paper
 
     def _get_reference_content(self, section: SectionData):
@@ -61,7 +72,7 @@ class PaperWriter(PipelineTask):
             return "\n\n".join(self.agent_ctx.references.full_content())
         
         # retrieve relevant blocks for this section from content RAG
-        k = 25
+        k = 23
         query = f"Retrieve contextual, technical, and analytical information on the subject {self.agent_ctx._working_paper.subject} for a section titled \"{section.title}\", description:\n{section.description}"
         relevant: List[GeneralTextData] = self.agent_ctx.rags.retrieve(RAGType.GeneralText, query, k)
         return "\n\n".join([data.text for data in relevant])
