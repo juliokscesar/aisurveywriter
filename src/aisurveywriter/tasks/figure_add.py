@@ -81,12 +81,12 @@ class PaperFigureAdd(PipelineTask):
                 break
 
             # cut "Adapted from..." from caption (don't include it as query)
-            idx = caption.lower().rfind("adapted from")
+            idx = caption.rfind("Adapted from")
             if idx != -1:
                 caption = caption[:idx].strip()
 
             # use caption to retrieve an image            
-            query = f"{figname}: {caption}"
+            query = f"{caption}"
             results: List[ImageData] = self.agent_ctx.rags.retrieve(RAGType.ImageData, query, k=retrieve_k, confidence=self.confidence)
             if not results:
                 named_log(self, f"==> unable to find images for figure: {figname!r}, caption: {caption}")

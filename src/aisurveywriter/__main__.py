@@ -38,7 +38,7 @@ def main():
 
     generate_paper_survey(
         subject=args.subject,
-        ref_paths=get_all_files_from_paths(args.references_dir),
+        ref_paths=get_all_files_from_paths(args.references_dir, stem_sort=True),
         save_path=os.path.abspath(args.save_dir),
         
         writer_model=args.llm_model,

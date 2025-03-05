@@ -88,7 +88,7 @@ class SurveyContext:
         self._llm_cooldown = llm_request_cooldown_sec
         self._embed_cooldown = embed_request_cooldown_sec
         
-        self.rags = AgentRAG(self.embed, self.llms[SurveyAgentType.StructureGenerator], faissbib_path, faissfig_path, faisscontent_path, request_cooldown_sec=llm_request_cooldown_sec, output_dir=self.output_dir, confidence=faiss_confidence)
+        self.rags = AgentRAG(self.embed, self.llms[SurveyAgentType.StructureGenerator], faissbib_path, faissfig_path, faisscontent_path, request_cooldown_sec=6, output_dir=self.output_dir, confidence=faiss_confidence)
         self.images_dir = images_dir
         if not self.images_dir:
             self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided

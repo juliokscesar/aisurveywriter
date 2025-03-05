@@ -36,13 +36,7 @@ FIGURE_EXTRACTOR_HUMAN_PROMPT = """- PDF paper content:
 
 {pdf_content}
 
-[end: pdf_content]
-
-[begin: fig_info]
-
-Figure number: {figure_number}
-
-[end: fig_info]"""
+[end: pdf_content]"""
 
 
 class FigureExtractor:
@@ -72,7 +66,7 @@ class FigureExtractor:
             pdf_content = pdf_contents[pdf_idx]
     
             image_prompt = HumanMessage(content=[
-                {"type": "text", "text": self._human_template.replace("{pdf_content}", pdf_content).replace("{figure_number}", str(i+1))},
+                {"type": "text", "text": self._human_template.replace("{pdf_content}", pdf_content)},
                 {"type": "image_url", "image_url": {"url": self._image_template.replace("{imgb64}", image_base64)}}
             ])
     
