@@ -19,17 +19,19 @@ class FigureInfo(BaseModel):
 FIGURE_EXTRACTOR_SYSTEM_PROMPT = """- You are an academic writer and peer reviewer, specialist in understanding figures and their context
 - You will be given the content of a PDF, an image in Base64
 - You must give a description for the provided image:
-    - If you are able to identify the figure in the PDF and its original caption, copy it as-it-is
+    - Identify the figure around its context and what it's illustratng
+    - If you are able to identify the figure's original caption in the PDF, copy it as-it-is
     - If not, provide a detailed description:
         - Be direct, objective, and clear in your description, while being concise
         - The image belongs to the PDF content provided. Base your description in context with the this content.
         - Prioritize the use of keywords that would link to this image (specially by similarity)
     
-    - Attention: some images may be not related at all to the content (such as copyright images, license symbols, single-letter images, journal cover, pictures of people, blank/single-color images).
+    - **ATTENTION** some images may be not related at all to the content (such as copyright images, license symbols, single-letter images, journal cover, pictures of people, blank/single-color images).
         - In this case, just describe this image as \"NOT RELATED\" and don't need to describe it
         - If the image does not appear to have anything to do with the paper's context, also just respond \"NOT RELATED\" and don't need to describe it
 
-- The image description must be between 100-300 words."""
+- The image description must be between 100-300 words.
+- **Output only the image description/caption, nothing more (no "Okay, here's the description..." or related)"""
 
 FIGURE_EXTRACTOR_HUMAN_PROMPT = """- PDF paper content:
 [begin: pdf_content]
