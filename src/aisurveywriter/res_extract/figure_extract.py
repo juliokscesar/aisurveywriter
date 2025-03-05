@@ -73,18 +73,25 @@ class FigureExtractor:
             ])
     
             elapsed, response = time_func(self.llm.model.invoke, [self._system, image_prompt])
-
-            figures_info.append(FigureInfo(
-                id=i,
-                basename=os.path.basename(image.path),
-                description=response.content,
-            ))
+            
+            # check if image is "NOT RELATED"
+            if "NOT RELATED" in response.content.upper().strip():
+                os.remove(image.path)
+                named_log(self, f"identified NOT RELATED image: {os.path.basename(image.path)}")
+            else: 
+                figures_info.append(FigureInfo(
+                    id=i,
+                    basename=os.path.basename(image.path),
+                    description=response.content,
+                ))
 
             named_log(self, f"==> finish describing image {i+1}/{images_amount} ({figures_info[-1].basename})")
             metadata_log(self, elapsed, response)
 
             if self._cooldown:
                 cooldown_log(self, self._cooldown)
+
+               
 
         if dump_data:
             with open(os.path.join(self.output_dir, "figures_info.json"), "w", encoding="utf-8") as f:
