@@ -27,8 +27,8 @@ FIGURE_EXTRACTOR_SYSTEM_PROMPT = """- You are an academic writer and peer review
         - Prioritize the use of keywords that would link to this image (specially by similarity)
     
     - **ATTENTION** some images may be not related at all to the content (such as copyright images, license symbols, single-letter images, journal cover, pictures of people, blank/single-color images).
-        - In this case, just describe this image as \"NOT RELATED\" and don't need to describe it
-        - If the image does not appear to have anything to do with the paper's context, also just respond \"NOT RELATED\" and don't need to describe it
+        - In this case, just describe this image as \"UNRELATED FIGURE\" and don't need to describe it
+        - If the image does not appear to have anything to do with the paper's context, also just respond \"UNRELATED FIGURE\" and don't need to describe it
 
 - The image description must be between 100-300 words.
 - **Output only the image description/caption, nothing more (no "Okay, here's the description..." or related)"""
@@ -74,10 +74,10 @@ class FigureExtractor:
     
             elapsed, response = time_func(self.llm.model.invoke, [self._system, image_prompt])
             
-            # check if image is "NOT RELATED"
-            if "NOT RELATED" in response.content.upper().strip():
+            # check if image is unrelated
+            if "UNRELATED FIGURE" in response.content.upper().strip():
                 os.remove(image.path)
-                named_log(self, f"identified NOT RELATED image: {os.path.basename(image.path)}")
+                named_log(self, f"identified unrelated image: {os.path.basename(image.path)}")
             else: 
                 figures_info.append(FigureInfo(
                     id=i,
