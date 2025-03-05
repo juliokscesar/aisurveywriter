@@ -4,6 +4,7 @@ import re
 
 from aisurveywriter import generate_paper_survey
 from aisurveywriter.utils import get_all_files_from_paths
+from aisurveywriter.store.prompt_store import PromptStore
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -31,10 +32,17 @@ def parse_args():
     parser.add_argument("--cooldown", "-w", type=int, default=30, help="Cooldown between two consecutive requests made to the LLM API")
     parser.add_argument("--embed-cooldown", type=int, default=0, help="Cooldown between two consecutive requests made to the text embedding model API")
     parser.add_argument("--tex-template", type=str, default=os.path.abspath(os.path.join(os.path.dirname(__file__), "../../templates/paper_template.tex")), help="Path to custom .tex template")
+    parser.add_argument("--prompt-store", type=str, default=None, help="Path to a JSON containing custom prompts used in the system. If none is provided, the default prompts are used")
     return parser.parse_args()
 
 def main():
     args = parse_args()
+
+    # load prompt store content if provided
+    custom_prompt_store = None
+    if args.prompt_store:
+        with open(args.prompt_store, "r", encoding="utf-8") as f:
+            custom_prompt_store = PromptStore.model_validate_json(f.read())
 
     generate_paper_survey(
         subject=args.subject,
@@ -49,6 +57,7 @@ def main():
         embed_model=args.embed_model,
         embed_model_type=args.embed_type,
 
+        custom_prompt_store=custom_prompt_store,
         tex_template_path=args.tex_template,
         
         no_ref_faiss=args.no_ref_rag,
