@@ -111,6 +111,8 @@ Output only LaTeX content (starting from \section{{...}})
 - You must ID this figure with a unique name and a proper caption:
     - Copy the very same caption from the original figure in its proper reference, adding "Adapted from (AUTHOR), (YEAR)" in the end
     - If you're unable to identify the caption, add a very descriptive and detailed caption
+- Add a LaTeX comment line to identify its author, as: "%author: AuthorX", in the next line after the caption
+    - If you can't identify the author or you're able to identify only the jounal, leave it empty after "%author:" (e.g. "%author:")
 
 - If adding a visual element is not relevant, do nothing
 - If there are any Figures present (including TikZ figures), do not alter nor remove them
@@ -119,6 +121,7 @@ Output only LaTeX content (starting from \section{{...}})
 \begin{{figure}}[h!]
 \includegraphics{{unique_name}}
 \caption{{Very descriptive caption}}
+%author: FigAuthor
 \label{{fig:unique_random_label}}
 \end{{figure}}
 
@@ -131,7 +134,7 @@ Output only LaTeX content (starting from \section{{...}})
 
 - **YOU MUST NOT ALTER THE SECTION'S CONTENT, ONLY ADD THE FIGURES**
 
-- **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is...\""""
+- **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is...\". Do not write any message for the human, only the section content"""
 
     REVIEW_SECTION_PROMPT = r"""- You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey paper on this subject.
 
