@@ -51,6 +51,12 @@ class SurveyContext:
         
         llm_request_cooldown_sec: int = 30,
         embed_request_cooldown_sec: int = 0,
+
+        ref_max_per_section: int = 90,
+        ref_max_per_sentence: int = 4,
+        ref_max_same_ref: int = 10,
+        
+        fig_max_figures: int = 30,
         
         **pipeline_kwargs,
     ):
@@ -108,6 +114,12 @@ class SurveyContext:
             skip_abstract=no_abstract,
             skip_tex_review=no_tex_review,
             
+            ref_max_per_section=ref_max_per_section,
+            ref_max_per_sentence=ref_max_per_sentence,
+            ref_max_same_ref=ref_max_same_ref,
+            
+            fig_max_figures=fig_max_figures,
+            
             **pipeline_kwargs,
         )
     
@@ -121,6 +133,12 @@ class SurveyContext:
         skip_review=False, 
         skip_abstract=False,
         skip_tex_review=False,
+        
+        ref_max_per_section: int = 90,
+        ref_max_per_sentence: int = 4,
+        ref_max_same_ref: int = 10,
+        
+        fig_max_figures: int = 30,
         
         **pipeline_kwargs,
     ):
@@ -176,7 +194,7 @@ class SurveyContext:
             figures_agent_ctx = self.common_agent_ctx.copy()
             figures_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator] # use llm from structure generation because we use the entire reference content
             self.pipe_steps.extend([
-                ("Add figures", tks.PaperFigureAdd(figures_agent_ctx, self.paper, self.images_dir, self.confidence, max_figures=30)),
+                ("Add figures", tks.PaperFigureAdd(figures_agent_ctx, self.paper, self.images_dir, self.confidence, max_figures=fig_max_figures)),
                 ("Save with figures", tks.PaperSaver(self.save_path.replace(".tex", "-figures.tex"), self.tex_template_path))
             ])
             
@@ -195,7 +213,7 @@ class SurveyContext:
             # paper refrencer doesn't need a prompt
             reference_agent_ctx = self.common_agent_ctx.copy()
             self.pipe_steps.extend([
-                ("Reference paper", tks.PaperReferencer(reference_agent_ctx, self.paper, self.save_path.replace(".tex", ".bib"))),
+                ("Reference paper", tks.PaperReferencer(reference_agent_ctx, self.paper, self.save_path.replace(".tex", ".bib"), max_per_section=ref_max_per_section, max_per_sentence=ref_max_per_sentence, max_same_ref=ref_max_same_ref)),
                 ("Save referenced", tks.PaperSaver(self.save_path.replace(".tex", "-ref.tex"), self.tex_template_path))
             ])
 

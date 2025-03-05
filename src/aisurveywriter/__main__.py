@@ -33,6 +33,9 @@ def parse_args():
     parser.add_argument("--embed-cooldown", type=int, default=0, help="Cooldown between two consecutive requests made to the text embedding model API")
     parser.add_argument("--tex-template", type=str, default=os.path.abspath(os.path.join(os.path.dirname(__file__), "../../templates/paper_template.tex")), help="Path to custom .tex template")
     parser.add_argument("--prompt-store", type=str, default=None, help="Path to a JSON containing custom prompts used in the system. If none is provided, the default prompts are used")
+    parser.add_argument("--ref-max-section", type=int, default=90, help="Maximum references in one section. Default is 90"),
+    parser.add_argument("--ref-max-sentence", type=int, default=4, help="Maximum references in one sentences. Default is 4"),
+    parser.add_argument("--ref-max-same", type=int, default=10, help="Maximum repetitions of the same reference. Default is 10"),
     return parser.parse_args()
 
 def main():
@@ -79,6 +82,10 @@ def main():
 
         llm_request_cooldown_sec=args.cooldown,
         embed_request_cooldown_sec=args.embed_cooldown,
+
+        ref_max_per_section=args.ref_max_section,
+        ref_max_per_sentence=args.ref_max_sentence,
+        ref_max_same_ref=args.ref_max_same,
     )
 
 

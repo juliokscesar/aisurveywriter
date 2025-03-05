@@ -68,7 +68,13 @@ def generate_paper_survey(
     embed_request_cooldown_sec: int = 0,
     
     pipeline_status_queue: queue.Queue = None,
-    credentials_yaml_path: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../credentials.yaml"))
+    credentials_yaml_path: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../credentials.yaml")),
+
+    ref_max_per_section: int = 90,
+    ref_max_per_sentence: int = 4,
+    ref_max_same_ref: int = 10,
+
+    fig_max_figures: int = 30,
 ):
     setup_credentials(credentials_yaml_path)
     
@@ -90,6 +96,7 @@ def generate_paper_survey(
         no_tex_review, pregen_struct_json_path, prewritten_tex_path, bibdb_path,
         faissbib_path, faissfig_path, faisscontent_path, faiss_confidence,
         images_dir, llm_request_cooldown_sec, embed_request_cooldown_sec, 
+        ref_max_per_section, ref_max_per_sentence, ref_max_same_ref,
         status_queue=pipeline_status_queue
     )
     return survey_ctx.generate()

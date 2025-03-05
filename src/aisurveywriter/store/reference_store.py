@@ -75,7 +75,7 @@ class ReferenceStore:
         self._no_bib_contents = []
         for i, content in enumerate(self._full_contents):
             # extract bibliography section with regex
-            ref_match = re.search(r"(References|Bibliography|Works Cited)\s*[\n\r]+", content, re.IGNORECASE)
+            ref_match = re.search(r"(References|Bibliography|Works Cited|Referências|Referencias)\s*[\n\r]+", content, re.IGNORECASE)
             if ref_match:
                 self._bibliographies.append(content[ref_match.start():].strip())
                 self._no_bib_contents.append(content[:ref_match.start()])
