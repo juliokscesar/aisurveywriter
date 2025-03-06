@@ -153,7 +153,7 @@ class PDFProcessor:
                         # - first word after number is lowercase and it's not within parenthesis
                         first_word = caption_words[0]
                         if not first_word.startswith('('):
-                            if first_word in ['.', ',', ';', '!', '?']:
+                            if first_word.strip()[0] in ['.', ',', ';', '!', '?', ')', '/', '\\', '[', ']', '{', '}']:
                                 continue
                             if first_word.islower() or (len(first_word) == 1 and caption_words[1].strip().lower() == "shows"):
                                 continue
