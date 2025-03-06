@@ -15,7 +15,7 @@ from aisurveywriter.utils.helpers import time_func, assert_type
 class PaperFigureAdd(PipelineTask):
     required_input_variables: List[str] = ["subject"]
     
-    def __init__(self, agent_ctx: AgentContext, written_paper: PaperData, images_dir: str, confidence: float = 0.8, max_figures: int = 30):
+    def __init__(self, agent_ctx: AgentContext, written_paper: PaperData, images_dir: str, confidence: float = 0.75, max_figures: int = 30):
         super().__init__(no_divide=True, agent_ctx=agent_ctx)
         self.agent_ctx._working_paper = written_paper
         

@@ -200,7 +200,7 @@ class AgentRAG:
         if not self.figure_extractor:
             self.figure_extractor = FigureExtractor(self._llm, references, os.path.join(self.output_dir, "images"), request_cooldown_sec=self._cooldown)
         
-        figures_info = self.figure_extractor.extract()
+        figures_info = self.figure_extractor.extract_captions()
         figures_rag_data: List[ImageData] = []
         for figure in figures_info:
             figures_rag_data.append(ImageData(

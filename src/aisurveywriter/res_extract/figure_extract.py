@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from pydantic.json import pydantic_encoder
 import json
 import os
+import re
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -30,7 +31,11 @@ FIGURE_EXTRACTOR_SYSTEM_PROMPT = """- You are an academic writer and peer review
         - If the image does not appear to have anything to do with the paper's context, also just respond \"UNRELATED FIGURE\" and don't need to describe it
 
 - The image description must be between 100-300 words.
-- **Output only the image description/caption, nothing more (no "Okay, here's the description..." or related) nor any messages directed to the human"""
+- **OUTPUT FORMAT**:
+    - Give ONLY the image description/caption
+    - DO NOT include the figure number (e.g. "Figure 1...")
+    - DO NOT write any message directed to the human (e.g. "here's the description", "okay, here it is", "The figure shows...")
+    - USE KEYWORDS (for similarity search)"""
 
 FIGURE_EXTRACTOR_HUMAN_PROMPT = """- PDF paper content:
 [begin: pdf_content]
@@ -39,6 +44,18 @@ FIGURE_EXTRACTOR_HUMAN_PROMPT = """- PDF paper content:
 
 [end: pdf_content]"""
 
+DEBLOAT_CAPTION_SYSTEM_PROMPT = """- You are an academic writer and peer reviewer, specialist in understanding figures and their context
+- You will receive from the human Figure captions extracted automatically from an article PDF
+- Your job is to read the extracted caption and keep only the important and actual body of the caption:
+    - Some captions come extracted with the name of the journal or some PDF metadata
+    - You must debloat (remove) all this extra junk from the caption, and maintain only the actual caption content
+    - To judge what's junk, understand the figure caption from most of the content, and the junk will be next to the end, usually something that has nothing to do with the figure itself
+    
+- DO NOT alter the actual caption content. Copy it as-it-is, remove ONLY the extra junk stuff
+- Examples of what you should remove:
+    - ""Fig. 1. Schematic diagram for the preparation of O-g-C 3 N 4 @(Pd-TAPP) 3 nanocomposites and their LB films. C.-N. Ye et al.         International Journal of Hydrogen Energy 98 (2025) 1119–1130 1121"" -> Remove from "C.-N." beyond -> Output: "Fig. 1. Schematic diagram for the preparation of O-g-C 3 N 4 @(Pd-TAPP) 3 nanocomposites and their LB films." ""
+    - 
+"""
 
 class FigureExtractor:
     def __init__(self, llm: LLMHandler, references: ReferenceStore, output_dir: str, system_prompt: str = FIGURE_EXTRACTOR_SYSTEM_PROMPT, human_prompt: str = FIGURE_EXTRACTOR_HUMAN_PROMPT, request_cooldown_sec: int = 30):
@@ -51,8 +68,36 @@ class FigureExtractor:
         self._system = SystemMessage(content=system_prompt)
         self._human_template = human_prompt
         self._image_template = "data:image/png;base64,{imgb64}"
+    
+    def extract_captions(self, dump_data=True) -> List[FigureInfo]:
+        images = self.references.pdf_proc.extract_images(self.output_dir, verbose=False, filter_min_wh=[40,40], extract_captions=True)
+        figures_info: List[FigureInfo] = []
+        figure_num_pattern = re.compile(r"^(Figure|Fig\.|Figura)\s*(?:\n\s*)*(\d+)\.?\s*", re.MULTILINE)
         
-    def extract(self, dump_data=True):
+        for img_idx, image in enumerate(images):
+            # skip image with no caption found
+            if image.caption is None:
+                named_log(self, "removing image with unidentified caption:", os.path.basename(image.path))
+                os.remove(image.path)
+                continue
+            
+            # remove "Figure X./Fig. X/Figura X." from caption
+            if fig_num_match := figure_num_pattern.match(image.caption):
+                image.caption = image.caption[fig_num_match.end():].strip()
+            
+            figures_info.append(FigureInfo(
+                id=img_idx,
+                basename=os.path.basename(image.path),
+                description=image.caption,
+            ))
+
+        if dump_data:
+            with open(os.path.join(self.output_dir, "figures_info.json"), "w", encoding="utf-8") as f:
+                json.dump(figures_info, f, default=pydantic_encoder, indent=2)
+
+        return figures_info
+        
+    def extract_describe(self, dump_data=True):
         images = self.references.extract_images(self.output_dir)
         pdf_contents = self.references.full_content()
         
@@ -94,6 +139,6 @@ class FigureExtractor:
 
         if dump_data:
             with open(os.path.join(self.output_dir, "figures_info.json"), "w", encoding="utf-8") as f:
-                json.dump(figures_info, f, default=pydantic_encoder)
+                json.dump(figures_info, f, default=pydantic_encoder, indent=2)
 
         return figures_info

@@ -45,7 +45,7 @@ class SurveyContext:
         faissbib_path: Optional[str] = None,
         faissfig_path: Optional[str] = None,
         faisscontent_path: Optional[str] = None,
-        faiss_confidence: float = 0.7,
+        faiss_confidence: float = 0.75,
         
         images_dir: Optional[str] = None,
         
