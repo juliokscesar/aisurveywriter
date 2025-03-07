@@ -41,8 +41,12 @@ class TexReviewer(PipelineTask):
             start = time.time()
 
             section = self._convert_markdown(section)
+            section = self._remove_preamble(section)
             section = self._remove_invalid_figures(section, self.agent_ctx._working_paper.fig_path)
             section = self._remove_invalid_refs(section, bib_content)
+            
+            # escape number percentage
+            section.content = re.sub(r"(\d+)%", r"\1\%", section.content)
 
             elapsed = int(time.time() - start)
             
@@ -50,6 +54,15 @@ class TexReviewer(PipelineTask):
 
         return self.agent_ctx._working_paper
 
+    def _remove_preamble(self, section: SectionData):
+        preamble_patterns = [
+            re.compile(r"\\usepackage{[\w]+}"),
+            re.compile(r"\\[begin|end]{document}")
+        ]
+        for pat in preamble_patterns:
+            section.content = re.sub(pat, "", section.content)
+
+        return section
 
     def _remove_invalid_figures(self, section: SectionData, img_dir: str):
         if not os.path.isdir(img_dir):
@@ -89,6 +102,44 @@ class TexReviewer(PipelineTask):
         section.content = re.sub(r"\*\*(.*?)\*\*", r"\\textbf{\1}", section.content) # replace bold text
         section.content = re.sub(r"\*(.*?)\*", r"\\textit{\1}", section.content) # replace italic text
 
+        in_itemize_block = False
+        in_enumerate_block = False
+        section_lines = section.content.split("\n")    
+        converted_lines = []
+        for line_idx, line in enumerate(section_lines):
+            s_line = line.strip()
+            line_added = False
+            
+            # bullet-points to itemize list
+            if s_line.startswith("*") and not s_line.endswith("*"):
+                if not in_itemize_block:
+                    converted_lines.append("\\begin{itemize}")
+                    in_itemize_block = True
+            
+                converted_lines.append(s_line.replace("*", "\\item{", 1) + "}")
+                line_added = True
+            else:
+                if in_itemize_block:
+                    converted_lines.append("\\end{itemize}")
+                    in_itemize_block = False
+            
+            # numbered list to latex enumerate
+            if num_list_match := re.match(r"^(\d+)[\.-]", s_line):
+                if not in_enumerate_block:
+                    converted_lines.append("\\begin{enumerate}")
+                    in_enumerate_block = True
+                
+                converted_lines.append("\\item{" + s_line[num_list_match.end():] + "}")
+                line_added = True
+            else:
+                if in_enumerate_block:
+                    converted_lines.append("\\end{enumerate}")
+                    in_enumerate_block = False
+                    
+            if not line_added:
+                converted_lines.append(line)
+
+        section.content = "\n".join(converted_lines)
         return section
 
 
