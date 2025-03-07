@@ -53,6 +53,7 @@ class PDFProcessor:
         for pdf_idx, reader in enumerate(self.img_readers):
             for page_idx in range(len(reader)):
                 page = reader.load_page(page_idx)
+                page.clean_contents()
                 img_list = page.get_images(full=True)
                 
                 # Temporary storage for images with their positions
@@ -61,7 +62,8 @@ class PDFProcessor:
                 page_width = page.rect.width
                 column_split = page_width / 2
                 
-                for img_idx, img in enumerate(img_list):
+                img_idx = 0
+                for img in img_list:
                     xref = img[0]
                     
                     # Get the image's position on the page
@@ -71,12 +73,9 @@ class PDFProcessor:
                     base_img = reader.extract_image(xref)
                     img_bytes = base_img["image"]
                     img_ext = base_img["ext"]
-                    
-                    # Apply size filter if specified
-                    if filter_min_wh:
-                        img_wh = Image.open(io.BytesIO(img_bytes)).size
-                        if img_wh[0] < filter_min_wh[0] or img_wh[1] < filter_min_wh[1]:
-                            continue
+
+                    if not self._validate_image(page, xref, base_img, img_rect):
+                        continue
                     
                     # Determine which column the image belongs to based on its center x-coordinate
                     img_center_x = (img_rect.x0 + img_rect.x1) / 2
@@ -84,7 +83,7 @@ class PDFProcessor:
                     
                     # Store the image with its position, column, and data
                     page_images.append({
-                        'column': column,          # Column (left=0, right=1)
+                        'column': column if img_rect.width <= page_width*0.8 else 0,          # Column (left=0, right=1)
                         'y_pos': img_rect.y0,      # Vertical position
                         'x_pos': img_rect.x0,      # Horizontal position
                         'rect': img_rect,          # Full bounding box
@@ -93,6 +92,8 @@ class PDFProcessor:
                         'bytes': img_bytes,        # Image binary data
                         'ext': img_ext             # Image extension
                     })
+
+                    img_idx += 1
                 
                 # Sort images: first by column (left to right), then by vertical position (top to bottom)
                 page_images.sort(key=lambda x: (x['column'], x['y_pos']))
@@ -124,12 +125,25 @@ class PDFProcessor:
         
         return imgs
             
+    def _validate_image(self, page, xref, base_image, image_rect) -> bool:
+        page_width = page.rect.width
+        page_height = page.rect.height
+       
+        # Check if image is likely a content figure (based on heuristics)
+        is_content_image = True
+
+        if image_rect.width < 40 or image_rect.height < 40:
+            is_content_image = False
+        
+        return is_content_image
+                       
     def extract_image_captions(self, images_data: List[PDFImageData]) -> List[PDFImageData]:
         captions = []
         # caption_pattern = re.compile(r"^(Figure|Fig\.|Figura)\s*(\d+)(\s*\.(\s*)|\s+)(\(\w+\)\s*|\d+\s*)?(?=[A-Z])")
-        caption_pattern = re.compile(r"^(Figure|Fig\.|Figura)\s*(?:\n\s*)*(\d+)\.?\s*", re.MULTILINE)
+        caption_pattern = re.compile(r"^(Figure|Fig\.|Figura)[\s]*(?:\n\s*)*(\d+)\.?\s*", re.MULTILINE | re.IGNORECASE)
     
         for pdf_idx, pdf_doc in enumerate(self.pdf_documents):
+            last_caption_num = 0
             for page_idx, page in enumerate(pdf_doc):
                 text = page.page_content.strip()
                 if not text: # skip empty pages
@@ -144,9 +158,10 @@ class PDFProcessor:
 
                 for line_idx, line in enumerate(lines):
                     if caption_match := caption_pattern.search(line):
+                        
                         # skip pattern occurrences within text (i.e. figure citation instead of caption)
                         caption_words = line[caption_match.end():].strip().split()
-                        if not caption_words or len(caption_words) < 4:
+                        if not caption_words or (len(caption_words) < 4 and len(line[caption_match.end():].strip()) <= 10):
                             continue
                         
                         # possible citations: 
@@ -158,6 +173,12 @@ class PDFProcessor:
                             if first_word.islower() or (len(first_word) == 1 and caption_words[1].strip().lower() == "shows"):
                                 continue
                         
+                        # skip if caption figure was already registered
+                        caption_num = int(caption_match.group(2))
+                        if caption_num <= last_caption_num:
+                            continue
+                        last_caption_num = caption_num
+
                         if current_caption_text:
                             captions.append((pdf_idx, page_caption_count, page_idx, current_caption_text.strip()))
                             page_caption_count += 1
@@ -179,15 +200,37 @@ class PDFProcessor:
         matched_ids = set()
         for img in images_data:
             for caption_idx, (pdf_caption_id, page_caption_id, caption_page, caption_text) in enumerate(captions):
-                if caption_idx in matched_ids: 
+                if (caption_idx in matched_ids) or (pdf_caption_id != img.pdf_id) or (caption_page != img.page_id): 
                     continue
-                
                 if img.page_id == caption_page and page_caption_id == img.page_image_id:
                     matched_ids.add(caption_idx)
+                    
+                    caption_text = self._filter_caption(caption_text)
                     img.caption = caption_text.strip()
                     break
 
         return images_data
+
+    def _filter_caption(self, caption: str) -> str:
+        filtered = []
+        
+        # remove some metadata text that comes after a lot of whitespaces sometimes
+        for period_sentence in caption.split('.'):
+            if period_sentence.startswith("  "):
+                continue
+            period_sentence = period_sentence.strip().replace("\n", " ")
+            filtered.append(period_sentence)
+
+        caption = ".".join(filtered)
+
+        # remove metadata known links
+        links_ext = ["org", "com", "net"]
+        for ext in links_ext:
+            link_pattern = r"([\w]+\.)+"+ext
+            if link_match := re.search(link_pattern, caption):
+                caption = caption[:link_match.start()]
+        
+        return caption
 
     def summarize_content(self, summarizer, chunk_size: int = 2000, chunk_overlap: int = 200, show_metadata = False) -> List[str]:
         # Split all pdf content in smaller chunks

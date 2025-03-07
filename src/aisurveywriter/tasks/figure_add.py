@@ -85,9 +85,9 @@ class PaperFigureAdd(PipelineTask):
             if idx != -1:
                 caption = caption[:idx].strip()
 
-            # use caption to retrieve an image            
-            query = f"{caption}"
-            results: List[ImageData] = self.agent_ctx.rags.retrieve(RAGType.ImageData, query, k=retrieve_k, confidence=self.confidence)
+            # use caption to retrieve an image      
+            query = caption
+            results: List[ImageData] = self.agent_ctx.rags.retrieve(RAGType.ImageData, query, k=retrieve_k)
             if not results:
                 named_log(self, f"==> unable to find images for figure: {figname!r}, caption: {caption}")
                 if self.agent_ctx.embed_cooldown:
@@ -103,11 +103,11 @@ class PaperFigureAdd(PipelineTask):
                 try:
                     image_used = os.path.join(self.used_imgs_dest, result.basename)
                     shutil.copy(os.path.join(self.images_dir, result.basename), image_used)
-                    break
                 except Exception as e:
                     image_used = result.basename
                     named_log(self, f"==> couldn't copy {image_used} to save directory: {e}")
-                    break
+
+                break
             
             if not image_used:
                 named_log(self, f"==> couldn't find a match for {figname}: {caption!r} that had confidence >= {self.confidence} or wasn't used before")

@@ -110,10 +110,9 @@ Output only LaTeX content (starting from \section{{...}})
 - Place the figure in a contextually correct and relevant place.
 - You must ID this figure with a unique name and a proper caption:
     - DO NOT use a general name that could be repeated accidently. Make sure to use something unique (use some random name)
-    - Copy the very same caption from the original figure in its proper reference, adding "Adapted from (AUTHOR), (YEAR)" in the end
+    - DO NOT use Scheme figures (usually appear as Scheme X.)
+    - Use the same caption from the original figure in its proper reference, adding "Adapted from (AUTHOR), (YEAR)" in the end
     - If you're unable to identify the caption, add a descriptive and detailed caption
-- Add a LaTeX comment line to identify its author, as: "%author: AuthorX", in the next line after the caption
-    - If you can't identify the author or you're able to identify only the jounal, leave it empty after "%author:" (e.g. "%author:")
 
 - If adding a visual element is not relevant, do nothing
 - If there are any Figures present (including TikZ figures), do not alter nor remove them
