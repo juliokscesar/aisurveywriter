@@ -42,7 +42,7 @@ class PaperReferencer(PipelineTask):
                     cited_sentences.append(sentence)
                     continue
                 
-                results: List[BibTexData] = self.agent_ctx.rags.retrieve(RAGType.BibTex, sentence, k=self.max_per_section, confidence=self.confidence)
+                results: List[BibTexData] = self.agent_ctx.rags.retrieve(RAGType.BibTex, sentence, k=self.max_per_section)
                 if not results:
                     continue
                 
