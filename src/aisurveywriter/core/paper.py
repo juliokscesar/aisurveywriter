@@ -45,6 +45,12 @@ class PaperData:
         with open(path, "r", encoding="utf-8") as f:
             latex_content = f.read()
     
+        # Extract bib path if found
+        bib_match = re.search(r"\\addbibresource{([\w]+\.bib)}", latex_content)
+        if bib_match:
+            bib_path = os.path.join(os.path.dirname(path), bib_match.group(1))
+            print("BIB PATH:", bib_path)
+            
         doc_match = re.search(r"\\begin\{document\}(.+?)\\end\{document\}", latex_content)
         if doc_match:
             latex_content = doc_match.group()
@@ -58,6 +64,8 @@ class PaperData:
             dir_match = re.search(r"\\graphicspath\s*\{\s*\{([^}]*)\}\s*\}", latex_content)
             fig_path = dir_match.group(1) if dir_match else None
 
+        
+
         # Extract sections
         sections = []
         section_matches = re.finditer(r"\\section\{(.+?)\}([\s\S]*?)(?=\\section|\Z)", latex_content)
@@ -70,7 +78,6 @@ class PaperData:
                 sec_content = sec_content[:sec_content.rfind("\\printbibliography")]
             sections.append(SectionData(title=sec_title, description=sec_title, content=sec_content))
 
-        # Read bibliography if provided
         return PaperData(subject=subject, sections=sections, title=title, bib_path=bib_path, fig_path=fig_path)
             
     def load_tex(self, tex_path: str):
@@ -86,6 +93,9 @@ class PaperData:
             
         else:
             self.sections = tex.sections.copy()
+        
+        self.bib_path = tex.bib_path
+        self.fig_path = tex.fig_path
     
     def load_structure(self, structure_path: str):
         if structure_path.endswith("yaml"):
