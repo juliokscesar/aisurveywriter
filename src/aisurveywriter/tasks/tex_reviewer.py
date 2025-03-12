@@ -92,8 +92,13 @@ class TexReviewer(PipelineTask):
                 return f"\\cite{{{', '.join(valid_keys)}}}"
             else:
                 return ""
-        
+
+        # remove citations that do not exist in .bib        
         section.content = self._cite_pattern.sub(replace_invalid, section.content)
+
+        # remove empty citations
+        section.content = re.sub(r"\\cite{\s*}", "", section.content)
+        
         return section
 
 
@@ -108,6 +113,9 @@ class TexReviewer(PipelineTask):
         converted_lines = []
         for line_idx, line in enumerate(section_lines):
             s_line = line.strip()
+            if not s_line: # skip empty lines
+                section_lines.append(line)
+
             line_added = False
             
             # bullet-points to itemize list
