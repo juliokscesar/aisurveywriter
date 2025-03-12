@@ -8,8 +8,12 @@ from ..utils.logger import named_log
 
 @dataclass
 class ReferenceStore:
+    all_paths: List[str] = None
+
     pdf_proc: PDFProcessor = None
     pdf_paths: List[str] = None
+    
+    non_pdf_paths: List[str] = None
     
     _full_contents: List[str] = None
     
@@ -19,8 +23,12 @@ class ReferenceStore:
     _no_bib_contents: List[str] = None
     
     def __init__(self, reference_paths: List[str]):
-        self.pdf_paths = reference_paths.copy()
+        self.all_paths = reference_paths.copy()
+
+        self.pdf_paths = [path for path in self.all_paths if path.endswith(".pdf")]
         self.pdf_proc = PDFProcessor(self.pdf_paths)
+
+        self.non_pdf_paths = self.all_paths - self.pdf_proc
 
         # call functions to initialize values
         self.full_content(discard_bibliography=False)
@@ -50,7 +58,14 @@ class ReferenceStore:
         assert(self.pdf_proc is not None)
         
         if not self._full_contents:
+            # read content from PDF references first
             self._full_contents = self.pdf_proc.extract_content()
+            
+            # read from rest 
+            if self.non_pdf_paths:
+                for path in self.non_pdf_paths:
+                    with open(path, "r", encoding="utf-8") as f:
+                        self._full_contents += "\n\n" + f.read()
         
         if discard_bibliography:
             if not self._no_bib_contents:
