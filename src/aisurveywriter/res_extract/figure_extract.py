@@ -44,19 +44,6 @@ FIGURE_EXTRACTOR_HUMAN_PROMPT = """- PDF paper content:
 
 [end: pdf_content]"""
 
-DEBLOAT_CAPTION_SYSTEM_PROMPT = """- You are an academic writer and peer reviewer, specialist in understanding figures and their context
-- You will receive from the human Figure captions extracted automatically from an article PDF
-- Your job is to read the extracted caption and keep only the important and actual body of the caption:
-    - Some captions come extracted with the name of the journal or some PDF metadata
-    - You must debloat (remove) all this extra junk from the caption, and maintain only the actual caption content
-    - To judge what's junk, understand the figure caption from most of the content, and the junk will be next to the end, usually something that has nothing to do with the figure itself
-    
-- DO NOT alter the actual caption content. Copy it as-it-is, remove ONLY the extra junk stuff
-- Examples of what you should remove:
-    - ""Fig. 1. Schematic diagram for the preparation of O-g-C 3 N 4 @(Pd-TAPP) 3 nanocomposites and their LB films. C.-N. Ye et al.         International Journal of Hydrogen Energy 98 (2025) 1119–1130 1121"" -> Remove from "C.-N." beyond -> Output: "Fig. 1. Schematic diagram for the preparation of O-g-C 3 N 4 @(Pd-TAPP) 3 nanocomposites and their LB films." ""
-    - 
-"""
-
 class FigureExtractor:
     def __init__(self, llm: LLMHandler, references: ReferenceStore, output_dir: str, system_prompt: str = FIGURE_EXTRACTOR_SYSTEM_PROMPT, human_prompt: str = FIGURE_EXTRACTOR_HUMAN_PROMPT, request_cooldown_sec: int = 30):
         self.llm = llm
