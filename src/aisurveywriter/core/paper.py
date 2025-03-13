@@ -5,6 +5,7 @@ import json
 import os
 
 from aisurveywriter.core.file_handler import read_yaml
+from ..utils.logger import named_log
 
 @dataclass
 class SectionData:
@@ -49,7 +50,6 @@ class PaperData:
         bib_match = re.search(r"\\addbibresource{([\w]+\.bib)}", latex_content)
         if bib_match:
             bib_path = os.path.join(os.path.dirname(path), bib_match.group(1))
-            print("BIB PATH:", bib_path)
             
         doc_match = re.search(r"\\begin\{document\}(.+?)\\end\{document\}", latex_content)
         if doc_match:
@@ -78,6 +78,16 @@ class PaperData:
                 sec_content = sec_content[:sec_content.rfind("\\printbibliography")]
             sections.append(SectionData(title=sec_title, description=sec_title, content=sec_content))
 
+        # prepend abstract if found
+        abstract_match = re.search(r"\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}", latex_content)
+        if abstract_match:
+            sections.insert(0, SectionData(
+                title="Abstract", 
+                description="abstract", 
+                content=f"\\begin{{abstract}}{abstract_match.group(1)}\\end{{abstract}}"
+            ))
+        
+
         return PaperData(subject=subject, sections=sections, title=title, bib_path=bib_path, fig_path=fig_path)
             
     def load_tex(self, tex_path: str):
@@ -89,13 +99,26 @@ class PaperData:
                 section.title = loaded_section.title
                 
         elif self.sections:
-            self.sections.extend(tex.sections)
+            new_sections = []
+            for loaded_section in tex.sections:
+                added = False
+                for section in self.sections:
+                    if section.title and section.title.strip().lower() == loaded_section.title.strip().lower():
+                        section.title = loaded_section.title
+                        section.content = loaded_section.content
+                        new_sections.append(section)
+                        added = True
+                if not added:
+                    new_sections.append(loaded_section)
+            self.sections = new_sections
             
         else:
             self.sections = tex.sections.copy()
         
         self.bib_path = tex.bib_path
         self.fig_path = tex.fig_path
+        self.title = tex.title
+        self.subject = tex.subject
     
     def load_structure(self, structure_path: str):
         if structure_path.endswith("yaml"):
@@ -117,6 +140,8 @@ class PaperData:
     def full_content(self) -> str:
         content = ""
         for section in self.sections:
+            if not section.content:
+                named_log(self, f"Warning: section content empty: {section}")
             content += section.content + "\n"
         return content  
 
