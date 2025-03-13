@@ -25,10 +25,18 @@ class PaperRefiner(PipelineTask):
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
 
         named_log(self, f"==> asking LLM to produce title and abstract")
+
+        # we only want to maintain the survey content itself, without latex commands
+        # which also helps reduce token usage
+        paper_content = self.agent_ctx._working_paper.full_content()
+        # remove figures and tables blocks
+        paper_content = re.sub(r"\\begin{(figure|table)}[\s\S\w]*\\end{\1}", "", paper_content)
+        # remove cite commands
+        paper_content = re.sub(r"\\cite{([^}]+)}", "", paper_content)
         
         elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
             "subject": self.agent_ctx._working_paper.subject,
-            "content": self.agent_ctx._working_paper.full_content(),
+            "content": paper_content,
         })
         
         named_log(self, f"==> got title and abstract from LLM")
@@ -40,6 +48,16 @@ class PaperRefiner(PipelineTask):
             resp_json = re.search(r"```json\s*([\s\S]+?)\s*```|({[\s\S]+})", response.content.strip()).group()
             resp = resp_json[resp_json.find("{"):resp_json.rfind("}")+1]
             resp = json.loads(resp)
+
+            abstract = resp["abstract"]
+            # we only want to maintain the survey content itself, without latex commands
+            # which also helps reduce token usage
+            
+            # remove figures and tables blocks
+            abstract = re.sub(r"\\begin{(figure|table)}[\s\S\w]*\\end{\1}", "", abstract)
+            # remove cite commands
+            abstract = re.sub(r"\\cite{([^}]+)}", "", abstract)
+            
             self.agent_ctx._working_paper.sections.insert(0, SectionData(
                 title="Abstract",
                 description="paper abstract",

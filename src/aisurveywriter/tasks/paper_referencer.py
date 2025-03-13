@@ -41,6 +41,9 @@ class PaperReferencer(PipelineTask):
                 if not sentence.strip() or '\\' in sentence or '{' in sentence or '}' in sentence or sentence[0].isdigit() or sentence[0] == '-' or sentence[0] == '*':
                     cited_sentences.append(sentence)
                     continue
+                if sentence.strip()[0].isdigit():
+                    cited_sentences.append(sentence)
+                    continue
                 
                 results: List[BibTexData] = self.agent_ctx.rags.retrieve(RAGType.BibTex, sentence, k=self.max_per_section)
                 if not results:

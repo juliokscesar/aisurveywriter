@@ -60,7 +60,7 @@ def file_ext(file_path: str) -> str:
 
 def sort_stem(item):
     s = Path(item).stem
-    return int(s) if s.isnumeric() else s
+    return s
 
 def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False):
     files = []

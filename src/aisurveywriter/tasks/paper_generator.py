@@ -47,7 +47,7 @@ class PaperStructureGenerator(PipelineTask):
 
         if save_json_path:
             with open(save_json_path, "w", encoding="utf-8") as f:
-                json.dump(structure, f)
+                json.dump(structure, f, indent=2)
 
         named_log(self, f"==> finish generating structure")
         return structure

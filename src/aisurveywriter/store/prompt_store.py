@@ -77,6 +77,7 @@ def default_prompt_store() -> PromptStore:
 - Citations: Do not include citations or bibliography commands (\cite, \printbibliography,...).
 - Figures/Tables: If a section is under 500 words, include at least one visual element:
     - Use tables where relevant.
+        - Make sure the tables will fit into one A4 12pt page. DO NOT write long texts in tables
     - For visual explanations, use TikZ (without \includegraphics).
 - Writing Style:
     - Write in English with a formal, scientific, and objective tone.
@@ -152,6 +153,7 @@ Output only LaTeX content (starting from \section{{...}})
 - If you don't find any relevant improvement, then specify "Nothing to do"
 
 - Pay attention to the paper structure and focus only for specific content of this section (avoid repetition);
+- The main structure must be preserved, so do not ask to add new sections;
 
 - Visual elements: it is essential that you require a discussion of figures present in the text
     - If some figure is present and it's not discussed, require a discussion about it (refer to it using its \label)
@@ -179,6 +181,7 @@ Output only LaTeX content (starting from \section{{...}})
 - **Visual elements:**  
   - Use **TikZ** for explanatory illustrations (except for existing figures).  
   - Use **tabular** elements where categorization aids clarity.  
+        - Make sure the tables will fit into one A4 12pt page. DO NOT write long texts in tables
 
 - Pay attention to the paper structure and focus only for specific content of this section (avoid repetition);
 
