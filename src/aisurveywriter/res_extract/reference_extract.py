@@ -98,6 +98,7 @@ class ReferencesBibExtractor:
                     named_log(self, f"==> no bibtex entry for: {ref}")
                     continue
                 
+                entry["ID"] = f"key{len(bibtex_db.entries)}"
                 bibtex_db.entries.append(entry)
             except Exception as e:
                 named_log(self, f"==> bibtex entry raised exception for {ref!r}: {e}")
