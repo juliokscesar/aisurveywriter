@@ -78,10 +78,10 @@ class LLMHandler:
         if self._chain is None:
             raise RuntimeError("To call LLMHandler.invoke, the chain has to be initialized")
         
-        max_tries = 4
+        max_tries = 3
         try_count = 0
         cooldown = 90
-        while try_count <= max_tries: # handle with '429 (res. exhausted)' because of request timeout
+        while try_count < max_tries: # handle with '429 (res. exhausted)' because of request timeout
             try:
                 try_count += 1
                 resp = self._chain.invoke(input_variables)
@@ -101,10 +101,10 @@ class LLMHandler:
         return resp
 
     def send_prompt(self, prompt: str) -> AIMessage:
-        max_tries = 4
+        max_tries = 3
         try_count = 0
         cooldown = 90
-        while try_count <= max_tries: # handle with '429 (res. exhausted)' because of request timeout
+        while try_count < max_tries: # handle with '429 (res. exhausted)' because of request timeout
             try:
                 try_count += 1
                 resp = self.model.invoke(prompt)
