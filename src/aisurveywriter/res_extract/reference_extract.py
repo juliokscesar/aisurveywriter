@@ -9,7 +9,7 @@ from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.store.reference_store import ReferenceStore
 from aisurveywriter.utils.logger import named_log, metadata_log, cooldown_log
 from aisurveywriter.utils.helpers import time_func
-from aisurveywriter.utils.helpers import get_bibtex_entry
+from aisurveywriter.utils.helpers import get_bibtex_entry, random_str
 
 class BibliographyInfo(BaseModel):
     title: str | None = Field(description="Title of the referenced work")
@@ -113,11 +113,17 @@ class ReferencesBibExtractor:
 
     def _filter_duplicates_bibtexdb(self, bibtex_db: bibtexparser.bibdatabase.BibDatabase):
         seen_dois = set()
+        seen_keys = set()
         unique_entries = []
         for entry in bibtex_db.entries:
             doi = entry.get("doi", None)
             if doi and doi in seen_dois:
                 continue
+            
+            key = entry.get("ID", None)
+            if not key or key in seen_keys:
+                entry["ID"] = random_str(8)
+            seen_keys.add(entry["ID"])
             seen_dois.add(doi)
             unique_entries.append(entry)
             
