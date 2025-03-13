@@ -75,13 +75,15 @@ class ReferencesBibExtractor:
             elapsed, response = time_func(self.llm.invoke, {
                 "references": bib_doc.page_content,
             })
-            bib_output: BibExtractorOutput = self.parser.invoke(response)
-            bib_info.extend(bib_output.bibliography)
+            try:
+                bib_output: BibExtractorOutput = self.parser.invoke(response)
+                bib_info.extend(bib_output.bibliography)
+                named_log(self, f"==> finish extracting title and author from batch {i+1}/{n_chunks}")
+                named_log(self, f"==> got {len(bib_output.bibliography)} references | total: {len(bib_info)}")
+            except Exception as e:
+                named_log(self, f"unable to get references from batch {i+1}. Exception raised: {e}")
             
-            named_log(self, f"==> finish extracting title and author from batch {i+1}/{n_chunks}")
-            named_log(self, f"==> got {len(bib_output.bibliography)} references | total: {len(bib_info)}")
             metadata_log(self, elapsed, response)
-            
             if self._cooldown:
                 cooldown_log(self, self._cooldown)
 
