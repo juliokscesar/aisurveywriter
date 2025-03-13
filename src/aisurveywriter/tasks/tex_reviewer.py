@@ -14,8 +14,22 @@ class TexReviewer(PipelineTask):
         super().__init__(no_divide=True, agent_ctx=agent_ctx)
         self.agent_ctx._working_paper = paper
 
-        self._figure_pattern = re.compile(r'\\begin{figure}.*?\\includegraphics(?:\[.*?\])?{(.*?)}.*?\\end{figure}', re.DOTALL)
-        self._cite_pattern = re.compile(r"\\cite{([^}]+)}")
+        self._re_patterns = {
+            "figure": re.compile(r"\\begin{figure}.*?\\includegraphics(?:\[.*?\])?{(.*?)}.*?\\end{figure}", re.DOTALL),
+            "cite": re.compile(r"\\cite{([^}]+)}"),
+            "empty_cite": re.compile(r"\\cite{\s*}"),
+            "percent": re.compile(r"(\d+)%"),
+            "preamble": [
+                re.compile(r"\\usepackage{[\w]+}"),
+                re.compile(r"\\(begin|end){document}"),
+                re.compile(r"\\documentclass(?:\[(?:.*?)\])*{(?:.*?)}"),
+                re.compile(r"\\geometry{(?:.*?)}"),
+            ],
+            "mk_code_block": re.compile(r"[`]+[\w]*"),
+            "mk_bold": re.compile(r"\*\*(.*?)\*\*"),
+            "mk_italic": re.compile(r"\*(.*?)\*"),
+            "mk_num_list": re.compile(r"^(\d+)[\.-]"),
+        }
         
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
         if input_data:
@@ -29,7 +43,7 @@ class TexReviewer(PipelineTask):
         Review LaTeX syntax and commands section by section
         """
         with open(self.agent_ctx._working_paper.bib_path, "r", encoding="utf-8") as f:
-            bib_content = f.read()
+            bib_keys = set(re.findall(r"@\w+{([^,]+),", f.read())) # pre-extract citation keys
 
         section_amount = len(self.agent_ctx._working_paper.sections)
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
@@ -43,10 +57,10 @@ class TexReviewer(PipelineTask):
             section = self._convert_markdown(section)
             section = self._remove_preamble(section)
             section = self._remove_invalid_figures(section, self.agent_ctx._working_paper.fig_path)
-            section = self._remove_invalid_refs(section, bib_content)
+            section = self._remove_invalid_refs(section, bib_keys)
             
             # escape number percentage
-            section.content = re.sub(r"(\d+)%", r"\1\%", section.content)
+            section.content = self._re_patterns["percent"].sub(r"\1\\%", section.content)
 
             elapsed = int(time.time() - start)
             
@@ -55,12 +69,8 @@ class TexReviewer(PipelineTask):
         return self.agent_ctx._working_paper
 
     def _remove_preamble(self, section: SectionData):
-        preamble_patterns = [
-            re.compile(r"\\usepackage{[\w]+}"),
-            re.compile(r"\\[begin|end]{document}")
-        ]
-        for pat in preamble_patterns:
-            section.content = re.sub(pat, "", section.content)
+        for pat in self._re_patterns["preamble"]:
+            section.content = pat.sub("", section.content)
 
         return section
 
@@ -79,73 +89,71 @@ class TexReviewer(PipelineTask):
             return match.group(0)  # Keep the figure block if the image exists
         
         # Replace invalid figure blocks
-        section.content = self._figure_pattern.sub(replace_invalid_figure, section.content)
+        section.content = self._re_patterns["figure"].sub(replace_invalid_figure, section.content)
     
         return section
     
 
-    def _remove_invalid_refs(self, section: SectionData, bib_content: str):
+    def _remove_invalid_refs(self, section: SectionData, bib_keys: set):
         def replace_invalid(match):
             keys = match.group(1).split(',')
-            valid_keys = [key.strip() for key in keys if key.strip() in bib_content]
+            valid_keys = [key.strip() for key in keys if key.strip() in bib_keys]
             if valid_keys:
                 return f"\\cite{{{', '.join(valid_keys)}}}"
             else:
                 return ""
 
         # remove citations that do not exist in .bib        
-        section.content = self._cite_pattern.sub(replace_invalid, section.content)
+        section.content = self._re_patterns["cite"].sub(replace_invalid, section.content)
 
         # remove empty citations
-        section.content = re.sub(r"\\cite{\s*}", "", section.content)
+        section.content = self._re_patterns["empty_cite"].sub("", section.content)
         
         return section
 
 
     def _convert_markdown(self, section: SectionData):
-        section.content = re.sub(r"[`]+[\w]*", "", section.content) # remove markdown code block
-        section.content = re.sub(r"\*\*(.*?)\*\*", r"\\textbf{\1}", section.content) # replace bold text
-        section.content = re.sub(r"\*(.*?)\*", r"\\textit{\1}", section.content) # replace italic text
+        section.content = self._re_patterns["mk_code_block"].sub("", section.content) # remove markdown code block
+        section.content = self._re_patterns["mk_bold"].sub(r"\\textbf{\1}", section.content) # replace bold text
+        section.content = self._re_patterns["mk_italic"].sub(r"\\textit{\1}", section.content) # replace italic text
 
-        in_itemize_block = False
-        in_enumerate_block = False
+        in_itemize = False
+        in_enumerate = False
         section_lines = section.content.split("\n")    
         converted_lines = []
-        for line_idx, line in enumerate(section_lines):
-            s_line = line.strip()
-            if not s_line: # skip empty lines
-                section_lines.append(line)
-
-            line_added = False
-            
-            # bullet-points to itemize list
-            if s_line.startswith("*") and not s_line.endswith("*"):
-                if not in_itemize_block:
-                    converted_lines.append("\\begin{itemize}")
-                    in_itemize_block = True
-            
-                converted_lines.append(s_line.replace("*", "\\item{", 1) + "}")
-                line_added = True
-            else:
-                if in_itemize_block:
-                    converted_lines.append("\\end{itemize}")
-                    in_itemize_block = False
-            
-            # numbered list to latex enumerate
-            if num_list_match := re.match(r"^(\d+)[\.-]", s_line):
-                if not in_enumerate_block:
-                    converted_lines.append("\\begin{enumerate}")
-                    in_enumerate_block = True
-                
-                converted_lines.append("\\item{" + s_line[num_list_match.end():] + "}")
-                line_added = True
-            else:
-                if in_enumerate_block:
-                    converted_lines.append("\\end{enumerate}")
-                    in_enumerate_block = False
-                    
-            if not line_added:
+        for line in section_lines:
+            stripped = line.strip()
+            if not stripped:
                 converted_lines.append(line)
+                continue
+            
+            if stripped.startswith("*") and not stripped.endswith("*"):
+                if not in_itemize:
+                    converted_lines.append("\\begin{itemize}")
+                    in_itemize = True
+                converted_lines.append(stripped.replace("*", "\\item{", 1) + "}")
+                continue
+            elif in_itemize:
+                converted_lines.append("\\end{itemize}")
+                in_itemize = False
+            
+            num_match = self._re_patterns["mk_num_list"].match(stripped)
+            if num_match:
+                if not in_enumerate:
+                    converted_lines.append("\\begin{enumerate}")
+                    in_enumerate = True
+                converted_lines.append("\\item{" + stripped[num_match.end():] + "}")
+                continue
+            elif in_enumerate:
+                converted_lines.append("\\end{enumerate}")
+                in_enumerate = False
+            
+            converted_lines.append(line)
+        
+        if in_itemize:
+            converted_lines.append("\\end{itemize}")
+        if in_enumerate:
+            converted_lines.append("\\end{enumerate}")
 
         section.content = "\n".join(converted_lines)
         return section
