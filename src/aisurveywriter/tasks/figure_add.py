@@ -13,7 +13,7 @@ from aisurveywriter.utils.logger import named_log, cooldown_log, metadata_log
 from aisurveywriter.utils.helpers import time_func, assert_type
 
 class PaperFigureAdd(PipelineTask):
-    required_input_variables: List[str] = ["subject"]
+    required_input_variables: List[str] = ["subject", "used_figures"]
     
     def __init__(self, agent_ctx: AgentContext, written_paper: PaperData, images_dir: str, confidence: float = 0.75, max_figures: int = 30):
         super().__init__(no_divide=True, agent_ctx=agent_ctx)
@@ -42,22 +42,26 @@ class PaperFigureAdd(PipelineTask):
         # this task uses full pdf content
         refcontent = "\n\n".join(self.agent_ctx.references.full_content())
         
+        used_figures = []
+        
         section_amount = len(self.agent_ctx._working_paper.sections)
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
             named_log(self, f"==> start adding figures in section ({i+1}/{section_amount}): \"{section.title}\"")
             
-            content = self._llm_add_figures(refcontent, section.title, section.content)
-            content, used_imgs = self._replace_figures(content, retrieve_k=5)
+            content = self._llm_add_figures(refcontent, section.title, section.content, used_figures)
+            content = self._replace_figures(content, used_figures, retrieve_k=5)
             
-            named_log(self, f"==> finish adding figures in section ({i+1}/{section_amount}), replaced {len(used_imgs)} figures")
+            named_log(self, f"==> finish adding figures in section ({i+1}/{section_amount}), total {len(used_figures)} figures")
             
             section.content = re.sub(r"[`]+[\w]*", "", content)
         
         self.agent_ctx._working_paper.fig_path = self.used_imgs_dest
         return self.agent_ctx._working_paper
     
-    def _llm_add_figures(self, refcontent: str, title: str, content: str) -> str:
+    def _llm_add_figures(self, refcontent: str, title: str, content: str, used_figures: list) -> str:
+        used_figures_str = "\n".join([f"- FIG_LABEL: {fig["label"]!r} | FIG_CAPTION: {fig["caption"]!r}" for fig in used_figures]) if used_figures else ""
         elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
+            "used_figures": used_figures_str,
             "refcontent": refcontent,
             "subject": self.agent_ctx._working_paper.subject,
             "title": title,
@@ -70,13 +74,13 @@ class PaperFigureAdd(PipelineTask):
         
         return response.content
 
-    def _replace_figures(self, content: str, retrieve_k: int = 5):
+    def _replace_figures(self, content: str, used_figures: list, retrieve_k: int = 5):
         assert(not self.agent_ctx.rags.is_disabled(RAGType.ImageData))
         
-        fig_pattern =  r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}.*?\\caption\{([^}]+)\}"
-        fig_matches = [(m.start(), m.end(), m.group(1), m.group(2)) for m in re.finditer(fig_pattern, content, re.DOTALL)]
-        used_imgs = set()
-        for start, end, figname, caption in fig_matches:
+        fig_pattern =  r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}.*?\\caption\{([^}]+)\}.*?\\label\{([^}]+)\}"
+        fig_matches = [(m.start(), m.end(), m.group(1), m.group(2), m.group(3)) for m in re.finditer(fig_pattern, content, re.DOTALL)]
+        used_imgs = set([fig["basename"] for fig in used_figures])
+        for start, end, figname, caption, label in fig_matches:
             if len(used_imgs) >= self.max_figures:
                 break
 
@@ -99,6 +103,7 @@ class PaperFigureAdd(PipelineTask):
                 if result.basename in used_imgs:
                     continue
                 used_imgs.add(result.basename)
+                used_figures.append({"basename": result.basename, "label": label, "caption": caption})
                 
                 try:
                     image_used = os.path.join(self.used_imgs_dest, result.basename)
@@ -122,7 +127,7 @@ class PaperFigureAdd(PipelineTask):
             if self.agent_ctx.embed_cooldown:
                 cooldown_log(self, self.agent_ctx.embed_cooldown)
         
-        return content, used_imgs
+        return content
             
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
         if input_data:

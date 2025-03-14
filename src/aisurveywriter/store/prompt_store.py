@@ -78,7 +78,9 @@ def default_prompt_store() -> PromptStore:
 - Figures/Tables: If a section is under 500 words, include at least one visual element:
     - Use tables where relevant.
         - Make sure the tables will fit into one A4 12pt page. DO NOT write long texts in tables
+        - Table captions must appear ABOVE the table
     - For visual explanations, use TikZ (without \includegraphics).
+        - Figure captions must appear BELOW the figure
 - Writing Style:
     - Write in English with a formal, scientific, and objective tone.
     - At least 500 words per section—the more detailed, the better.
@@ -114,6 +116,7 @@ Output only LaTeX content (starting from \section{{...}})
     - DO NOT use Scheme figures (usually appear as Scheme X.)
     - Use the same caption from the original figure in its proper reference, adding "Adapted from (AUTHOR), (YEAR)" in the end
     - If you're unable to identify the caption, add a descriptive and detailed caption
+    - The caption must appear BELOW the figure
 
 - If adding a visual element is not relevant, do nothing
 - If there are any Figures present (including TikZ figures), do not alter nor remove them
@@ -132,6 +135,11 @@ Output only LaTeX content (starting from \section{{...}})
   - DO NOT use optional parameters (such as [width=0.xx], etc...)
 
 - IT IS ESSENTIAL THAT YOU USE "\includegraphics{{name}}" AND "\caption{{descriptive caption}}" RIGHT AFTER
+
+- You must use only figures that weren't used. That is, do not use the following used_figures:
+[begin: used_figures]
+{used_figures}
+[end: used_figures]
 
 - **YOU MUST NOT ALTER THE SECTION'S CONTENT, ONLY ADD THE FIGURES**
 
@@ -179,9 +187,11 @@ Output only LaTeX content (starting from \section{{...}})
 - **Expand, don’t summarize:** Maintain or increase length with meaningful content.  
 - **Discuss figures:** Refer to existing figures via their **\label** and \caption details. Do **not** replace standard figures with TikZ.  
 - **Visual elements:**  
-  - Use **TikZ** for explanatory illustrations (except for existing figures).  
+  - Use **TikZ** for explanatory illustrations (except for existing figures).
+    - Figure captions must appear BELOW the figure
   - Use **tabular** elements where categorization aids clarity.  
-        - Make sure the tables will fit into one A4 12pt page. DO NOT write long texts in tables
+    - Make sure the tables will fit into one A4 12pt page. DO NOT write long texts in tables
+    - Table captions must appear ABOVE the table
 
 - Pay attention to the paper structure and focus only for specific content of this section (avoid repetition);
 
