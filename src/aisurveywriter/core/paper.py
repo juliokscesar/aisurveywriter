@@ -108,6 +108,7 @@ class PaperData:
                         section.content = loaded_section.content
                         new_sections.append(section)
                         added = True
+                        break
                 if not added:
                     new_sections.append(loaded_section)
             self.sections = new_sections
