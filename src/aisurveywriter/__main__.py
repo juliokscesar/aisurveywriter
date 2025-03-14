@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument("--ref-max-section", type=int, default=100, help="Maximum references in one section. Default is 90"),
     parser.add_argument("--ref-max-sentence", type=int, default=4, help="Maximum references in one sentences. Default is 4"),
     parser.add_argument("--ref-max-same", type=int, default=12, help="Maximum repetitions of the same reference. Default is 12"),
+    parser.add_argument("--fig-max", type=int, default=30, help="Maximum number of Figures to add (not counting TikZ generated).")
     return parser.parse_args()
 
 def main():

@@ -75,6 +75,7 @@ def default_prompt_store() -> PromptStore:
     WRITE_SECTION_PROMPT = r"""**Follow these strict guidelines for LaTeX academic writing:**
 - Format: Use only numbered sectioning (\section, \subsection, etc.). Exclude the LaTeX preamble.
 - Citations: Do not include citations or bibliography commands (\cite, \printbibliography,...).
+    - **DO not add reference numbers (e.g. [123], [12], [xx], [x]....)
 - Figures/Tables: If a section is under 500 words, include at least one visual element:
     - Use tables where relevant.
         - Make sure the tables will fit into one A4 12pt page. DO NOT write long texts in tables
@@ -115,7 +116,8 @@ Output only LaTeX content (starting from \section{{...}})
     - DO NOT use a general name that could be repeated accidently. Make sure to use something unique (use some random name)
     - DO NOT use Scheme figures (usually appear as Scheme X.)
     - Use the same caption from the original figure in its proper reference, adding "Adapted from (AUTHOR), (YEAR)" in the end
-    - If you're unable to identify the caption, add a descriptive and detailed caption
+    - If you're unable to identify the caption, don't add it
+    - Captions must be identical to the original
     - The caption must appear BELOW the figure
 
 - If adding a visual element is not relevant, do nothing
@@ -124,7 +126,7 @@ Output only LaTeX content (starting from \section{{...}})
 - THE FIGURES MUST BE WITHIN A PROPER FIGURE BODY IN LATEX, AS:
 \begin{{figure}}[h!]
 \includegraphics{{unique_name}}
-\caption{{Very descriptive caption}}
+\caption{{original caption}}
 %author: FigAuthor
 \label{{fig:unique_random_label}}
 \end{{figure}}
@@ -136,7 +138,7 @@ Output only LaTeX content (starting from \section{{...}})
 
 - IT IS ESSENTIAL THAT YOU USE "\includegraphics{{name}}" AND "\caption{{descriptive caption}}" RIGHT AFTER
 
-- You must only add figures that weren't added already. That is, do not use the following used_figures:
+- You must only add figures that weren't added already. That is, DO NOT use the following used_figures (do not use it if it has the same caption as an used one):
 [begin: used_figures]
 {used_figures}
 [end: used_figures]
@@ -186,6 +188,7 @@ Output only LaTeX content (starting from \section{{...}})
 - **Preserve structure:** Do **not** add or remove sections (\section) or subsections (\subsection).  
 - **Expand, don’t summarize:** Maintain or increase length with meaningful content.  
 - **Discuss figures:** Refer to existing figures via their **\label** and \caption details. Do **not** replace standard figures with TikZ.  
+    - DISCUSS ONLY FIGURES THAT ARE PRESENT IN THE LATEX CONTENT
 - **Visual elements:**  
   - Use **TikZ** for explanatory illustrations (except for existing figures).
     - Figure captions must appear BELOW the figure
@@ -199,6 +202,7 @@ Output only LaTeX content (starting from \section{{...}})
 - **English only**.  
 - **LaTeX only** (no preamble, no bibliography commands).  
 - **Do not cite (\cite, \bibliography, etc.).**  
+- **DO not add reference numbers (e.g. [123], [12], [xx], [x]....)
 - **Output only the revised LaTeX content**—no additional comments or explanations.  
 
 **Apply changes strictly as directed. If no change is required, output the section as-is.**

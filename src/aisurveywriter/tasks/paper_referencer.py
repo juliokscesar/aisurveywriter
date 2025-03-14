@@ -37,7 +37,7 @@ class PaperReferencer(PipelineTask):
             cited_lines = []
             for line in lines:
                 stripped = line.strip()
-                if not stripped or "\\" in stripped or "{" in stripped or "}" in stripped or stripped[0].isdigit() or stripped[0] == '-' or stripped[0] == '*':
+                if not stripped or "\\" in stripped or "{" in stripped or "}" in stripped or stripped[0].isdigit() or stripped[0] == '-' or stripped[0] == '*' or stripped.startswith('%'):
                     cited_lines.append(line)
                     continue
             
@@ -52,7 +52,7 @@ class PaperReferencer(PipelineTask):
                     if not sentence.strip() or '\\' in sentence or '{' in sentence or '}' in sentence or sentence[0].isdigit() or sentence[0] == '-' or sentence[0] == '*':
                         cited_sentences.append(sentence)
                         continue
-                    if sentence.strip()[0].isdigit():
+                    if len(sentence.strip().split(" ")) < 5:
                         cited_sentences.append(sentence)
                         continue
                     
