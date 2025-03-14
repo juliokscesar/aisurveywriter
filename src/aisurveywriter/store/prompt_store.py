@@ -108,7 +108,7 @@ Output only LaTeX content (starting from \section{{...}})
 - the content of one section of this paper (in latex)
 
 - YOUR JOB:
-- Look for figures in the references.
+- Look for figures in the references (with captions appearing as "Fig. ...", "Figure ...").
 - You must add a figure from the reference to this section, following:
 - Place the figure in a contextually correct and relevant place.
 - You must ID this figure with a unique name and a proper caption:
@@ -136,7 +136,7 @@ Output only LaTeX content (starting from \section{{...}})
 
 - IT IS ESSENTIAL THAT YOU USE "\includegraphics{{name}}" AND "\caption{{descriptive caption}}" RIGHT AFTER
 
-- You must use only figures that weren't used. That is, do not use the following used_figures:
+- You must only add figures that weren't added already. That is, do not use the following used_figures:
 [begin: used_figures]
 {used_figures}
 [end: used_figures]

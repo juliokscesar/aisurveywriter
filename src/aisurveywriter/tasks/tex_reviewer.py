@@ -26,11 +26,11 @@ class TexReviewer(PipelineTask):
                 re.compile(r"\\geometry{(?:.*?)}"),
             ],
             "mk_code_block": re.compile(r"[`]+[\w]*"),
-            "mk_bold": re.compile(r"\*\*(.*?)\*\*"),
-            "mk_italic": re.compile(r"\*(.*?)\*"),
+            "mk_bold": re.compile(r"\*{2}(.*?)\*{2}"),
+            "mk_italic": re.compile(r"\*{1}(.*?)\*{1}"),
             "mk_num_list": re.compile(r"^(\d+)[\.-]"),
         }
-        
+
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
         if input_data:
             assert_type(self, input_data, PaperData, "input_data")
