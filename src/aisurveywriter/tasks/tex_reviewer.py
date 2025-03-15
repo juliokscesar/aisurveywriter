@@ -14,7 +14,7 @@ class TexReviewer(PipelineTask):
         super().__init__(no_divide=True, agent_ctx=agent_ctx)
         self.agent_ctx._working_paper = paper
 
-        self._re_patterns = {
+        self._re_patterns: dict[str, re.Pattern] = {
             "figure": re.compile(r"\\begin{figure}.*?\\includegraphics(?:\[.*?\])?{(.*?)}.*?\\end{figure}", re.DOTALL),
             "cite": re.compile(r"\\cite{([^}]+)}"),
             "empty_cite": re.compile(r"\\cite{\s*}"),
@@ -54,11 +54,11 @@ class TexReviewer(PipelineTask):
 
             start = time.time()
 
-            section = self._convert_markdown(section)
-            section = self._remove_preamble(section)
-            section = self._remove_invalid_figures(section, self.agent_ctx._working_paper.fig_path)
-            section = self._remove_invalid_refs(section, bib_keys)
-            
+            section.content = self._convert_markdown(section.content)
+            section.content = self._remove_preamble(section.content)
+            section.content = self._remove_invalid_figures(section.content, self.agent_ctx._working_paper.fig_path)
+            section.content = self._remove_invalid_refs(section.content, bib_keys)
+           
             # escape number percentage
             section.content = self._re_patterns["percent"].sub(r"\1\\%", section.content)
 
@@ -68,16 +68,16 @@ class TexReviewer(PipelineTask):
 
         return self.agent_ctx._working_paper
 
-    def _remove_preamble(self, section: SectionData):
+    def _remove_preamble(self, section_content: str) -> str:
         for pat in self._re_patterns["preamble"]:
-            section.content = pat.sub("", section.content)
+            section_content = pat.sub("", section_content)
 
-        return section
+        return section_content
 
-    def _remove_invalid_figures(self, section: SectionData, img_dir: str):
+    def _remove_invalid_figures(self, section_content: str, img_dir: str) -> str:
         if not os.path.isdir(img_dir):
             named_log(self, "==> invalid image directory:", img_dir)
-            return
+            return section_content
         
         def replace_invalid_figure(match):
             nonlocal img_dir
@@ -89,12 +89,12 @@ class TexReviewer(PipelineTask):
             return match.group(0)  # Keep the figure block if the image exists
         
         # Replace invalid figure blocks
-        section.content = self._re_patterns["figure"].sub(replace_invalid_figure, section.content)
+        section_content = self._re_patterns["figure"].sub(replace_invalid_figure, section_content)
     
-        return section
+        return section_content
     
 
-    def _remove_invalid_refs(self, section: SectionData, bib_keys: set):
+    def _remove_invalid_refs(self, section_content: str, bib_keys: set) -> str:
         def replace_invalid(match):
             keys = match.group(1).split(',')
             valid_keys = [key.strip() for key in keys if key.strip() in bib_keys]
@@ -104,22 +104,22 @@ class TexReviewer(PipelineTask):
                 return ""
 
         # remove citations that do not exist in .bib        
-        section.content = self._re_patterns["cite"].sub(replace_invalid, section.content)
+        section_content = self._re_patterns["cite"].sub(replace_invalid, section_content)
 
         # remove empty citations
-        section.content = self._re_patterns["empty_cite"].sub("", section.content)
+        section_content = self._re_patterns["empty_cite"].sub("", section_content)
         
-        return section
+        return section_content
 
 
-    def _convert_markdown(self, section: SectionData):
-        section.content = self._re_patterns["mk_code_block"].sub("", section.content) # remove markdown code block
-        section.content = self._re_patterns["mk_bold"].sub(r"\\textbf{\1}", section.content) # replace bold text
-        section.content = self._re_patterns["mk_italic"].sub(r"\\textit{\1}", section.content) # replace italic text
+    def _convert_markdown(self, section_content: str) -> str:
+        section_content = self._re_patterns["mk_code_block"].sub("", section_content) # remove markdown code block
+        section_content = self._re_patterns["mk_bold"].sub(r"\\textbf{\1}", section_content) # replace bold text
+        section_content = self._re_patterns["mk_italic"].sub(r"\\textit{\1}", section_content) # replace italic text
 
         in_itemize = False
         in_enumerate = False
-        section_lines = section.content.split("\n")    
+        section_lines = section_content.split("\n")    
         converted_lines = []
         for line in section_lines:
             stripped = line.strip()
@@ -155,8 +155,8 @@ class TexReviewer(PipelineTask):
         if in_enumerate:
             converted_lines.append("\\end{enumerate}")
 
-        section.content = "\n".join(converted_lines)
-        return section
+        section_content = "\n".join(converted_lines)
+        return section_content
 
 
     def divide_subtasks(self, n, input_data: PaperData =None):

@@ -30,8 +30,12 @@ class PaperReferencer(PipelineTask):
         section_amount = len(self.agent_ctx._working_paper.sections)
 
         sentence_re_pattern = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)((?<=\.|\?)\s)")
+        skip_section_pattern = re.compile(r"(Abstract|Resumo)", re.IGNORECASE)
         
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
+            if skip_section_pattern.match(section.title):
+                continue
+            
             ref_count = 0
             lines = section.content.split("\n")
             cited_lines = []
@@ -52,7 +56,7 @@ class PaperReferencer(PipelineTask):
                     if not sentence.strip() or '\\' in sentence or '{' in sentence or '}' in sentence or sentence[0].isdigit() or sentence[0] == '-' or sentence[0] == '*':
                         cited_sentences.append(sentence)
                         continue
-                    if len(sentence.strip().split(" ")) < 5:
+                    if len(sentence.strip().split()) < 5:
                         cited_sentences.append(sentence)
                         continue
                     

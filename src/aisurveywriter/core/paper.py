@@ -75,7 +75,7 @@ class PaperData:
             sec_content = match.group(2).strip()
             sec_content = f"\n\\section{{{sec_title}}}\n\n" + sec_content
             if "\\printbibliography" in sec_content:
-                sec_content = sec_content[:sec_content.rfind("\\printbibliography")]
+                sec_content = sec_content[:sec_content.rfind("\\printbibliography")].strip()
             sections.append(SectionData(title=sec_title, description=sec_title, content=sec_content))
 
         # prepend abstract if found
@@ -116,10 +116,10 @@ class PaperData:
         else:
             self.sections = tex.sections.copy()
         
-        self.bib_path = tex.bib_path
-        self.fig_path = tex.fig_path
-        self.title = tex.title
-        self.subject = tex.subject
+        self.bib_path = tex.bib_path if tex.bib_path else self.bib_path
+        self.fig_path = tex.fig_path if tex.fig_path else self.fig_path
+        self.title = tex.title if tex.title else self.title
+        self.subject = tex.subject if tex.subject else self.subject
     
     def load_structure(self, structure_path: str):
         if structure_path.endswith("yaml"):
