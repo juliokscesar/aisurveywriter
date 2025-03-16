@@ -4,16 +4,47 @@ import re
 import os
 
 from ..core.pdf_processor import PDFProcessor
+from ..core.document import Document, DocFigure, DocPage
 from ..utils.logger import named_log
+
+@dataclass 
+class NewRefrenceStore:
+    documents: List[Document]
+    
+    pdf_processor: PDFProcessor
+
+    def __init__(self, reference_paths: List[str]):
+        # divide between PDF and non-PDF paths
+        pdf_paths: List[str] = []
+        non_pdf_paths: List[str] = []
+        for path in reference_paths:
+            if not os.path.isfile(path):
+                named_log(self, "skipping invalid path:", path)
+                continue            
+            if path.endswith(".pdf"):
+                pdf_paths.append(path)
+            else:
+                non_pdf_paths.append(path)
+
+        self.documents: List[Document] = []
+        
+        # load PDF documents first
+        self.pdf_processor = PDFProcessor(pdf_paths)
+        
+    
+    def docs_contents(self, discard_bibliography=True) -> List[str]:
+        pass
+    
+    def full_content(self, discard_bibliography=True) -> str:
+        pass
 
 @dataclass
 class ReferenceStore:
     all_paths: List[str] = None
-
-    pdf_proc: PDFProcessor = None
+    non_pdf_paths: List[str] = None
     pdf_paths: List[str] = None
     
-    non_pdf_paths: List[str] = None
+    pdf_proc: PDFProcessor = None
     
     _full_contents: List[str] = None
     
