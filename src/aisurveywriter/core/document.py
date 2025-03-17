@@ -15,7 +15,7 @@ class DocFigure(BaseModel):
 
 class Document(BaseModel):
     path: str
-    title: str
+    title: Optional[str] = None
     author: Optional[str] = None
     bibtex_entry: Optional[dict] = None
     

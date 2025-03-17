@@ -9,6 +9,8 @@ This tool can be used directly from the terminal.
 
 ### Installation 
 
+Before using this tool, you need to ensure that you have [Tesseract](https://tesseract-ocr.github.io/tessdoc/Installation.html) installed for OCR operations. You can either install globally on your machine or download an AppImage, which you can use "--tesseract" flag with CLI to specify its path.
+
 ```
 git clone https://github.com/juliokscesar/aisurveywriter.git
 cd aisurveywriter
