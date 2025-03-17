@@ -228,6 +228,9 @@ class AgentRAG:
         doc_figures = references.all_figures()
         figures_rag_data: List[ImageData] = []
         for doc_figure in doc_figures:
+            # skip figures without captions/description
+            if not doc_figure.caption:
+                continue
             rag_data = ImageData(
                 id=doc_figure.id,
                 basename=os.path.basename(doc_figure.image_path),

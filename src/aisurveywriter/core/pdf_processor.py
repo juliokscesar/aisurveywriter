@@ -147,7 +147,9 @@ class PDFProcessor:
         
         # parse pdfs to Documents
         self.documents: List[Document] = []
+
         self._parser_threads = parse_threads
+        self._caption_pattern = re.compile(r"^(fig|figure|figura|scheme)", re.IGNORECASE)
         self.parse_pdfs()
         
     def parse_pdfs(self, reload=False) -> List[Document]:
@@ -178,7 +180,6 @@ class PDFProcessor:
             doc_authors: str = None
             title_layout: lp.Layout = None
             for page_num, page_image in enumerate(page_images):
-                named_log(self, f"processing page {page_num+1}/{page_amount}")
 
                 # look for title and author if on first page
                 if page_num == 0:
@@ -210,6 +211,7 @@ class PDFProcessor:
 
                 doc_pages.append(doc_page)
                 doc_figures.extend(page_figures)
+                named_log(self, f"processed page {page_num+1}/{page_amount}, figures with captions extracted: {len([fig for fig in page_figures if fig.caption])}")
             
             # try to get bibtex entry
             try:
@@ -296,8 +298,9 @@ class PDFProcessor:
                         caption = text_block.text
                         
                         # caption threshold - if it's too far, probably not a caption
-                        if min_distance > 100:
-                            caption = ""
+                        # also check caption pattern (look for figure,fig, or some preffix that indicates that this is a caption)
+                        if min_distance > 100 or not self._caption_pattern.match(caption):
+                            caption = None
             
             # clean caption text (if found)
             if caption:
