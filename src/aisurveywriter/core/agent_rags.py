@@ -14,12 +14,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .text_embedding import EmbeddingsHandler
 from .llm_handler import LLMHandler
-from ..store.reference_store import ReferenceStore
-
-from aisurveywriter.res_extract import ReferencesBibExtractor, FigureExtractor
-
-from aisurveywriter.utils.helpers import random_str
-from aisurveywriter.utils.logger import named_log
+from ..store.reference_store import ReferenceStore, DocFigure
+from ..res_extract import ReferencesBibExtractor
+from ..utils.helpers import random_str
+from ..utils.logger import named_log
 
 class RAGType(IntFlag):
     Null        = 0
@@ -76,34 +74,48 @@ class BibTexData(BaseRAGData):
 
 class GeneralTextData(BaseRAGData):
     data_type: RAGType = RAGType.GeneralText
+    
     text: str
+    source_pdf: str = ""
 
     def to_document(self, *args, **kwargs):
-        return Document(page_content=self.text)
+        return Document(page_content=self.text, metadata={"source_pdf": self.source_pdf})
 
     @staticmethod
     def from_document(doc: Document):
-        return GeneralTextData(text=doc.page_content)
+        return GeneralTextData(text=doc.page_content, **doc.metadata)
 
 
 class ImageData(BaseRAGData):
     data_type: RAGType = RAGType.ImageData
     id: int = -1
     basename: str = ""
-    description: str = ""
+    source_pdf: str = ""
+    caption: str = ""
 
     def to_document(self, *args, **kwargs):
         return Document(
-            page_content=self.description,
-            metadata={"id": self.id, "basename": self.basename}
+            page_content=self.caption,
+            metadata={"id": self.id, "basename": self.basename, "source_pdf": self.source_pdf}
         )
         
     @staticmethod
     def from_document(doc: Document):
-        return ImageData(id=doc.metadata["id"], basename=doc.metadata["basename"], description=doc.page_content)
+        return ImageData(caption=doc.page_content, **doc.metadata)
+
+    def to_doc_figure(self, reference_store: ReferenceStore) -> DocFigure:
+        doc = reference_store.doc_from_path(self.source_pdf)
+        if not doc:
+            return DocFigure(id=self.id, image_path=self.basename, caption=self.caption, source_path=self.source_pdf)
+        else:
+            return doc.figures[self.id]
+        
 
 class AgentRAG:
-    def __init__(self, embeddings: EmbeddingsHandler, llm: LLMHandler = None, bib_faiss_path: Optional[str] = None, figures_faiss_path: Optional[str] = None, content_faiss_path: Optional[str] = None, ref_bib_extractor: Optional[ReferencesBibExtractor] = None, figure_extractor: Optional[FigureExtractor] = None, request_cooldown_sec: int = 30, output_dir: str = "out", confidence: float = 0.6):
+    def __init__(self, embeddings: EmbeddingsHandler, llm: LLMHandler = None, 
+                 bib_faiss_path: Optional[str] = None, figures_faiss_path: Optional[str] = None, 
+                 content_faiss_path: Optional[str] = None, ref_bib_extractor: Optional[ReferencesBibExtractor] = None, 
+                 request_cooldown_sec: int = 30, output_dir: str = "out", confidence: float = 0.6):
         self._embed = embeddings
         self._llm = llm
 
@@ -130,7 +142,6 @@ class AgentRAG:
         self.confidence = confidence
 
         self.ref_bib_extractor = ref_bib_extractor
-        self.figure_extractor = figure_extractor
 
         self._cooldown = request_cooldown_sec
         self.output_dir = os.path.abspath(output_dir)
@@ -167,8 +178,16 @@ class AgentRAG:
         
         if not references.bibtex_db_path:
             bib_info = self.ref_bib_extractor.extract()
+
             references.bibtex_db_path = os.path.join(self.output_dir, "refextract-bibdb.bib")
-            bibtex_db = self.ref_bib_extractor.to_bibtex_db(bib_info, save_path=references.bibtex_db_path)
+            bibtex_db = self.ref_bib_extractor.to_bibtex_db(bib_info)
+            
+            # insert keys from loaded references at the beginning
+            bibtex_db.entries = references.bibtex_entries() + bibtex_db.entries
+
+            with open(references.bibtex_dp_path, "w", encoding="utf-8") as f:
+                bibtexparser.dump(bibtex_db, f)
+            
         else:
             with open(references.bibtex_db_path, "r", encoding="utf-8") as f:
                 bibtex_db = bibtexparser.load(f)
@@ -186,28 +205,36 @@ class AgentRAG:
 
 
     def create_content_rag(self, references: ReferenceStore):
-        content = references.full_content(discard_bibliography=True)
         splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=0)
-        docs = splitter.create_documents(content)
-        docs = splitter.split_documents(docs)
         
-        content_data = [GeneralTextData(text=doc.page_content) for doc in docs]
+        content_data = []
+        # use content without refrences
+        nobib_contents = references.docs_contents()
+        for ref_path, ref_content in zip(references.paths, nobib_contents):
+            ref_basename = os.path.basename(ref_path)
+            
+            # split into chunks
+            split_docs = splitter.create_documents(ref_content)
+            splitted = splitter.split_documents(split_docs)
+            content_data.extend([
+                GeneralTextData(text=split.page_content, source_pdf=ref_basename) for split in splitted
+            ])
+        
         save_path = os.path.join(self.output_dir, "content-rag.faiss")
         return AgentRAG.create_faiss(self._embed, content_data, save_path=save_path)
         
 
     def create_figures_rag(self, references: ReferenceStore):
-        if not self.figure_extractor:
-            self.figure_extractor = FigureExtractor(self._llm, references, os.path.join(self.output_dir, "images"), request_cooldown_sec=self._cooldown)
-        
-        figures_info = self.figure_extractor.extract_captions()
+        doc_figures = references.all_figures()
         figures_rag_data: List[ImageData] = []
-        for figure in figures_info:
-            figures_rag_data.append(ImageData(
-                id=figure.id,
-                basename=figure.basename,
-                description=figure.description,
-            ))
+        for doc_figure in doc_figures:
+            rag_data = ImageData(
+                id=doc_figure.id,
+                basename=os.path.basename(doc_figure.image_path),
+                source_pdf=os.path.basename(doc_figure.source_path),
+                caption=doc_figure.caption
+            )
+            figures_rag_data.append(rag_data)
         
         save_path = os.path.join(self.output_dir, "figures-rag.faiss")
         return AgentRAG.create_faiss(self._embed, figures_rag_data, save_path)

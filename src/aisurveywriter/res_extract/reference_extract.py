@@ -55,7 +55,7 @@ class ReferencesBibExtractor:
         
         
     def extract(self):
-        bib_sections = self.references.extract_bib_sections()
+        bib_sections = self.references.bibliography_sections()
         
         chunk_sz = sum(len(bib) for bib in bib_sections) // self.n_batches
         chunk_overlap = int(chunk_sz * 0.05)

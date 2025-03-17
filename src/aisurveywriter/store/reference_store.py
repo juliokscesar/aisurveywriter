@@ -1,144 +1,185 @@
 from dataclasses import dataclass
-from typing import List
+from pydantic import BaseModel
+from typing import List, Optional
 import re
 import os
+import pickle
 
+# from ..core.pdf_processor import PDFProcessor
 from ..core.pdf_processor import PDFProcessor
 from ..core.document import Document, DocFigure, DocPage
-from ..utils.logger import named_log
+from ..core.llm_handler import LLMHandler
+from ..utils.logger import named_log, global_log
+from ..utils.helpers import get_bibtex_entry
 
-@dataclass 
-class NewRefrenceStore:
+class ReferenceStore(BaseModel):
     documents: List[Document]
+    paths: List[str]
     
-    pdf_processor: PDFProcessor
+    bibtex_db_path: Optional[str] = None
 
-    def __init__(self, reference_paths: List[str]):
-        # divide between PDF and non-PDF paths
-        pdf_paths: List[str] = []
-        non_pdf_paths: List[str] = []
-        for path in reference_paths:
-            if not os.path.isfile(path):
-                named_log(self, "skipping invalid path:", path)
-                continue            
-            if path.endswith(".pdf"):
-                pdf_paths.append(path)
+    def __init__(self, reference_documents: List[Document]):
+        super().__init__(documents=reference_documents, paths=[doc.path for doc in reference_documents], bibtex_db_path=None)
+
+        self._cache: dict[str, List[str]] = {
+            "doc_full_contents": None,
+            "doc_nobib_contents": None,
+            "doc_bib_sections": None,
+        }
+        self._load_cache()
+        
+    def _load_cache(self, full_contents=True, bib_sections=True):
+        # load full contents
+        if full_contents:
+            self._cache["doc_full_contents"] = [doc.full_content() for doc in self.documents]
+        
+        # extract bibliography from contents
+        if bib_sections:
+            self._cache["doc_nobib_contents"], self._cache["doc_bib_sections"] = self._extract_bibliography()
+
+    def _extract_bibliography(self) -> tuple[List[str], List[str]]:
+        """
+        Extract the bibliography/references/works cited sections from every reference document
+        
+        Returns:
+            nobib_contents (List[str]): content without bibliography section for every document
+            bib_sections (List[str]): bibliography section content for every document
+        """
+        nobib_contents = []
+        bib_sections = []
+        bib_section_pat = re.compile(r"(References|Bibliography|Works Cited|References and Notes|Referências|Referencias)\s*[\n\r]+", re.IGNORECASE)
+        for i, document in enumerate(self.documents):
+            content = document.full_content()
+            # extract bibliography section with regex
+            ref_match = bib_section_pat.search(content)
+            if ref_match:
+                bib_sections.append(content[ref_match.start():].strip())
+                nobib_contents.append(content[:ref_match.start()])
             else:
-                non_pdf_paths.append(path)
+                named_log(self, f"couldn't match references regex for pdf {os.path.basename(self.paths[i])}, using entire content")
+                bib_sections.append(content)
+                nobib_contents.append(content)
 
-        self.documents: List[Document] = []
-        
-        # load PDF documents first
-        self.pdf_processor = PDFProcessor(pdf_paths)
-        
+        return nobib_contents, bib_sections
+            
     
     def docs_contents(self, discard_bibliography=True) -> List[str]:
-        pass
+        if not discard_bibliography:
+            if not self._cache["doc_full_contents"]:
+                self._load_cache(full_contents=True, bib_sections=False)
+            return self._cache["doc_full_contents"]
+        
+        if not self._cache["doc_nobib_contents"]:
+            self._load_cache()
+        return self._cache["doc_nobib_contents"]
     
     def full_content(self, discard_bibliography=True) -> str:
-        pass
+        contents = self.docs_contents(discard_bibliography)
+        return "\n\n".join(contents)
 
-@dataclass
-class ReferenceStore:
-    all_paths: List[str] = None
-    non_pdf_paths: List[str] = None
-    pdf_paths: List[str] = None
-    
-    pdf_proc: PDFProcessor = None
-    
-    _full_contents: List[str] = None
-    
-    _bibliographies: List[str] = None
-    bibtex_db_path: str = None
-    
-    _no_bib_contents: List[str] = None
-    
-    def __init__(self, reference_paths: List[str]):
-        self.all_paths = reference_paths.copy()
-        named_log(self, f"Loading {len(self.all_paths)} references")
-        
-        # separate paths between PDF and non-pdf
-        self.pdf_paths = []
-        self.non_pdf_paths = []
-        for path in self.all_paths:
-            if path.endswith(".pdf"):
-                self.pdf_paths.append(path)
-            else:
-                self.non_pdf_paths.append(path)
-        
-        named_log(self, f"# PDF references: {len(self.pdf_paths)} | Non-PDF: {len(self.non_pdf_paths)}")
+    def bibliography_sections(self) -> List[str]:
+        if not self._cache["doc_bib_sections"]:
+            self._load_cache()
+        return self._cache["doc_bib_sections"]
 
-        self.pdf_proc = PDFProcessor(self.pdf_paths)
-        # call functions to initialize values
-        self.full_content(discard_bibliography=False)
-        self.extract_bib_sections()
+    def all_figures(self) -> List[DocFigure]:
+        all_figures = []
+        for doc in self.documents:
+            if doc.figures:
+                all_figures.extend(doc.figures)
+        return all_figures
+    
+    def bibtex_entries(self) -> List[dict]:
+        entries = []
+        for doc in self.documents:
+            if doc.bibtex_entry:
+                entries.append(doc.bibtex_entry)
+        return entries
 
-    def copy(self):
-        cp = ReferenceStore(self.pdf_paths)
-        
-        try:
-            cp._full_contents = self._full_contents.copy()
-            cp._bibliographies = self._bibliographies.copy()
-            cp.bibtex_db_path = self.bibtex_db_path
-            cp._no_bib_contents = self._no_bib_contents.copy()
-        except:
-            pass
-        
-        return cp
+    def doc_from_path(self, path: str) -> Document | None:
+        for doc in self.documents:
+            if path in doc.path:
+                return doc
+        return None
 
-    def full_content(self, discard_bibliography = True) -> List[str]:
-        """
-        Get full content for every reference, with the option to discard bibliography section.
-        The contents are cached so they are initialized only once (in the first call).
+    @staticmethod
+    def from_local(path: str):
+        with open(path, "rb") as f:
+            store: ReferenceStore = pickle.load(f)
+        return store
+
+def load_nonpdf_references(paths: List[str], title_extractor_llm: Optional[LLMHandler] = None):
+    non_pdf_documents: List[Document] = []
+    title_pattern = re.compile(r"^(?:title)\s*[:\.-]*\s*(.+?)[\n]", re.IGNORECASE)
+    for path in paths:
+        if not os.path.isfile(path):
+            global_log("(Non-PDF reference load) skipping invalid file:", path)
+            continue
         
-        Parameters:
-            - discard_bibliography (bool): discard the bibliography/references section inside each content. Recommended to reduce the number of tokens
-        """
-        assert(self.pdf_proc is not None)
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
         
-        if not self._full_contents:
-            # read content from PDF references first
-            self._full_contents = self.pdf_proc.extract_content()
+        # try some approaches to extract title from unknown type of file
+        portion = content[int(len(content) * 0.2)] # use only first 20% of the content
+        title = None
+        if title_match := title_pattern.search: # try with regex
+            title = title_match.group(1)
+        elif title_extractor_llm: # try with llm
+            try:
+                title = title_extractor_llm.send_prompt(f"Extract the title from this document based on its content:\n"+
+                                                        f"\n[begin: document_content]\n"+
+                                                        f"{portion}\n"+
+                                                        f"[end: document_content]\n\n"+
+                                                        f"Return ONLY the title, nothing else.").content
+            except Exception as e:
+                global_log(f"(Non-PDF reference load) unable to send prompt to extract title:", e)
+        
+        # try to get bibtex entry if title was found
+        bibtex_entry: dict = None
+        if title:
+            try:
+                bibtex_entry = get_bibtex_entry(title, None)
+                if not bibtex_entry:
+                    global_log(f"(Non-PDF reference load) unable to get bibtex entry for file {path}, title: {title}")
+            except Exception as e:
+                bibtex_entry = None
+                global_log(f"(Non-PDF reference load) bibtex entry raised exception for file {path}: {e}\n")
+        author = None
+        if bibtex_entry:
+            bibtex_entry["ID"] = f"key_ref{os.path.basename(path).replace(".","_")}"
+            author = bibtex_entry["author"]
+        
+        doc_page = DocPage(0, content, source_path=path)
+        document = Document(path=path, title=title, author=author, bibtex_entry=bibtex_entry,
+                            pages=[doc_page], figures=None)
+        non_pdf_documents.append(document)
+    
+    return non_pdf_documents
+
+def build_reference_store(reference_paths: List[str], images_output_dir: str = "output", 
+                          save_local: Optional[str] = None, 
+                          title_extractor_llm: Optional[LLMHandler] = None, **lp_kwards) -> ReferenceStore:
+    # separate between pdf and non-pdf files
+    pdf_paths: List[str] = []
+    non_pdf_paths: List[str] = []
+    for path in reference_paths:
+        if path.endswith(".pdf"):
+            pdf_paths.append(path)
+        else:
+            non_pdf_paths.append(path)
             
-            # read from rest 
-            if self.non_pdf_paths:
-                for path in self.non_pdf_paths:
-                    with open(path, "r", encoding="utf-8") as f:
-                        self._full_contents.append(f.read())
+    # process pdfs first
+    pdf_processor = PDFProcessor(pdf_paths, images_output_dir, **lp_kwards)
+    pdf_documents = pdf_processor.documents
+    if not non_pdf_paths:
+        reference_store = ReferenceStore(pdf_documents)
+    else:
+        # process non-pdfs
+        non_pdf_documents: List[Document] = load_nonpdf_references(non_pdf_paths, title_extractor_llm)
+        reference_store = ReferenceStore(pdf_documents + non_pdf_documents)
+
+    if save_local:
+        with open(save_local, "wb") as f:
+            pickle.dump(reference_store, f)
         
-        if discard_bibliography:
-            if not self._no_bib_contents:
-                self.extract_bib_sections()
-            return self._no_bib_contents
-
-        return self._full_contents
-    
-    def extract_bib_sections(self) -> List[str]:
-        """
-        Get "Bibliography/References" section of each reference PDF 
-        """
-        # return cached biblioghraphies
-        if self._bibliographies:
-            return self._bibliographies
-
-        if not self._full_contents:
-            self.full_content(discard_bibliography=False)
-
-        # Initialize bibliographies content
-        self._bibliographies = []
-        self._no_bib_contents = []
-        for i, content in enumerate(self._full_contents):
-            # extract bibliography section with regex
-            ref_match = re.search(r"(References|Bibliography|Works Cited|References and Notes|Referências|Referencias)\s*[\n\r]+", content, re.IGNORECASE)
-            if ref_match:
-                self._bibliographies.append(content[ref_match.start():].strip())
-                self._no_bib_contents.append(content[:ref_match.start()])
-            else:
-                named_log(self, f"couldn't match references regex for pdf {os.path.basename(self.all_paths[i])}, using entire content")
-                self._bibliographies.append(content)
-                self._no_bib_contents.append(content)
-    
-        return self._bibliographies        
-
-    def extract_images(self, save_dir: str, verbose=False):
-        return self.pdf_proc.extract_images(save_dir, verbose=verbose)
+    return reference_store

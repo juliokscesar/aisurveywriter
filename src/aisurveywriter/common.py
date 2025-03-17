@@ -45,6 +45,9 @@ def generate_paper_survey(
     
     custom_prompt_store: Optional[PromptStore] = None,
     tex_template_path: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../templates/paper_template.tex")),
+
+    local_reference_store: Optional[str] = None,
+    tesseract_executable: str = "tesseract",
     
     no_ref_faiss = False,
     no_review = False,
@@ -92,12 +95,12 @@ def generate_paper_survey(
 
     survey_ctx = SurveyContext(
         subject, ref_paths, agent_llms, embed, prompts, tex_template_path,
-        save_path, no_ref_faiss, no_review, no_figures, no_reference, no_abstract,
-        no_tex_review, pregen_struct_json_path, prewritten_tex_path, bibdb_path,
-        faissbib_path, faissfig_path, faisscontent_path, faiss_confidence,
-        images_dir, llm_request_cooldown_sec, embed_request_cooldown_sec, 
-        ref_max_per_section, ref_max_per_sentence, ref_max_same_ref,
-        status_queue=pipeline_status_queue
+        save_path, local_reference_store, tesseract_executable, no_ref_faiss, 
+        no_review, no_figures, no_reference, no_abstract, no_tex_review, 
+        pregen_struct_json_path, prewritten_tex_path, bibdb_path, faissbib_path, 
+        faissfig_path, faisscontent_path, faiss_confidence, images_dir,
+        llm_request_cooldown_sec, embed_request_cooldown_sec, ref_max_per_section, 
+        ref_max_per_sentence, ref_max_same_ref, status_queue=pipeline_status_queue
     )
     return survey_ctx.generate()
 

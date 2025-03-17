@@ -2,7 +2,6 @@ from typing import Union, List
 from time import sleep, time
 import os
 from pathlib import Path
-import yaml
 import undetected_chromedriver as uc
 from fake_useragent import UserAgent
 import requests
@@ -90,7 +89,11 @@ def search_crossref(title, author):
     Search CrossRef API using title and author to retrieve the DOI.
     """
     url = "https://api.crossref.org/works"
-    params = {"query.title": title, "query.author": author, "rows": 1}
+    params = {"rows": 1}
+    if title:
+        params["query.title"] = title
+    if author:
+        params["query.author"] = author
     response = requests.get(url, params=params)
     if response.status_code == 200:
         data = response.json()
@@ -176,3 +179,4 @@ def bib_entries_to_str(entries):
     db = BibDatabase()
     db.entries = entries
     return bibtexparser.dumps(db)
+

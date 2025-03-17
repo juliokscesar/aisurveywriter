@@ -6,7 +6,7 @@ import os
 from aisurveywriter.core.paper import PaperData
 from aisurveywriter.core.agent_context import AgentContext
 from aisurveywriter.core.agent_rags import AgentRAG, RAGType
-from aisurveywriter.store.reference_store import ReferenceStore
+from aisurveywriter.store.reference_store import ReferenceStore, build_reference_store
 from aisurveywriter.core.llm_handler import LLMHandler
 from aisurveywriter.core.text_embedding import EmbeddingsHandler
 from aisurveywriter.store.prompt_store import PromptStore, PromptInfo
@@ -30,6 +30,9 @@ class SurveyContext:
         prompts: PromptStore,
         tex_template_path: str,
         save_path: str = "survey_out",
+
+        reference_store_path: str = None,
+        tesseract_executable: str = "tesseract",
         
         no_ref_faiss = False,
         no_review = False,
@@ -76,7 +79,22 @@ class SurveyContext:
         if prewritten_tex_path:
             self.paper.load_tex(prewritten_tex_path)
         
-        self.references = ReferenceStore(ref_paths)
+        self.images_dir = images_dir
+        if not self.images_dir:
+            self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
+        self.paper.fig_path = self.images_dir
+
+        # self.references = ReferenceStore(ref_paths)
+        if reference_store_path:
+            self.references = ReferenceStore.from_local(reference_store_path)
+            named_log(self, "loaded reference store from", reference_store_path)
+        else:
+            reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
+            self.references = build_reference_store(ref_paths, self.images_dir, 
+                                                    save_local=reference_store_path, 
+                                                    title_extractor_llm=None,
+                                                    lp_tesseract_executable=tesseract_executable)
+            named_log(self, "saved reference store to", reference_store_path)
         self.references.bibtex_db_path = bibdb_path
         
         if isinstance(llms, LLMHandler):
@@ -95,11 +113,7 @@ class SurveyContext:
         self._embed_cooldown = embed_request_cooldown_sec
         
         self.rags = AgentRAG(self.embed, self.llms[SurveyAgentType.StructureGenerator], faissbib_path, faissfig_path, faisscontent_path, request_cooldown_sec=6, output_dir=self.output_dir, confidence=faiss_confidence)
-        self.images_dir = images_dir
-        if not self.images_dir:
-            self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
-        self.paper.fig_path = self.images_dir
-        
+                
         self.confidence = faiss_confidence
         
         self.pipe_steps: List[tks.PipelineTask] = None
@@ -210,7 +224,7 @@ class SurveyContext:
             ])
             
         if not skip_references:
-            # paper refrencer doesn't need a prompt
+            # paper referencer doesn't need a prompt
             reference_agent_ctx = self.common_agent_ctx.copy()
             self.pipe_steps.extend([
                 ("Reference paper", tks.PaperReferencer(reference_agent_ctx, self.paper, self.save_path.replace(".tex", ".bib"), max_per_section=ref_max_per_section, max_per_sentence=ref_max_per_sentence, max_same_ref=ref_max_same_ref)),

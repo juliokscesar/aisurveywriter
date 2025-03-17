@@ -37,6 +37,8 @@ def parse_args():
     parser.add_argument("--ref-max-sentence", type=int, default=4, help="Maximum references in one sentences. Default is 4"),
     parser.add_argument("--ref-max-same", type=int, default=12, help="Maximum repetitions of the same reference. Default is 12"),
     parser.add_argument("--fig-max", type=int, default=30, help="Maximum number of Figures to add (not counting TikZ generated).")
+    parser.add_argument("--tesseract", type=str, default="tesseract", help="Tessearact executable/command")
+    parser.add_argument("--reference-store", type=str, default=None, help="Path to local .pkl reference store")
     return parser.parse_args()
 
 def main():
@@ -63,6 +65,9 @@ def main():
 
         custom_prompt_store=custom_prompt_store,
         tex_template_path=args.tex_template,
+        
+        local_reference_store=args.reference_store,
+        tesseract_executable=args.tesseract,
         
         no_ref_faiss=args.no_ref_rag,
         no_review=args.no_review,

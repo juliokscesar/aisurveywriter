@@ -2,6 +2,9 @@ from time import sleep
 
 from langchain_core.messages import AIMessage
 
+def global_log(*msgs):
+    print(*msgs)
+
 def named_log(obj, *msgs):
     print(f"({obj.__class__.__name__})", *msgs)
 

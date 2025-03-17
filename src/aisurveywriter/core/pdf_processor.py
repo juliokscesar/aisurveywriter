@@ -1,249 +1,323 @@
-from typing import List, Union, Tuple
-import os
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.docstore.document import Document
-from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-import fitz
-from pathlib import Path
-import re
-from pydantic import BaseModel
+from typing import List, Optional
+import layoutparser as lp
+import pdf2image
+import numpy as np
+import cv2
 from PIL import Image
-import io
+import re
+import os
+from scipy.spatial import KDTree
 
-from aisurveywriter.utils import named_log
+from .document import Document, DocPage, DocFigure
+from .lp_handler import LayoutParserAgents
+from ..utils.logger import named_log
+from ..utils.helpers import get_bibtex_entry
 
-class PDFImageData(BaseModel):
-    pdf_id: int
-    page_id: int
-    page_image_id: int
-    data: bytes
-    ext: str
-    path: str
-    caption: Union[str, None] = None
+def sort_blocks_article_layout(blocks, page_width, page_height) -> lp.Layout:
+    """
+    Sort blocks for article layout, that is:
+    Top-Left Blocks -> Bottom-Left Blocks -> Top-Right Blocks -> Bottom-Right blocks
+    """
+    # Define page midpoints
+    mid_x = page_width / 2
+    mid_y = page_height / 2
+    
+    # Group blocks by quadrant
+    top_left = []
+    top_right = []
+    bottom_left = []
+    bottom_right = []
+    
+    for block in blocks:
+        # Get block center
+        x1, y1, x2, y2 = block.coordinates
+        center_x = (x1 + x2) / 2
+        center_y = (y1 + y2) / 2
+        
+        # Assign to quadrant
+        if center_x < mid_x:
+            if center_y < mid_y:
+                top_left.append(block)
+            else:
+                bottom_left.append(block)
+        else:
+            if center_y < mid_y:
+                top_right.append(block)
+            else:
+                bottom_right.append(block)
+    
+    # Sort blocks within each quadrant by y-coordinate (top to bottom)
+    for quadrant in [top_left, top_right, bottom_left, bottom_right]:
+        quadrant.sort(key=lambda block: block.coordinates[1])
+    
+    # Combine quadrants in reading order: top-left, bottom-left, top-right, bottom-right
+    return lp.Layout(top_left + bottom_left + top_right + bottom_right)
+
+def blocks_iou(block1, block2):
+    # Extract coordinates
+    x1_1, y1_1, x2_1, y2_1 = block1.coordinates
+    x1_2, y1_2, x2_2, y2_2 = block2.coordinates
+    
+    # Calculate intersection area
+    x_left = max(x1_1, x1_2)
+    y_top = max(y1_1, y1_2)
+    x_right = min(x2_1, x2_2)
+    y_bottom = min(y2_1, y2_2)
+    
+    if x_right < x_left or y_bottom < y_top:
+        return 0.0
+        
+    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+    
+    # Calculate box areas
+    block1_area = (x2_1 - x1_1) * (y2_1 - y1_1)
+    block2_area = (x2_2 - x1_2) * (y2_2 - y1_2)
+    
+    # Calculate IoU
+    iou = intersection_area / float(block1_area + block2_area - intersection_area)
+    return iou
+
+def layout_nms(blocks, iou_threshold: float = 0.8, neighbors_radius: float = 1.5) -> lp.Layout:
+    """
+    Apply Non-Maximum Supression to remove duplicate blocks by comparing the IOU
+    to "iou_threshold" between the "anchor" block and all neighbors over a radius 
+    of "neighbors_radius", using KDTree for fast-neighbor search.
+    """
+    if not blocks:
+        return blocks
+    
+    # create kdtree based on centers
+    centers = np.array([[(b.coordinates[0] + b.coordinates[2]) / 2, 
+                        (b.coordinates[1] + b.coordinates[3]) / 2] for b in blocks])
+    blocks_kdtree = KDTree(centers)
+    
+    # search with radius based on average size
+    avg_width = np.mean([b.coordinates[2] - b.coordinates[0] for b in blocks])
+    avg_height = np.mean([b.coordinates[3] - b.coordinates[1] for b in blocks])
+    search_radius = max(avg_width, avg_height) * neighbors_radius
+
+    blocks_to_remove = set()
+    for i, block in enumerate(blocks):
+        if i in blocks_to_remove:
+            continue
+        
+        neighbor_indices = blocks_kdtree.query_ball_point(centers[i], search_radius)
+        for j in neighbor_indices:
+            if i == j or j in blocks_to_remove or block.type != blocks[j].type:
+                continue
+        
+            if blocks_iou(blocks[i], blocks[j]) < iou_threshold:
+                continue
+            
+            # keep the one block which has higher area
+            area_i = (block.coordinates[2] - block.coordinates[0]) * (block.coordinates[3] - block.coordinates[1])
+            area_j = (blocks[j].coordinates[2] - blocks[j].coordinates[0]) * (blocks[j].coordinates[3] - blocks[j].coordinates[1])
+            if area_i < area_j:
+                blocks_to_remove.add(i)
+                break
+            else:
+                blocks_to_remove.add(j)
+                
+    filtered_blocks = [b for i, b in enumerate(blocks) if i not in blocks_to_remove]
+    return lp.Layout(filtered_blocks)
+        
+
 
 class PDFProcessor:
-    def __init__(self, pdf_paths: List[str]):
-        self.pdf_paths: List[str] = pdf_paths
-        self.pdf_documents: List[List[Document]] = [None] * len(pdf_paths)
-        self.img_readers: List[fitz.Document] = [None] * len(pdf_paths)
-        self._load()
+    def __init__(self, pdf_paths: List[str],
+                 images_output_dir: str = "output",
+                 lp_model_config: str = "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config",
+                 lp_model_score_thresh: float = 0.8,
+                 lp_tesseract_executable: str = "tesseract",
+                 parse_threads: int = 3):
+        # check and use existing pdf paths
+        self.pdf_paths: List[str] = []
+        for path in pdf_paths:
+            if not os.path.isfile(path):
+                named_log(self, "skipping file not found:", path)
+            else:
+                self.pdf_paths.append(path)
         
-
-    def _load(self):
-        for i, pdf in enumerate(self.pdf_paths):
-            self.pdf_documents[i] = PyPDFLoader(pdf).load()
-            self.img_readers[i] = fitz.open(pdf)
-
-    def _print(self, *msgs: str):
-        print(f"({self.__class__.__name__})", *msgs)
-
-    def extract_content(self) -> List[str]:
-        contents = [""] * len(self.pdf_documents)
-        for i, doc in enumerate(self.pdf_documents):
-            contents[i] = "\n".join([d.page_content for d in doc])
-        return contents
-
-    def extract_images(self, save_dir: str = None, verbose=True, filter_min_wh: Tuple[int,int] = None, extract_captions=True) -> List[PDFImageData]:
-        imgs = []
-        if save_dir:
-            save_dir = os.path.abspath(save_dir)
-            os.makedirs(save_dir, exist_ok=True)
+        # create layout parser agents
+        self.lp_agents = LayoutParserAgents(lp_model_config, lp_model_score_thresh,
+                                             lp_tesseract_executable)
+        
+        self.images_output_dir = images_output_dir
+        os.makedirs(self.images_output_dir, exist_ok=True)
+        
+        # parse pdfs to Documents
+        self.documents: List[Document] = []
+        self._parser_threads = parse_threads
+        self.parse_pdfs()
+        
+    def parse_pdfs(self, reload=False) -> List[Document]:
+        """
+        Parse all PDFs using LayoutParser, building a Document object
+        for every file. All images gathered are save in the directory
+        self.images_output_dir
+        
+        This is called within the constructor. If "reload" is provided,
+        it will parse all PDFs again, discarding those parsed in the constructor.
+        """
+        assert(len(self.pdf_paths) >= 1)
+        
+        if self.documents and not reload:
+            return self.documents
+        
+        for pdf_path in self.pdf_paths:
+            print()
+            named_log(self, "started processing PDF:", os.path.basename(pdf_path))
             
-        for pdf_idx, reader in enumerate(self.img_readers):
-            for page_idx in range(len(reader)):
-                page = reader.load_page(page_idx)
-                page.clean_contents()
-                img_list = page.get_images(full=True)
-                
-                # Temporary storage for images with their positions
-                page_images = []
-                
-                page_width = page.rect.width
-                column_split = page_width / 2
-                
-                img_idx = 0
-                for img in img_list:
-                    xref = img[0]
-                    
-                    # Get the image's position on the page
-                    img_rect = page.get_image_bbox(img)
-                    
-                    # Extract the image data
-                    base_img = reader.extract_image(xref)
-                    img_bytes = base_img["image"]
-                    img_ext = base_img["ext"]
+            page_images = pdf2image.convert_from_path(pdf_path, thread_count=self._parser_threads)
+            page_images = [img.convert("RGB") for img in page_images]
+            page_amount = len(page_images)
 
-                    if not self._validate_image(page, xref, base_img, img_rect):
-                        continue
-                    
-                    # Determine which column the image belongs to based on its center x-coordinate
-                    img_center_x = (img_rect.x0 + img_rect.x1) / 2
-                    column = 0 if img_center_x < column_split else 1  # 0 = left column, 1 = right column
-                    
-                    # Store the image with its position, column, and data
-                    page_images.append({
-                        'column': column if img_rect.width <= page_width*0.8 else 0,          # Column (left=0, right=1)
-                        'y_pos': img_rect.y0,      # Vertical position
-                        'x_pos': img_rect.x0,      # Horizontal position
-                        'rect': img_rect,          # Full bounding box
-                        'orig_idx': img_idx,       # Original index
-                        'xref': xref,              # XRef for the image
-                        'bytes': img_bytes,        # Image binary data
-                        'ext': img_ext             # Image extension
-                    })
+            doc_pages: List[DocPage] = []
+            doc_figures: List[DocFigure] = []            
+            doc_title: str = None
+            doc_authors: str = None
+            title_layout: lp.Layout = None
+            for page_num, page_image in enumerate(page_images):
+                named_log(self, f"processing page {page_num+1}/{page_amount}")
 
-                    img_idx += 1
-                
-                # Sort images: first by column (left to right), then by vertical position (top to bottom)
-                page_images.sort(key=lambda x: (x['column'], x['y_pos']))
-                
-                # Process the sorted images
-                for sorted_idx, img_info in enumerate(page_images):
-                    img_name = f"{Path(self.pdf_paths[pdf_idx]).stem}_page{page_idx}_image{sorted_idx}.{img_info['ext']}"
-                    
-                    if save_dir:
-                        path = os.path.join(save_dir, img_name)
-                        with open(path, "wb") as f:
-                            f.write(img_info['bytes'])
+                # look for title and author if on first page
+                if page_num == 0:
+                    doc_page, page_figures, title_layout = self._parse_page_image(page_image, pdf_path, page_num, return_layout=True)
+                    title_blocks = [b for b in title_layout if b.type == "Title"]
+                    if title_blocks:
+                        doc_title = title_blocks[0].text
+                        # assume our authors names are on text block closest and below to the title
+                        min_distance = float("inf")
+                        authors_block = None
+                        title_center = np.array([(title_blocks[0].coordinates[0] + title_blocks[0].coordinates[2]) / 2, (title_blocks[0].coordinates[1] + title_blocks[0].coordinates[3]) / 2])
+                        for block in title_layout:
+                            if block.type != "Text":
+                                continue
+                            block_center = np.array([(block.coordinates[0] + block.coordinates[2]) / 2, (block.coordinates[1] + block.coordinates[3]) / 2])
+                            if block_center[1] < title_center[1]:
+                                continue
+                            
+                            distance = np.linalg.norm(title_center - block_center)
+                            if distance < min_distance:
+                                authors_block = block
+                                break
                         
-                        if verbose:
-                            column_name = "left" if img_info['column'] == 0 else "right"
-                            named_log(self, f"Image saved: {path} (from {column_name} column, y-pos: {img_info['y_pos']:.1f})")
+                        if authors_block:
+                            doc_authors = authors_block.text
+                            
+                else:    
+                    doc_page, page_figures = self._parse_page_image(page_image, pdf_path, page_num)
 
-                    imgs.append(PDFImageData(
-                        pdf_id=pdf_idx,
-                        page_id=page_idx,
-                        page_image_id=sorted_idx,  # Now this is the column-aware, top-to-bottom index
-                        data=img_info['bytes'],
-                        ext=img_info['ext'],
-                        path=os.path.join(save_dir, img_name) if save_dir else img_name
-                    ))
-                    
-        if extract_captions:
-            imgs = self.extract_image_captions(imgs)
-        
-        return imgs
+                doc_pages.append(doc_page)
+                doc_figures.extend(page_figures)
             
-    def _validate_image(self, page, xref, base_image, image_rect) -> bool:
-        page_width = page.rect.width
-        page_height = page.rect.height
-       
-        # Check if image is likely a content figure (based on heuristics)
-        is_content_image = True
+            # try to get bibtex entry
+            try:
+                bibtex_entry = get_bibtex_entry(doc_title, None)
+                if not bibtex_entry:
+                    named_log(self, "unable to get bibtex entry for", pdf_path)
+            except Exception as e:
+                named_log(self, "exception raised when getting pdf bibtex entry:", e)
+                bibtex_entry = None        
+            
+            if bibtex_entry:
+                pdf_basename = os.path.basename(pdf_path).removesuffix(".pdf")
+                # use authors from bibtex entry if found
+                doc_authors = bibtex_entry.get("author", doc_authors)
+                bibtex_entry["ID"] = f"key_pdf{pdf_basename}"
+            
+            doc = Document(
+                path=pdf_path, 
+                title=doc_title,
+                author=doc_authors,
+                bibtex_entry=bibtex_entry,
+                pages=doc_pages,
+                figures=doc_figures,
+            )
+            self.documents.append(doc)
 
-        if image_rect.width < 40 or image_rect.height < 40:
-            is_content_image = False
+        return self.documents
+
+    def _parse_page_image(self, page_image: Image.Image, source_pdf: str, page_num: int, return_layout=False) -> tuple[DocPage, List[DocFigure], Optional[lp.Layout]]:
+        img_np = np.array(page_image)
+        page_width, page_height = page_image.width, page_image.height
+        source_basename = os.path.basename(source_pdf)
+        source_basename = source_basename[:source_basename.rfind(".pdf")]
         
-        return is_content_image
-                       
-    def extract_image_captions(self, images_data: List[PDFImageData]) -> List[PDFImageData]:
-        captions = []
-        # caption_pattern = re.compile(r"^(Figure|Fig\.|Figura)\s*(\d+)(\s*\.(\s*)|\s+)(\(\w+\)\s*|\d+\s*)?(?=[A-Z])")
-        caption_pattern = re.compile(r"^(Figure|Fig\.|Figura)[\s]*(?:\n\s*)*(\d+)\.?\s*", re.MULTILINE | re.IGNORECASE)
+        # parse layout blocks and sort them
+        layout = self.lp_agents.model.detect(img_np)
+        layout = sort_blocks_article_layout(layout, page_width, page_height)
+
+                
+        # separate between text and figure blocks
+        text_blocks = lp.Layout([b for b in layout if b.type in ["Text", "Title", "List"]])
+        figure_blocks = lp.Layout([b for b in layout if b.type == "Figure"])
+        
+        # remove text detected within figures
+        text_blocks = lp.Layout([b for b in text_blocks if not any(b.is_in(b_fig) for b_fig in figure_blocks)])
+        
+        layout = text_blocks + figure_blocks
+        
+        # remove duplicates with NMS
+        layout = layout_nms(layout)
+
+        # extract text from text blocks using OCR
+        page_text: List[str] = []
+        for block in text_blocks:
+            # crop text block from page image
+            segment_image = block.pad(left=5,right=5,top=5,bottom=5).crop_image(img_np)
+        
+            # extract text with ocr
+            text = self.lp_agents.ocr.detect(segment_image)
+            block.text = text
+            page_text.append(text)
+
+        # process figures and associate captions
+        page_figures: List[DocFigure] = []
+        for i, figure_block in enumerate(figure_blocks):
+            figure_img = figure_block.crop_image(img_np)
+            fig_x1, fig_y1, fig_x2, fig_y2 = [int(coord) for coord in figure_block.coordinates]
+
+            # set caption to be the text closest to the figure
+            caption = ""
+            min_distance = float("inf")
+            for text_block in text_blocks:
+                text_y1 = text_block.coordinates[1]
+                text_x_center = (text_block.coordinates[0] + text_block.coordinates[2]) / 2
+                fig_x_center = (fig_x1 + fig_x2) / 2
+                
+                # check if text block is below the figure and horizontally aligned
+                if (text_y1 > fig_y2 and 
+                    abs(text_x_center - fig_x_center) < (fig_x2 - fig_x1) / 2):
+                    
+                    distance = text_y1 - fig_y2
+                    if distance < min_distance:
+                        min_distance = distance
+                        caption = text_block.text
+                        
+                        # caption threshold - if it's too far, probably not a caption
+                        if min_distance > 100:
+                            caption = ""
+            
+            # clean caption text (if found)
+            if caption:
+                caption = caption.strip()
+                # remove extra newlines
+                caption = re.sub(r'\n+', ' ', caption)
+            
+            # save figure
+            figure_filename = f"{source_basename}_page{page_num}_image{i}.png"
+            figure_path = os.path.join(self.images_output_dir, figure_filename)
+            Image.fromarray(figure_img).save(figure_path)
+            
+            doc_figure = DocFigure(id=i, image_path=figure_path, caption=caption, source_path=source_pdf)
+            page_figures.append(doc_figure)
+
+        # parse to DocPage object
+        page = DocPage(id=page_num, content="\n".join(page_text), source_path=source_pdf)
+
+        if return_layout:
+            return page, page_figures, text_blocks + figure_blocks
+        else:
+            return page, page_figures
     
-        for pdf_idx, pdf_doc in enumerate(self.pdf_documents):
-            last_caption_num = 0
-            for page_idx, page in enumerate(pdf_doc):
-                text = page.page_content.strip()
-                if not text: # skip empty pages
-                    continue
-
-                # fix figure captions that are loaded with linebreaks between "Figure" and the number
-                text = re.sub(caption_pattern, r"\1 \2 ", text)
-
-                lines = text.split("\n")
-                page_caption_count = 0
-                current_caption_text = None
-
-                for line_idx, line in enumerate(lines):
-                    if caption_match := caption_pattern.search(line):
-                        
-                        # skip pattern occurrences within text (i.e. figure citation instead of caption)
-                        caption_words = line[caption_match.end():].strip().split()
-                        if not caption_words or (len(caption_words) < 4 and len(line[caption_match.end():].strip()) <= 10):
-                            continue
-                        
-                        # possible citations: 
-                        # - first word after number is lowercase and it's not within parenthesis
-                        first_word = caption_words[0]
-                        if not first_word.startswith('('):
-                            if first_word.strip()[0] in ['.', ',', ';', '!', '?', ')', '/', '\\', '[', ']', '{', '}']:
-                                continue
-                            if first_word.islower() or (len(first_word) == 1 and caption_words[1].strip().lower() == "shows"):
-                                continue
-                        
-                        # skip if caption figure was already registered
-                        caption_num = int(caption_match.group(2))
-                        if caption_num <= last_caption_num:
-                            continue
-                        last_caption_num = caption_num
-
-                        if current_caption_text:
-                            captions.append((pdf_idx, page_caption_count, page_idx, current_caption_text.strip()))
-                            page_caption_count += 1
-                        
-                        current_caption_text = line.strip()
-                    
-                    elif current_caption_text:
-                        current_caption_text += " " + line.strip()
-                        
-                        if line_idx < len(lines) - 1 and lines[line_idx + 1].strip() == "":
-                            captions.append((pdf_idx, page_caption_count, page_idx, current_caption_text.strip()))
-                            page_caption_count += 1
-                            current_caption_text = None
-
-                if current_caption_text:
-                    captions.append((pdf_idx, page_caption_count, page_idx, current_caption_text.strip()))                        
-
-        # match captions with images based on page number
-        matched_ids = set()
-        for img in images_data:
-            for caption_idx, (pdf_caption_id, page_caption_id, caption_page, caption_text) in enumerate(captions):
-                if (caption_idx in matched_ids) or (pdf_caption_id != img.pdf_id) or (caption_page != img.page_id): 
-                    continue
-                if img.page_id == caption_page and page_caption_id == img.page_image_id:
-                    matched_ids.add(caption_idx)
-                    
-                    caption_text = self._filter_caption(caption_text)
-                    img.caption = caption_text.strip()
-                    break
-
-        return images_data
-
-    def _filter_caption(self, caption: str) -> str:
-        filtered = []
-        
-        # remove some metadata text that comes after a lot of whitespaces sometimes
-        for period_sentence in caption.split('.'):
-            if period_sentence.startswith("  "):
-                continue
-            period_sentence = period_sentence.strip().replace("\n", " ")
-            filtered.append(period_sentence)
-
-        caption = ".".join(filtered)
-
-        # remove metadata known links
-        links_ext = ["org", "com", "net"]
-        for ext in links_ext:
-            link_pattern = r"([\w]+\.)+"+ext
-            if link_match := re.search(link_pattern, caption):
-                caption = caption[:link_match.start()]
-        
-        return caption
-
-    def summarize_content(self, summarizer, chunk_size: int = 2000, chunk_overlap: int = 200, show_metadata = False) -> List[str]:
-        # Split all pdf content in smaller chunks
-        text_splitter = CharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-        chunks = text_splitter.split_documents(self.pdf_documents)
-
-        # Summarize each chunk
-        size = len(chunks)
-        summaries = [None] * size
-        for i, chunk in enumerate(chunks):
-            summary = summarizer.invoke(f"Summarize the content of the following text:\n\n{chunk}")
-            if show_metadata:
-                self._print(f"Summary response metadata (chunk {i+1}/{size}):", summary.usage_metadata)
-            summaries[i] = summary.content
-        
-        return "\n".join(summaries)

@@ -23,7 +23,7 @@ class AgentContext:
     llm_cooldown: int = 0
     embed_cooldown: int = 0
 
-    # Reference store (content, their bibliography, paths, pdf processor, etc)
+    # Reference store (content, their bibliography, paths, etc)
     references: ReferenceStore = None
     
     # bib, content and figures RAGs

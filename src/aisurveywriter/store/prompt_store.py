@@ -9,7 +9,7 @@ class PromptInfo(BaseModel):
     @staticmethod
     def from_template(template: str) -> "PromptInfo":
         # Regular expression to find valid single curly brace variables
-        matches = re.findall(r'(?<!{){([^{}]+)}(?!})', template)
+        matches = re.findall(r"(?<!{){([^{}]+)}(?!})", template)
         
         # Remove duplicates by converting to a set
         input_variables = list(set(matches))
@@ -138,10 +138,7 @@ Output only LaTeX content (starting from \section{{...}})
 
 - IT IS ESSENTIAL THAT YOU USE "\includegraphics{{name}}" AND "\caption{{descriptive caption}}" RIGHT AFTER
 
-- You must only add figures that weren't added already. That is, DO NOT use the following used_figures (do not use it if it has the same caption as an used one):
-[begin: used_figures]
-{used_figures}
-[end: used_figures]
+- You must only add figures that weren't added already. That is, DO NOT use any figure if its caption is provided in a block "used_figures" by the user
 
 - **YOU MUST NOT ALTER THE SECTION'S CONTENT, ONLY ADD THE FIGURES**
 
