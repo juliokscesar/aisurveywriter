@@ -122,7 +122,7 @@ def load_nonpdf_references(paths: List[str], title_extractor_llm: Optional[LLMHa
         # try some approaches to extract title from unknown type of file
         portion = content[int(len(content) * 0.2)] # use only first 20% of the content
         title = None
-        if title_match := title_pattern.search: # try with regex
+        if title_match := title_pattern.search(portion): # try with regex
             title = title_match.group(1)
         elif title_extractor_llm: # try with llm
             try:

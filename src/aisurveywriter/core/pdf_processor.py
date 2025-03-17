@@ -166,9 +166,10 @@ class PDFProcessor:
         if self.documents and not reload:
             return self.documents
         
-        for pdf_path in self.pdf_paths:
+        pdf_amount = len(self.pdf_paths)
+        for pdf_i, pdf_path in enumerate(self.pdf_paths):
             print()
-            named_log(self, "started processing PDF:", os.path.basename(pdf_path))
+            named_log(self, f"started processing PDF {pdf_i+1}/{pdf_amount}:", os.path.basename(pdf_path))
             
             page_images = pdf2image.convert_from_path(pdf_path, thread_count=self._parser_threads)
             page_images = [img.convert("RGB") for img in page_images]
