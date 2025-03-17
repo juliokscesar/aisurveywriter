@@ -9,7 +9,7 @@ This tool can be used directly from the terminal.
 
 ### Installation 
 
-Before using this tool, you need to ensure that you have [Tesseract](https://tesseract-ocr.github.io/tessdoc/Installation.html) installed for OCR operations. You can either install globally on your machine or download an AppImage, which you can use "--tesseract" flag with CLI to specify its path.
+Before using this tool, you need to ensure that you have [Tesseract](https://tesseract-ocr.github.io/tessdoc/Installation.html) installed for OCR operations. You can either install globally on your machine or download an AppImage, and you can use `--tesseract` flag with CLI to specify its path.
 
 ```
 git clone https://github.com/juliokscesar/aisurveywriter.git
@@ -99,7 +99,11 @@ and then you can access it at "localhost:7860" in your browser.
 
 Before writing each section of the paper, we first generate three distinct **Resource Augmented Generation (RAG)** databases. These databases are essential for retrieving relevant information in later steps.  
 
-Each RAG is a **vector database** built using **FAISS** for efficient similarity-based search.  
+Each RAG is a **vector database** built using **FAISS** for efficient similarity-based search.
+
+These RAG databases contain every information about the references provided by the user, including an easy-to-retrieve chunks of content, Figures with captions, and BibTex entries for relevant references (not restricted to those provided by the user).
+
+For PDF files, these elements, especially text content and figures with captions, are all extracted using [Layout Parser](https://github.com/Layout-Parser/layout-parser) with their Detectron2 model for accurately parsing PDF content and obtaining its figures with their original caption. This is a crucial step to ensure accuracy of textual content and figure's captions.
 
 1 - **Content RAG**  
 This database stores vector embeddings of all content extracted from the reference PDFs provided by the user. It serves as a knowledge source when the LLM needs to retrieve relevant information for different sections.  
