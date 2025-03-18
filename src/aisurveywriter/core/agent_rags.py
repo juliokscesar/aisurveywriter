@@ -185,7 +185,7 @@ class AgentRAG:
             # insert keys from loaded references at the beginning
             bibtex_db.entries = references.bibtex_entries() + bibtex_db.entries
 
-            with open(references.bibtex_dp_path, "w", encoding="utf-8") as f:
+            with open(references.bibtex_db_path, "w", encoding="utf-8") as f:
                 bibtexparser.dump(bibtex_db, f)
             
         else:

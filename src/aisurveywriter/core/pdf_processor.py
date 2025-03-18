@@ -212,7 +212,7 @@ class PDFProcessor:
 
                 doc_pages.append(doc_page)
                 doc_figures.extend(page_figures)
-                named_log(self, f"processed page {page_num+1}/{page_amount}, figures with captions extracted: {len([fig for fig in page_figures if fig.caption])}")
+                named_log(self, f"processed page {page_num+1}/{page_amount}, figures with caption extracted: {len([fig for fig in page_figures if fig.caption])}")
             
             # try to get bibtex entry
             try:

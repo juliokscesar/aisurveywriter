@@ -149,7 +149,7 @@ def load_nonpdf_references(paths: List[str], title_extractor_llm: Optional[LLMHa
             bibtex_entry["ID"] = f"key_ref{os.path.basename(path).replace(".","_")}"
             author = bibtex_entry.get("author", None)
         
-        doc_page = DocPage(0, content, source_path=path)
+        doc_page = DocPage(id=0, content=content, source_path=path)
         document = Document(path=path, title=title, author=author, bibtex_entry=bibtex_entry,
                             pages=[doc_page], figures=None)
         non_pdf_documents.append(document)

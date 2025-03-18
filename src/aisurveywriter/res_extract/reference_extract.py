@@ -26,7 +26,7 @@ REFERENCE_EXTRACTOR_SYSTEM_PROMPT = """- You work in extracting the Title and Au
 {format_instructions}  
 
 - Ensure that every variable value (title and authors) is enclosed in double quotes.  
-- Ignore if no references are present.
+- If you can't clearly identify a Title and/or Author, return: NULL
 - Examples of reference formats (X: number, LN: last name, F: first name abbreviation):  
     - **"(X) Author1LN, Author1F.; Author2LN, Author2F; ... AuthorNLN, AuthorNF. Some title finished by a dot."**  
       → Output as: `{{"bibliography": [{{"title": "Some title finished by a dot", "authors": "Author1LN, Author1F.; Author2LN, Author2F.; ... AuthorNLN, AuthorNF."}}]}}`  
