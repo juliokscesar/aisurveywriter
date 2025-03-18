@@ -133,9 +133,9 @@ class PaperFigureAdd(PipelineTask):
                     shutil.copy(os.path.join(self.images_dir, result.basename), used_image_path)
                 except Exception as e:
                     used_image_path = result.basename
-                    named_log(self, f"==> couldn't copy {used_image_path} to save directory: {e}")
+                    named_log(self, f"couldn't copy {used_image_path} to save directory: {e}")
 
-                break
+                break # we only loop over the results to find one that wasn't used
             
             if not used_image_path:
                 named_log(self, f"couldn't find a match for {figname}: {caption!r} that had confidence >= {self.confidence} or wasn't used before")
@@ -169,10 +169,6 @@ class PaperFigureAdd(PipelineTask):
             
             content_replaced = content.replace(figmatch.group(0), modified_figure, 1)
              
-            # replacement = rf"\\includegraphics[width=0.97\\textwidth]{{{os.path.basename(used_image_path)}}}"
-            # re_pattern = rf"\\includegraphics(\[[^\]]*\])?{{{re.escape(figname)}}}"
-            # content = re.sub(re_pattern, replacement, content, count=1)
-            
             if self.agent_ctx.embed_cooldown:
                 cooldown_log(self, self.agent_ctx.embed_cooldown)
         

@@ -124,12 +124,19 @@ Output only LaTeX content (starting from \section{{...}})
   - **Do not add a figure if its caption appears in the "used_figures" block.**  
 
 - OUTPUT FORMAT (strict LaTeX, no extra messages):  
+    - YOU MUST RETURN THE ENTIRE SECTION CONTENT WITH THE FIGURE(S) ADDED
+    - All section content before adding the figure MUST BE PRESERVED
+    - Example of figure block within the section:
 ```latex  
-\begin{figure}[h!]  
-\includegraphics{unique_name}  
-\caption{original caption}  
-\label{fig:unique_random_label}  
-\end{figure}"""
+(section content before...)
+
+\begin{{figure}}[h!]  
+\includegraphics{{unique_name}}  
+\caption{{original caption}}  
+\label{{fig:unique_random_label}}
+\end{{figure}}
+
+(section content after...)"""
 
     REVIEW_SECTION_PROMPT = r"""- You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey paper on this subject.
 
