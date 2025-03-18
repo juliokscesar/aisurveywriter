@@ -205,21 +205,12 @@ class AgentRAG:
 
 
     def create_content_rag(self, references: ReferenceStore):
-        splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=0)
-        
-        content_data = []
-        # use content without refrences
         nobib_contents = references.docs_contents()
-        for ref_path, ref_content in zip(references.paths, nobib_contents):
-            ref_basename = os.path.basename(ref_path)
-            
-            # split into chunks
-            split_docs = splitter.create_documents(ref_content)
-            splitted = splitter.split_documents(split_docs)
-            content_data.extend([
-                GeneralTextData(text=split.page_content, source_pdf=ref_basename) for split in splitted
-            ])
+        splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=0)
+        docs = splitter.create_documents(nobib_contents)
+        docs = splitter.split_documents(docs)
         
+        content_data = [GeneralTextData(text=doc.page_content) for doc in docs]
         save_path = os.path.join(self.output_dir, "content-rag.faiss")
         return AgentRAG.create_faiss(self._embed, content_data, save_path=save_path)
         

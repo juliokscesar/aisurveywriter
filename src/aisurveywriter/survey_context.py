@@ -87,14 +87,14 @@ class SurveyContext:
         # self.references = ReferenceStore(ref_paths)
         if reference_store_path:
             self.references = ReferenceStore.from_local(reference_store_path)
-            named_log(self, "loaded reference store from", reference_store_path)
+            named_log(self, "loaded reference store from", reference_store_path, f"total of {len(self.references.documents)} references")
         else:
             reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
             self.references = build_reference_store(ref_paths, self.images_dir, 
                                                     save_local=reference_store_path, 
                                                     title_extractor_llm=None,
                                                     lp_tesseract_executable=tesseract_executable)
-            named_log(self, "saved reference store to", reference_store_path)
+            named_log(self, "saved reference store to", reference_store_path, f"total of {len(self.references.documents)} references")
         self.references.bibtex_db_path = bibdb_path
         
         if isinstance(llms, LLMHandler):

@@ -102,47 +102,34 @@ def default_prompt_store() -> PromptStore:
 Output only LaTeX content (starting from \section{{...}})
 """
 
-    ADD_FIGURES_PROMPT = r"""- You are an academic expert in "{subject}". You are writing a comprehensive survey paper on that subject.
+    ADD_FIGURES_PROMPT = r"""- You are an academic expert in "{subject}" and are writing a comprehensive survey paper.  
 
-- You are receiving from the human: 
-- the content of references for this paper (reference_content block)
-- the content of one section of this paper (in latex)
+- INPUT:  
+  - Reference content (reference_content block).  
+  - All already used figures containing their label (in FIG_LABEL) and their caption (FIG_CAPTION) (used_figures block)
+  - A LaTeX section of the paper.  
 
-- YOUR JOB:
-- Look for figures in the references (with captions appearing as "Fig. ...", "Figure ...").
-- You must add a figure from the reference to this section, following:
-- Place the figure in a contextually correct and relevant place.
-- You must ID this figure with a unique name and a proper caption:
-    - DO NOT use a general name that could be repeated accidently. Make sure to use something unique (use some random name)
-    - DO NOT use Scheme figures (usually appear as Scheme X.)
-    - Use the same caption from the original figure in its proper reference, adding "Adapted from (AUTHOR), (YEAR)" in the end
-    - If you're unable to identify the caption, don't add it
-    - Captions must be identical to the original
-    - The caption must appear BELOW the figure
+- TASK:  
+  - Identify figures in the references (those labeled as "Fig. ..." or "Figure ...").  
+  - Insert one or more relevant figures into the provided LaTeX section.  
 
-- If adding a visual element is not relevant, do nothing
-- If there are any Figures present (including TikZ figures), do not alter nor remove them
+- REQUIREMENTS:  
+  - Place the figure in a contextually relevant location.  
+  - Use a **unique** and **non-generic** name for the figure file (avoid "figure1", "image", etc.).  
+  - Label the figure with a **unique random identifier** (not numbered sequentially).  
+  - Retain the **original caption**. Don't add "Adapted from..." or "Reprinted from..." at the end
+  - If the caption is missing, **do not add the figure**.  
+  - **Do not use Scheme figures** (labeled as "Scheme X.").  
+  - **Do not modify or remove existing figures**, including TikZ figures.  
+  - **Do not add a figure if its caption appears in the "used_figures" block.**  
 
-- THE FIGURES MUST BE WITHIN A PROPER FIGURE BODY IN LATEX, AS:
-\begin{{figure}}[h!]
-\includegraphics{{unique_name}}
-\caption{{original caption}}
-%author: FigAuthor
-\label{{fig:unique_random_label}}
-\end{{figure}}
-
-- The Figure MUST BE FROM ONE OF THE REFERENCES. Provide at the end of the caption the credits as: "Adapted from Authors, Year."
-  - Do not enumerate unique_label like unique_label_1, unique_label_2, etc. Either create a unique random label, or assign a label related to the figure
-  - Make sure to not use a generic unique_name. Use something random or VERY specific for this figure.
-  - DO NOT use optional parameters (such as [width=0.xx], etc...)
-
-- IT IS ESSENTIAL THAT YOU USE "\includegraphics{{name}}" AND "\caption{{descriptive caption}}" RIGHT AFTER
-
-- You must only add figures that weren't added already. That is, DO NOT use any figure if its caption is provided in a block "used_figures" by the user
-
-- **YOU MUST NOT ALTER THE SECTION'S CONTENT, ONLY ADD THE FIGURES**
-
-- **YOUR OUTPUT MUST BE ONLY THE LATEX FOR THIS SECTION, NO "Okay, here it is...\". Do not write any message for the human, only the section content"""
+- OUTPUT FORMAT (strict LaTeX, no extra messages):  
+```latex  
+\begin{figure}[h!]  
+\includegraphics{unique_name}  
+\caption{original caption}  
+\label{fig:unique_random_label}  
+\end{figure}"""
 
     REVIEW_SECTION_PROMPT = r"""- You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey paper on this subject.
 
@@ -172,7 +159,7 @@ Output only LaTeX content (starting from \section{{...}})
 
 - Most importantly:
 - You must be directive, objective, and clear. Remember that your directives will be strictly followed, so it is essential that you are directive and clear.
-- You must be concise
+- You must be concise (maximum of 400 words)
 - You must write only in English
 - Your output should contain nothing more than the directives. So don't output stuff like 'Okay, here are the directives....' """
 
@@ -184,7 +171,7 @@ Output only LaTeX content (starting from \section{{...}})
 - **Maintain style:** Keep a **scientific, objective, and formal tone**.  
 - **Preserve structure:** Do **not** add or remove sections (\section) or subsections (\subsection).  
 - **Expand, don’t summarize:** Maintain or increase length with meaningful content.  
-- **Discuss figures:** Refer to existing figures via their **\label** and \caption details. Do **not** replace standard figures with TikZ.  
+- **Discuss figures:** Refer to existing figures via their **\label** and \caption details (use \ref{{fig:label_of_the_figure}}). Do **not** replace standard figures with TikZ.  
     - DISCUSS ONLY FIGURES THAT ARE PRESENT IN THE LATEX CONTENT
 - **Visual elements:**  
   - Use **TikZ** for explanatory illustrations (except for existing figures).

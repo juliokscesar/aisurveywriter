@@ -43,6 +43,7 @@ class PaperFigureAdd(PipelineTask):
             r"(\\label\{([^}]+)\})",
             re.DOTALL
         )
+        self.caption_credits_pattern = re.compile(r"\.\s+(?:Adapted\s+from|Reprinted\s+with)", re.IGNORECASE)
     
         self.images_dir = os.path.abspath(images_dir)
         self.used_imgs_dest = os.path.join(self.agent_ctx.output_dir, "used-imgs")
@@ -89,10 +90,10 @@ class PaperFigureAdd(PipelineTask):
 
     def _replace_figures(self, content: str, used_figures: list, retrieve_k: int = 5):
         assert(not self.agent_ctx.rags.is_disabled(RAGType.ImageData))
-        
             
         used_imgs = set([fig["basename"] for fig in used_figures])
         # find figures added by llm
+        content_replaced = content
         for figmatch in self.fig_pattern.finditer(content):
             if len(used_imgs) >= self.max_figures:
                 break
@@ -102,9 +103,10 @@ class PaperFigureAdd(PipelineTask):
             figlabel = figmatch.group(7)
 
             # cut "Adapted from..." from caption (don't include it as query)
-            idx = figcaption.rfind("Adapted from")
-            if idx != -1:
-                caption = figcaption[:idx].strip()
+            caption = figcaption
+            credits_match = self.caption_credits_pattern.search(caption)
+            if credits_match:
+                caption = caption[:credits_match.start()].strip()
 
             # use caption to retrieve an image      
             query = caption
@@ -113,6 +115,8 @@ class PaperFigureAdd(PipelineTask):
                 named_log(self, f"unable to find images for figure: {figname!r}, caption: {caption}")
                 if self.agent_ctx.embed_cooldown:
                     cooldown_log(self, self.agent_ctx.embed_cooldown)
+                # remove this unused block
+                content_replaced = content.replace(figmatch.group(0), 1)
                 continue
             
             used_image_path = None
@@ -126,7 +130,7 @@ class PaperFigureAdd(PipelineTask):
                 used_doc_figure = result.to_doc_figure(self.agent_ctx.references)
                 try:
                     used_image_path = os.path.join(self.used_imgs_dest, result.basename)
-                    shutil.copy(used_doc_figure.image_path, used_image_path)
+                    shutil.copy(os.path.join(self.images_dir, result.basename), used_image_path)
                 except Exception as e:
                     used_image_path = result.basename
                     named_log(self, f"==> couldn't copy {used_image_path} to save directory: {e}")
@@ -135,6 +139,8 @@ class PaperFigureAdd(PipelineTask):
             
             if not used_image_path:
                 named_log(self, f"couldn't find a match for {figname}: {caption!r} that had confidence >= {self.confidence} or wasn't used before")
+                # remove this unused block
+                content_replaced = content.replace(figmatch.group(0), 1)
                 continue
             else:
                 named_log(self, f"best match for {figname}: {os.path.basename(used_image_path)}")
@@ -153,14 +159,15 @@ class PaperFigureAdd(PipelineTask):
                     new_caption = caption.strip() + ". " + credits_fmt.format(authors_caption)
                         
             modified_figure = (
-                figmatch.group(1).replace(figname, os.path.basename(used_image_path)) +  # replace image path
+                re.sub(rf"\\includegraphics(\[[^\]]*\])?{{{re.escape(figname)}}}", 
+                       rf"\\includegraphics[width=0.95\\textwidth]{{{os.path.basename(used_image_path)}}}", figmatch.group(1)) +  # replace image path
                 figmatch.group(3) +  # preserve text between \includegraphics and \caption
                 figmatch.group(4).replace(figcaption, new_caption) +  # replace caption
                 figmatch.group(5) +  # preserve text between \caption and \label
                 figmatch.group(6).replace(figlabel, figlabel)  # replace label
             )
             
-            content = content.replace(figmatch.group(0), modified_figure, 1)
+            content_replaced = content.replace(figmatch.group(0), modified_figure, 1)
              
             # replacement = rf"\\includegraphics[width=0.97\\textwidth]{{{os.path.basename(used_image_path)}}}"
             # re_pattern = rf"\\includegraphics(\[[^\]]*\])?{{{re.escape(figname)}}}"
@@ -169,7 +176,7 @@ class PaperFigureAdd(PipelineTask):
             if self.agent_ctx.embed_cooldown:
                 cooldown_log(self, self.agent_ctx.embed_cooldown)
         
-        return content
+        return content_replaced
             
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
         if input_data:

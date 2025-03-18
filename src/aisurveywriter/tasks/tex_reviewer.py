@@ -18,6 +18,7 @@ class TexReviewer(PipelineTask):
             "figure": re.compile(r"\\begin{figure}.*?\\includegraphics(?:\[.*?\])?{(.*?)}.*?\\end{figure}", re.DOTALL),
             "cite": re.compile(r"\\cite{([^}]+)}"),
             "empty_cite": re.compile(r"\\cite{\s*}"),
+            "false_reference": re.compile(r"\[(?:(?:\d+),*\s*)*\]"),
             "percent": re.compile(r"(\d+)%"),
             "preamble": [
                 re.compile(r"\\usepackage{[\w]+}"),
@@ -50,8 +51,6 @@ class TexReviewer(PipelineTask):
             if section.content is None:
                 continue
             
-            named_log(self, f"==> begin review LaTeX syntax for section ({i+1}/{section_amount}): {section.title}")
-
             start = time.time()
 
             section.content = self._convert_markdown(section.content)
@@ -62,9 +61,9 @@ class TexReviewer(PipelineTask):
             # escape number percentage
             section.content = self._re_patterns["percent"].sub(r"\1\\%", section.content)
 
-            elapsed = int(time.time() - start)
+            elapsed = time.time() - start
             
-            named_log(self, f"==> finished review LaTeX syntax for section ({i+1}/{section_amount}): {section.title} | time elapsed: {elapsed} s")
+            named_log(self, f"review LaTeX syntax for section ({i+1}/{section_amount}): {section.title} | time elapsed: {elapsed} s")
 
         return self.agent_ctx._working_paper
 
@@ -108,6 +107,9 @@ class TexReviewer(PipelineTask):
 
         # remove empty citations
         section_content = self._re_patterns["empty_cite"].sub("", section_content)
+        
+        # remove [xxx] references sometimes added by the LLM
+        section_content = self._re_patterns["false_reference"].sub("", section_content)
         
         return section_content
 
