@@ -11,7 +11,12 @@ This tool can be used directly from the terminal.
 
 Before using this tool, you need to ensure that you have [Tesseract](https://tesseract-ocr.github.io/tessdoc/Installation.html) installed for OCR operations. You can either install globally on your machine or download an AppImage, and you can use `--tesseract` flag with CLI to specify its path.
 
-Then you can clone this repository and install it as a python package locally:
+You also need to install PyTorch and FAISS packages *before* installing this project. Make sure you install the right packages specifically for CPU or for your specific version of CUDA/ROCm. E.g. installing for CUDA 12.4:
+```
+pip install torch torchvision faiss-gpu-cu12
+```
+
+Then you can clone this repository and install it as a python package locally. 
 
 ```
 git clone https://github.com/juliokscesar/aisurveywriter.git
