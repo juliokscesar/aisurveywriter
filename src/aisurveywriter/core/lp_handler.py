@@ -1,4 +1,5 @@
 from typing import Optional
+from pydantic import BaseModel
 import layoutparser as lp
 import os
 import copy
@@ -72,23 +73,22 @@ def init_lp_agents(config: str,
     
     return (det2_model, ocr_agent)
 
+class LayoutParserSettings(BaseModel):
+    config_path: Optional[str] = ""
+    score_threshold: float = 0.8
+    tesseract_executable: str = "tesseract"
+    
 
 class LayoutParserAgents:
-    # Detectron2 model configuration
-    config: str
-    score_threshold: float = 0.8
+    settings: LayoutParserSettings
     
     model: lp.models.Detectron2LayoutModel
-    
-    # Tesseract OCR configuration
-    tesseract_executable: str = "tesseract"
     ocr: lp.TesseractAgent
     
     def __init__(self, config: str, score_threshold: float = 0.8, tesseract_executable: str = "tesseract"):
-        self.config = config
-        self.score_threshold = score_threshold
-
-        self.model, self.ocr = init_lp_agents(config, score_threshold, tesseract_executable)
+        self.settings = LayoutParserSettings(config_path=config, score_threshold=score_threshold, 
+                                             tesseract_executable=tesseract_executable)
         
+        self.model, self.ocr = init_lp_agents(config, score_threshold, tesseract_executable)
         self.tesseract_executable = tesseract_executable
         

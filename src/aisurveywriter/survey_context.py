@@ -2,12 +2,14 @@ from typing import List, Optional, Union
 from enum import Enum, auto
 from dataclasses import dataclass
 import os
+from pathlib import Path
 
 from aisurveywriter.core.paper import PaperData
 from aisurveywriter.core.agent_context import AgentContext
 from aisurveywriter.core.agent_rags import AgentRAG, RAGType
-from aisurveywriter.store.reference_store import ReferenceStore, build_reference_store
+from aisurveywriter.store.reference_store import ReferenceStore
 from aisurveywriter.core.llm_handler import LLMHandler
+from aisurveywriter.core.lp_handler import LayoutParserSettings
 from aisurveywriter.core.text_embedding import EmbeddingsHandler
 from aisurveywriter.store.prompt_store import PromptStore, PromptInfo
 from aisurveywriter.core.pipeline import PaperPipeline
@@ -84,18 +86,28 @@ class SurveyContext:
             self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
         self.paper.fig_path = self.images_dir
 
-        # self.references = ReferenceStore(ref_paths)
         if reference_store_path:
             self.references = ReferenceStore.from_local(reference_store_path)
             named_log(self, "loaded reference store from", reference_store_path, f"total of {len(self.references.documents)} references")
         else:
             reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
-            self.references = build_reference_store(ref_paths, self.images_dir, 
-                                                    save_local=reference_store_path, 
-                                                    title_extractor_llm=None,
-                                                    lp_tesseract_executable=tesseract_executable)
+            lp_config = "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config"
+            lp_settings = LayoutParserSettings(config_path=lp_config, tesseract_executable=tesseract_executable)
+            self.references = ReferenceStore.create_store(ref_paths, lp_settings, self.images_dir,
+                                                          save_local=reference_store_path, 
+                                                          title_extractor_llm=None)
             named_log(self, "saved reference store to", reference_store_path, f"total of {len(self.references.documents)} references")
         self.references.bibtex_db_path = bibdb_path
+        self.references.images_dir = self.images_dir
+        
+        # check if there are any new paths and add them to the store if so
+        new_paths = [path for path in ref_paths if not os.path.normpath(path) in self.references.paths]
+        if new_paths:
+            self.references.add_references(new_paths)
+            if reference_store_path:
+                stem = Path(reference_store_path).stem
+                new_store_path = reference_store_path.replace(stem, stem+"-new")
+                self.references.save_local(new_store_path)
         
         if isinstance(llms, LLMHandler):
             self.llms = {agent: llms for agent in SurveyAgentType}

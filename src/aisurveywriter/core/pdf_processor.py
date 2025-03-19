@@ -9,7 +9,7 @@ import os
 from scipy.spatial import KDTree
 
 from .document import Document, DocPage, DocFigure
-from .lp_handler import LayoutParserAgents
+from .lp_handler import LayoutParserAgents, LayoutParserSettings
 from ..utils.logger import named_log
 from ..utils.helpers import get_bibtex_entry
 
@@ -125,10 +125,8 @@ def layout_nms(blocks, iou_threshold: float = 0.8, neighbors_radius: float = 1.5
 
 class PDFProcessor:
     def __init__(self, pdf_paths: List[str],
+                 lp_settings: LayoutParserSettings,
                  images_output_dir: str = "output",
-                 lp_model_config: str = "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config",
-                 lp_model_score_thresh: float = 0.8,
-                 lp_tesseract_executable: str = "tesseract",
                  parse_threads: int = 3):
         # check and use existing pdf paths
         self.pdf_paths: List[str] = []
@@ -139,8 +137,8 @@ class PDFProcessor:
                 self.pdf_paths.append(path)
         
         # create layout parser agents
-        self.lp_agents = LayoutParserAgents(lp_model_config, lp_model_score_thresh,
-                                             lp_tesseract_executable)
+        self.lp_agents = LayoutParserAgents(lp_settings.config_path, lp_settings.score_threshold,
+                                             lp_settings.tesseract_executable)
         
         self.images_output_dir = images_output_dir
         os.makedirs(self.images_output_dir, exist_ok=True)
