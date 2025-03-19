@@ -40,6 +40,8 @@ def generate_paper_survey(
     reviewer_model: str = "gemini-2.0-pro-exp",
     reviewer_model_type: str = "google",
     
+    temperature: float = 0.65,
+    
     embed_model: str = "sentence-transformers/all-MiniLM-L6-v2",
     embed_model_type: str = "huggingface",
     
@@ -82,9 +84,9 @@ def generate_paper_survey(
     setup_credentials(credentials_yaml_path)
     
     agent_llms = {
-        SurveyAgentType.StructureGenerator: LLMHandler(structure_model, structure_model_type),
-        SurveyAgentType.Writer: LLMHandler(writer_model, writer_model_type),
-        SurveyAgentType.Reviewer: LLMHandler(reviewer_model, reviewer_model_type),
+        SurveyAgentType.StructureGenerator: LLMHandler(structure_model, structure_model_type, temperature=temperature),
+        SurveyAgentType.Writer: LLMHandler(writer_model, writer_model_type, temperature=temperature),
+        SurveyAgentType.Reviewer: LLMHandler(reviewer_model, reviewer_model_type, temperature=temperature),
     }
 
     embed = EmbeddingsHandler(embed_model, embed_model_type)

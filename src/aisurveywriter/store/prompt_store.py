@@ -106,29 +106,28 @@ Output only LaTeX content (starting from \section{{...}})
 
 - INPUT:  
   - Reference content (reference_content block).  
-  - All already used figures containing their label (in FIG_LABEL) and their caption (FIG_CAPTION) (used_figures block)
   - A LaTeX section of the paper.  
 
 - TASK:  
   - Identify figures in the references (those labeled as "Fig. ..." or "Figure ...").  
-  - Insert one or more relevant figures into the provided LaTeX section.  
+  - Insert one or more of the identified figures into the provided LaTeX section, if relevant
 
 - REQUIREMENTS:  
-  - Place the figure in a contextually relevant location.  
+  - Place the figures in contextually relevant locations.  
+  - Make sure the figure is from one of the references
   - Use a **unique** and **non-generic** name for the figure file (avoid "figure1", "image", etc.).  
-  - Label the figure with a **unique random identifier** (not numbered sequentially).  
+  - Label each figure with a **unique random identifier** (not numbered sequentially).  
   - Retain the **original caption**. Don't add "Adapted from..." or "Reprinted from..." at the end
-  - If the caption is missing, **do not add the figure**.  
-  - **Do not use Scheme figures** (labeled as "Scheme X.").  
+    - This caption will be used with RAG to retrieve the exact image. So the caption MUST MATCH THE ORIGINAL
+
   - **Do not modify or remove existing figures**, including TikZ figures.  
-  - **Do not add a figure if its caption appears in the "used_figures" block.**  
+  - *It is essential that*: **Do not alter or remove any of the section text** you must only add the figures, but output the *entire* section content too.
+    - That is: If you receive N tokens for input, you must output the same N tokens + M tokens of the included figures.
 
 - OUTPUT FORMAT (strict LaTeX, no extra messages):  
-    - YOU MUST RETURN THE ENTIRE SECTION CONTENT WITH THE FIGURE(S) ADDED
-    - All section content before adding the figure MUST BE PRESERVED
-    - Example of figure block within the section:
-```latex  
-(section content before...)
+    - Example of figure block *within* the section.:
+```latex
+(original section content before...)
 
 \begin{{figure}}[h!]  
 \includegraphics{{unique_name}}  
@@ -136,7 +135,7 @@ Output only LaTeX content (starting from \section{{...}})
 \label{{fig:unique_random_label}}
 \end{{figure}}
 
-(section content after...)"""
+(original section content after...)"""
 
     REVIEW_SECTION_PROMPT = r"""- You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey paper on this subject.
 

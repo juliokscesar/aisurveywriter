@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "wheel", "torch"]
 build-backend = "setuptools.build_meta"
 
 
 [project]
 name = "aisurveywriter"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
     "selenium",
     "pandas",
@@ -13,6 +13,8 @@ dependencies = [
     "undetected-chromedriver",
     "fake-useragent",
     "pynvim",
+    "torch",
+    "torchvision",
     "setuptools",
     "langchain",
     "langchain-google-genai",
@@ -20,10 +22,9 @@ dependencies = [
     "langchain-ollama",
     "langchain-community",
     "langchain-huggingface",
-    "git+https://github.com/facebookresearch/detectron2.git",
+    "detectron2@git+https://github.com/facebookresearch/detectron2.git@main",
     "layoutparser",
     "layoutparser[ocr]",
-    "torchvision",
     "pdf2image",
     "pypdf",
     "pymupdf",
@@ -31,5 +32,5 @@ dependencies = [
     "bibtexparser",
     "gradio",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 description = "LLM tool to write Survey Papers based on PDF references"

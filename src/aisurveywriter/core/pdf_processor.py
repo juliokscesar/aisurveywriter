@@ -303,18 +303,22 @@ class PDFProcessor:
                         if min_distance > 100 or not self._caption_pattern.match(caption):
                             caption = None
             
-            # clean caption text (if found)
+            # skip figure if no caption found
+            if not caption:
+                continue
+            
+            # clean caption text
             if caption:
                 caption = caption.strip()
                 # remove extra newlines
-                caption = re.sub(r'\n+', ' ', caption)
+                caption = re.sub(r"\n+", " ", caption)
             
             # save figure
             figure_filename = f"{source_basename}_page{page_num}_image{i}.png"
             figure_path = os.path.join(self.images_output_dir, figure_filename)
             Image.fromarray(figure_img).save(figure_path)
             
-            doc_figure = DocFigure(id=i, image_path=figure_path, caption=caption, source_path=source_pdf)
+            doc_figure = DocFigure(id=len(page_figures), image_path=figure_path, caption=caption, source_path=source_pdf)
             page_figures.append(doc_figure)
 
         # parse to DocPage object

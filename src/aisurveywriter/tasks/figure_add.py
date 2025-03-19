@@ -2,6 +2,7 @@ import os
 import shutil
 import re
 from typing import List
+import copy
 
 from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
@@ -24,9 +25,9 @@ class PaperFigureAdd(PipelineTask):
         self._human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n"+
                                                                "{refcontent}\n\n"+
                                                                "[end: references_content]\n\n"+
-                                                               "[begin: used_figures]\n\n"+
-                                                               "{used_figures}\n\n"+
-                                                               "[end: used_figures]\n\n"+
+                                                            #    "[begin: used_figures]\n\n"+
+                                                            #    "{used_figures}\n\n"+
+                                                            #    "[end: used_figures]\n\n"+
                                                                "Add figures to this section:\n"+
                                                                "- Section title: {title}\n"+
                                                                "- Section content:\n{content}")
@@ -44,6 +45,7 @@ class PaperFigureAdd(PipelineTask):
             re.DOTALL
         )
         self.caption_credits_pattern = re.compile(r"\.\s+(?:Adapted\s+from|Reprinted\s+with)", re.IGNORECASE)
+        self.figure_caption_pattern_format = r"((?:fig\.|figure|figura)\.*\s*{}(.+?)\n+)"
     
         self.images_dir = os.path.abspath(images_dir)
         self.used_imgs_dest = os.path.join(self.agent_ctx.output_dir, "used-imgs")
@@ -53,15 +55,16 @@ class PaperFigureAdd(PipelineTask):
     def add_figures(self):
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
 
-        # this task uses full pdf content
-        refcontent = self.agent_ctx.references.full_content()
-        
-        used_figures = []
+        used_figures: tuple[str, List[DocFigure]] = [] # label in text, docfigure object
         
         section_amount = len(self.agent_ctx._working_paper.sections)
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
             named_log(self, f"==> start adding figures in section ({i+1}/{section_amount}): \"{section.title}\"")
             
+            # first, get reference content with used figures removed
+            refcontent = self._refremove_used_figures(used_figures)
+            
+            # ask llm to add figures and replace them using RAG
             content = self._llm_add_figures(refcontent, section.title, section.content, used_figures)
             content = self._replace_figures(content, used_figures, retrieve_k=5)
             
@@ -71,11 +74,27 @@ class PaperFigureAdd(PipelineTask):
         
         self.agent_ctx._working_paper.fig_path = self.used_imgs_dest
         return self.agent_ctx._working_paper
+
+    def _refremove_used_figures(self, used_figures: tuple[str, List[DocFigure]]) -> str:
+        if not used_figures:
+            return self.agent_ctx.references.full_content()
+        
+        docs_contents = copy.deepcopy(self.agent_ctx.references.docs_contents())
+        for label, figure in used_figures:
+            doc_figureid = figure.id+1
+            doc_idx = self.agent_ctx.references.paths.index(figure.source_path)
+            
+            fig_pattern = re.compile(self.figure_caption_pattern_format.format(doc_figureid), re.IGNORECASE)
+            
+            # remove all occurences of Figure X. if figure X is used
+            docs_contents[doc_idx] = fig_pattern.sub("", docs_contents[doc_idx])
+
+        return "\n\n".join(docs_contents)
     
     def _llm_add_figures(self, refcontent: str, title: str, content: str, used_figures: list) -> str:
-        used_figures_str = "\n".join([f"- FIG_LABEL: {fig["label"]!r} | FIG_CAPTION: {fig["caption"]!r}" for fig in used_figures]) if used_figures else ""
+        # used_figures_str = "\n".join([f"- FIG_LABEL: {fig[0]!r} | FIG_CAPTION: {fig[1].caption.replace("\n","")!r}" for fig in used_figures]) if used_figures else ""
         elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
-            "used_figures": used_figures_str,
+            # "used_figures": used_figures_str,
             "refcontent": refcontent,
             "subject": self.agent_ctx._working_paper.subject,
             "title": title,
@@ -91,7 +110,7 @@ class PaperFigureAdd(PipelineTask):
     def _replace_figures(self, content: str, used_figures: list, retrieve_k: int = 5):
         assert(not self.agent_ctx.rags.is_disabled(RAGType.ImageData))
             
-        used_imgs = set([fig["basename"] for fig in used_figures])
+        used_imgs = set([os.path.basename(fig.image_path) for _,fig in used_figures])
         # find figures added by llm
         content_replaced = content
         for figmatch in self.fig_pattern.finditer(content):
@@ -125,9 +144,11 @@ class PaperFigureAdd(PipelineTask):
                 if result.basename in used_imgs:
                     continue
                 used_imgs.add(result.basename)
-                used_figures.append({"basename": result.basename, "label": figlabel, "caption": caption})
                 
+                # keep track of used figures and their label in the text
                 used_doc_figure = result.to_doc_figure(self.agent_ctx.references)
+                used_figures.append((figlabel, used_doc_figure))
+
                 try:
                     used_image_path = os.path.join(self.used_imgs_dest, result.basename)
                     shutil.copy(os.path.join(self.images_dir, result.basename), used_image_path)

@@ -13,6 +13,7 @@ def parse_args():
     parser.add_argument("--save-dir", type=str, default="./out", help="Path to output directory")
     parser.add_argument("--llm", "-l", choices=["openai", "google"], default="google", help="Specify LLM to use. Either 'google', 'openai' or 'ollama'. Default is google")
     parser.add_argument("--llm-model", "-m", dest="llm_model", default="gemini-2.0-flash", help="Specific LLM model to use. Default is gemini-2.0-flash")
+    parser.add_argument("--temperature", type=float, default=0.65, help="Temperature to use with LLM models. This will be the same across all LLM agents.")
     parser.add_argument("--credentials", default="credentials.yaml", help="YAML file containing your API keys")
     parser.add_argument("--structure", "-s", default=None, type=str, help="JSON file containing the structure to use. If provided, this will skip the structure generation process.")
     parser.add_argument("--paper", "-p", default=None, help="Path to .TEX paper to use. If provided, won't write one from the structure, and will skip directly to reviewing it (unless --no-review) is provided")
@@ -59,6 +60,8 @@ def main():
         writer_model_type=args.llm,
         reviewer_model=args.llm_model,
         reviewer_model_type=args.llm,
+
+        temperature=args.temperature,
         
         embed_model=args.embed_model,
         embed_model_type=args.embed_type,
