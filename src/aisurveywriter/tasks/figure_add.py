@@ -178,6 +178,7 @@ class PaperFigureAdd(PipelineTask):
                     else:
                         authors_caption = authors[0].strip() + "."
                     new_caption = caption.strip() + ". " + credits_fmt.format(authors_caption)
+                    new_caption = new_caption.replace("\n", " ")
                         
             modified_figure = (
                 re.sub(rf"\\includegraphics(\[[^\]]*\])?{{{re.escape(figname)}}}", 
