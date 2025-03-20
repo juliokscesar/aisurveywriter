@@ -1,15 +1,15 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field
 import bibtexparser
 from langchain_core.prompts.chat import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from aisurveywriter.core.llm_handler import LLMHandler
-from aisurveywriter.store.reference_store import ReferenceStore
-from aisurveywriter.utils.logger import named_log, metadata_log, cooldown_log
-from aisurveywriter.utils.helpers import time_func
-from aisurveywriter.utils.helpers import get_bibtex_entry, random_str
+from ..core.llm_handler import LLMHandler
+from ..store.reference_store import ReferenceStore
+from ..utils.logger import named_log, metadata_log, cooldown_log
+from ..utils.helpers import time_func
+from ..utils.helpers import get_bibtex_entry, random_str
 
 class BibliographyInfo(BaseModel):
     title: str | None = Field(description="Title of the referenced work")
@@ -26,7 +26,7 @@ REFERENCE_EXTRACTOR_SYSTEM_PROMPT = """- You work in extracting the Title and Au
 {format_instructions}  
 
 - Ensure that every variable value (title and authors) is enclosed in double quotes.  
-- If you can't clearly identify a Title and/or Author, return: NULL
+- If you can't clearly identify a Title and/or Author, return: ""; (an empty string)
 - Examples of reference formats (X: number, LN: last name, F: first name abbreviation):  
     - **"(X) Author1LN, Author1F.; Author2LN, Author2F; ... AuthorNLN, AuthorNF. Some title finished by a dot."**  
       → Output as: `{{"bibliography": [{{"title": "Some title finished by a dot", "authors": "Author1LN, Author1F.; Author2LN, Author2F.; ... AuthorNLN, AuthorNF."}}]}}`  

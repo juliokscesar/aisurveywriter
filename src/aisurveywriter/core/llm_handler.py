@@ -9,7 +9,7 @@ from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplat
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 
-from aisurveywriter.utils import named_log
+from ..utils import named_log
 
 class LLMType(Enum):
     OpenAI = auto()

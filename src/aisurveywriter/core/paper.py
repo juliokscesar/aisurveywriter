@@ -4,7 +4,7 @@ import re
 import json
 import os
 
-from aisurveywriter.core.file_handler import read_yaml
+from .file_handler import read_yaml
 from ..utils.logger import named_log
 
 @dataclass

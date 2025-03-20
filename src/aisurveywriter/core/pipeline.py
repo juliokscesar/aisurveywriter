@@ -2,7 +2,7 @@ from typing import Optional, List, Tuple
 from enum import Enum, auto
 import queue
 
-from aisurveywriter.tasks import PipelineTask
+from ..tasks import PipelineTask
 
 class TaskStatus(Enum):
     WAITING     = auto()
