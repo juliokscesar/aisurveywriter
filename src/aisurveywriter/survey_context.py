@@ -4,18 +4,18 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 
-from aisurveywriter.core.paper import PaperData
-from aisurveywriter.core.agent_context import AgentContext
-from aisurveywriter.core.agent_rags import AgentRAG, RAGType
-from aisurveywriter.store.reference_store import ReferenceStore
-from aisurveywriter.core.llm_handler import LLMHandler
-from aisurveywriter.core.lp_handler import LayoutParserSettings
-from aisurveywriter.core.text_embedding import EmbeddingsHandler
-from aisurveywriter.store.prompt_store import PromptStore, PromptInfo
-from aisurveywriter.core.pipeline import PaperPipeline
+from .core.paper import PaperData
+from .core.agent_context import AgentContext
+from .core.agent_rags import AgentRAG, RAGType
+from .store.reference_store import ReferenceStore
+from .core.llm_handler import LLMHandler
+from .core.lp_handler import LayoutParserSettings
+from .core.text_embedding import EmbeddingsHandler
+from .store.prompt_store import PromptStore, PromptInfo
+from .core.pipeline import PaperPipeline
 import aisurveywriter.tasks as tks
-from aisurveywriter.utils.logger import named_log
-from aisurveywriter.utils.helpers import time_func
+from .utils.logger import named_log
+from .utils.helpers import time_func
 
 class SurveyAgentType(Enum):
     StructureGenerator = auto()
@@ -269,7 +269,7 @@ class SurveyContext:
         return (self.pipeline is not None)
         
     def generate(self) -> PaperData:
-        assert(self._is_initialized())
+        assert self._is_initialized()
         
         named_log(self, "==> BEGIN SURVEY GENERATION PIPELINE")
         named_log(self, "==> pipeline description:")

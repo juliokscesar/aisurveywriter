@@ -75,7 +75,7 @@ def init_lp_agents(config: str,
 
 class LayoutParserSettings(BaseModel):
     config_path: Optional[str] = ""
-    score_threshold: float = 0.8
+    score_threshold: float = 0.7
     tesseract_executable: str = "tesseract"
     
 
@@ -85,10 +85,13 @@ class LayoutParserAgents:
     model: lp.models.Detectron2LayoutModel
     ocr: lp.TesseractAgent
     
-    def __init__(self, config: str, score_threshold: float = 0.8, tesseract_executable: str = "tesseract"):
+    def __init__(self, settings: LayoutParserSettings):
+        self.settings = settings
+        self.model, self.ocr = init_lp_agents(settings.config_path, settings.score_threshold, settings.tesseract_executable)
+    
+    def __init__(self, config: str, score_threshold: float = 0.7, tesseract_executable: str = "tesseract"):
         self.settings = LayoutParserSettings(config_path=config, score_threshold=score_threshold, 
                                              tesseract_executable=tesseract_executable)
         
         self.model, self.ocr = init_lp_agents(config, score_threshold, tesseract_executable)
-        self.tesseract_executable = tesseract_executable
         

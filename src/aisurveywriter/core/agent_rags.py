@@ -252,6 +252,6 @@ class AgentRAG:
             scores.append(score)
         
         indices = np.argsort(scores)
-        valid = [valid[i] for i in indices[::-1]]       
+        valid = [valid[i] for i in indices]       
         return valid
     

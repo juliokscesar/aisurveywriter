@@ -147,7 +147,7 @@ class PDFProcessor:
         self.documents: List[Document] = []
 
         self._parser_threads = parse_threads
-        self._caption_pattern = re.compile(r"^(fig|figure|figura|scheme)", re.IGNORECASE)
+        self._caption_pattern = re.compile(r"^(fig|figure|figura|scheme)(?:.+?)(\d+)", re.IGNORECASE)
         self.parse_pdfs()
         
     def parse_pdfs(self, reload=False) -> List[Document]:
@@ -281,6 +281,7 @@ class PDFProcessor:
 
             # set caption to be the text closest to the figure
             caption = ""
+            fig_id = -1
             min_distance = float("inf")
             for text_block in text_blocks:
                 text_y1 = text_block.coordinates[1]
@@ -298,8 +299,11 @@ class PDFProcessor:
                         
                         # caption threshold - if it's too far, probably not a caption
                         # also check caption pattern (look for figure,fig, or some preffix that indicates that this is a caption)
-                        if min_distance > 100 or not self._caption_pattern.match(caption):
+                        caption_match = self._caption_pattern.match(caption)
+                        if min_distance > 100 or not caption_match:
                             caption = None
+                        else:
+                            fig_id = int(caption_match.group(2))
             
             # skip figure if no caption found
             if not caption:
@@ -316,7 +320,7 @@ class PDFProcessor:
             figure_path = os.path.join(self.images_output_dir, figure_filename)
             Image.fromarray(figure_img).save(figure_path)
             
-            doc_figure = DocFigure(id=len(page_figures), image_path=figure_path, caption=caption, source_path=source_pdf)
+            doc_figure = DocFigure(id=fig_id, image_path=figure_path, caption=caption, source_path=source_pdf)
             page_figures.append(doc_figure)
 
         # parse to DocPage object

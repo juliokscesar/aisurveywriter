@@ -25,7 +25,7 @@ class PaperReferencer(PipelineTask):
         assert(not self.agent_ctx.rags.is_disabled(RAGType.BibTex))
         
         used_keys = {}
-        probabilities = {1: 0.6, 2: 0.2, 3: 0.12, 4: 0.08}
+        probabilities = {1: 0.55, 2: 0.2, 3: 0.14, 4: 0.11}
         
         section_amount = len(self.agent_ctx._working_paper.sections)
 
