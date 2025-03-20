@@ -4,6 +4,7 @@ from enum import IntFlag, auto
 from functools import reduce
 import operator
 from pydantic import BaseModel
+import numpy as np
 import os
 import bibtexparser
 import re
@@ -243,10 +244,14 @@ class AgentRAG:
         assert(0.0 < confidence < 1.0)
         results = self.faiss_rags[rag].similarity_search_with_score(query, k)
         valid = []
+        scores = []
         for result, score in results:
             if score < confidence:
                 continue
             valid.append(self.rag_type_data[rag].from_document(result))
+            scores.append(score)
         
+        indices = np.argsort(scores)
+        valid = [valid[i] for i in indices[::-1]]       
         return valid
     
