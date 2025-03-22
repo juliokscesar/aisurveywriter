@@ -36,7 +36,7 @@ class PaperWriter(PipelineTask):
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
         
         section_amount = len(self.agent_ctx._working_paper.sections)
-        all_sections = [f"{i}. {s.title}" for i, s in enumerate(self.agent_ctx._working_paper.sections)]
+        all_sections = [f"{i+1}. {s.title}" for i, s in enumerate(self.agent_ctx._working_paper.sections)]
         written_sections = []
         
         total_words = 0
@@ -62,7 +62,7 @@ class PaperWriter(PipelineTask):
             if self.agent_ctx.llm_cooldown:
                 cooldown_log(self, self.agent_ctx.llm_cooldown)
 
-            written_sections.append(f"{i}. {section.title}")
+            written_sections.append(f"{i+1}. {section.title}")
 
         return self.agent_ctx._working_paper
 
@@ -72,7 +72,7 @@ class PaperWriter(PipelineTask):
             return "\n\n".join(self.agent_ctx.references.full_content())
         
         # retrieve relevant blocks for this section from content RAG
-        k = 28
+        k = 30
         query = f"Retrieve contextual, technical, and analytical information on the subject {self.agent_ctx._working_paper.subject} for a section titled \"{section.title}\", description:\n{section.description}"
         relevant: List[GeneralTextData] = self.agent_ctx.rags.retrieve(RAGType.GeneralText, query, k)
         return "\n\n".join([data.text for data in relevant])

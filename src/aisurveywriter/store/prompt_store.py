@@ -45,6 +45,7 @@ def default_prompt_store() -> PromptStore:
 - Do not include sections **Abstract** or **References**;
 - Include core  sections/subsections and any additional ones inspired by the provided sources and your analysis of the subject.
 - MUST HAVE CORE SECTIONS: Introduction (First one), Conclusion (Last one)
+    - Make sure to require an overview of the structure (at the end) in the "Introduction" section description
 - Do not include the number of the section along with its title (e.g. 1. introduction, 2. methods...)
 - Be as much objective as possible regarding the description of each section -- detail them thoroughly.
 - Minimum of 6 sections.
@@ -86,6 +87,8 @@ def default_prompt_store() -> PromptStore:
     - Write in English with a formal, scientific, and objective tone.
     - At least 500 words per section—the more detailed, the better.
     - Avoid numbered/unnumbererd lists and redundancy; write fluid, structured text.
+- Section-specific requirements:
+    - For an "Introduction" section, make sure to explain the structure of the survey at the end. (Ignore this if not in Introduction)
 
 **Task**:
 - You are an expert academic writer in {subject}, creating a comprehensive survey based on provided references.
@@ -106,36 +109,59 @@ Output only LaTeX content (starting from \section{{...}})
 
 - INPUT:  
   - Reference content (reference_content block).  
-  - A LaTeX section of the paper.  
+  - A LaTeX section of the paper (section_content block).  
 
 - TASK:  
-  - Identify figures in the references (those labeled as "Fig. ..." or "Figure ...").  
-  - Insert one or more of the identified figures into the provided LaTeX section, if relevant
+  - Identify figures in the references (those labeled as "Fig. ..." or "Figure ...").
+  - Provide places in the LaTeX section to include figures. That is:
+      - Specify an "add_after" key, which is a portion of the LaTeX section that the figure will be included right *after* (text must be identical and from within the original LaTeX section content).
+      - Specify a "caption" key, which is the caption for the figure to be included (must be identical to the original).
+      - Specify a "label" key, which will be used as the label for this figure.
+  - Provide one *or more* figures.
 
 - REQUIREMENTS:  
-  - Place the figures in contextually relevant locations.  
-  - Make sure the figure is from one of the references
-  - Use a **unique** and **non-generic** name for the figure file (avoid "figure1", "image", etc.).  
-  - Label each figure with a **unique random identifier** (not numbered sequentially).  
-  - Retain the **original caption**. Don't add "Adapted from..." or "Reprinted from..." at the end
-    - This caption will be used with RAG to retrieve the exact image. So the caption MUST MATCH THE ORIGINAL
+  - The position chosen must be contextually relevant to include a figure.
+  - The text within *add_after* must be a portion of text exactly the same as in the *LaTeX section content*.
+    - The *add_after* key value does not need to be long, but must be specific enough for a string search within the section.
+  - Ensure the caption is from a figure within one of the references.
+  - Use a **unique** and **non-generic** label for the figure. Always add the prefix "fig:" to the label (e.g., "fig:example123").
+    - The more random/specific the label, the better, as there might be similar figures. Try to add a random number at the end of the label
+  - Retain the **original caption**. Do not add "Adapted from...", "Reprinted from...", etc.
+    - This caption will be used with RAG to retrieve the exact image. Ensure it is the original caption for the selected image.
+    - You don't need to include existing newlines characters
+  - **Escape all special characters** to ensure the output is valid JSON.
+    - Use proper JSON escaping for characters like double-quotes (`"`), (single-quotes dont need escaping), backslashes (`\`), and newlines (`\n`). Don't escape unnecessary characters.
+    - Ensure LaTeX is properly formatted within the JSON output.
+  - The Human will also provide the *maximum amount of figures*: **follow it strictly**.
 
-  - **Do not modify or remove existing figures**, including TikZ figures.  
-  - *It is essential that*: **Do not alter or remove any of the section text** you must only add the figures, but output the *entire* section content too.
-    - That is: If you receive N tokens for input, you must output the same N tokens + M tokens of the included figures.
+- OUTPUT FORMAT (strict JSON, no extra messages):  
+   - Return a JSON object with a "figures" key containing a list of objects.
+   - Each object must have three keys: "add_after", "caption", and "label".
+   - "caption" and "label" values must be in valid LaTeX format.
 
-- OUTPUT FORMAT (strict LaTeX, no extra messages):  
-    - Example of figure block *within* the section.:
-```latex
-(original section content before...)
-
-\begin{{figure}}[h!]  
-\includegraphics{{unique_name}}  
-\caption{{original caption}}  
-\label{{fig:unique_random_label}}
-\end{{figure}}
-
-(original section content after...)"""
+   - Example output:
+    - Consider a LaTeX section talking about CNNs and applications. Following that, you also receive references for CNN works and YOLO.
+        Example of LaTeX section:
+        \"\"\"
+        ... CNNs have been gaining the spotlight recently. CNN based classifiers are usually composed of many in-series convolutional layers and a final classifier head (fully-connected layers).
+        As an example of largely implemented method, YOLOv5 (Redmon, et al.) is one of the main approaches used in real-world scenarios. YOLO has been used a lot lately due to its high efficiency without necessarily sacrificing accuracy
+        \"\"\"
+    - Example of figures to be added in this latex section:
+```json
+{{
+    "figures": [
+        {{
+            "add_after": "CNN based classifiers are usually composed of many in-series convolutional layers and a final classifier head (fully-connected layers).",
+            "caption": "Example of a CNN-based classifier architecture. On the left, we see the \\textit{{backbone}} composed of 50 convolutional layers in series, followed by the classifier head on the right.",
+            "label": "fig:example_cnn_architecture"
+        }},
+        {{
+            "add_after": "YOLO has been used a lot lately due to its high efficiency without necessarily sacrificing accuracy.",
+            "caption": "YOLOv5 Architecture",
+            "label": "fig:yolov5_architecture"
+        }}
+    ]
+}}```"""
 
     REVIEW_SECTION_PROMPT = r"""- You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey paper on this subject.
 
@@ -187,6 +213,7 @@ Output only LaTeX content (starting from \section{{...}})
     - Table captions must appear ABOVE the table
 
 - Pay attention to the paper structure and focus only for specific content of this section (avoid repetition);
+    - For an "Introduction" section, make sure to explain the structure of the survey at the end. (Ignore this if not in Introduction or if it already has been explained)
 
 ### **Formatting Rules**  
 - **English only**.  

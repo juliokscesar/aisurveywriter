@@ -4,11 +4,11 @@ import random
 import bibtexparser
 
 from .pipeline_task import PipelineTask
-from aisurveywriter.core.agent_context import AgentContext
-from aisurveywriter.core.agent_rags import RAGType, BibTexData
-from aisurveywriter.core.paper import PaperData
-from aisurveywriter.utils.logger import named_log, cooldown_log
-from aisurveywriter.utils.helpers import assert_type
+from ..core.agent_context import AgentContext
+from ..core.agent_rags import RAGType, BibTexData, FAISS
+from ..core.paper import PaperData
+from ..utils.logger import named_log, cooldown_log
+from ..utils.helpers import assert_type
 
 class PaperReferencer(PipelineTask):
     def __init__(self, agent_ctx: AgentContext, reviewed_paper: PaperData, save_bib_path: str, max_per_section: int = 90, max_per_sentence: int = 4, confidence: float = 0.9, max_same_ref: int = 10):
@@ -29,79 +29,127 @@ class PaperReferencer(PipelineTask):
         
         section_amount = len(self.agent_ctx._working_paper.sections)
 
-        sentence_re_pattern = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)((?<=\.|\?)\s)")
-        skip_section_pattern = re.compile(r"(Abstract|Resumo)", re.IGNORECASE)
+
+        env_pattern = re.compile(r"\\begin{(figure|table|lstlisting|algorithm)}.*?\\end{\1}", re.DOTALL)
+        env_placeholder = "@@LATEX_ENV_{}@@"
+        section_env_blocks = []
+        def store_env_block(match):
+            nonlocal section_env_blocks
+            section_env_blocks.append(match.group(0))
+            return env_placeholder.format(len(section_env_blocks)-1)
+
+        paragraph_pattern = re.compile(r"\n{2,}")
+        sentence_pattern = re.compile(r"\. ")
+        skip_section_pattern = re.compile(r"(Abstract|Resumo|References|Referências|Bibliography|Bibliografia)", re.IGNORECASE)
         
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
+            # skip some sections (like abstract)
             if skip_section_pattern.match(section.title):
-                continue
-            
-            ref_count = 0
-            lines = section.content.split("\n")
-            cited_lines = []
-            for line in lines:
-                stripped = line.strip()
-                if not stripped or "\\" in stripped or "{" in stripped or "}" in stripped or stripped[0].isdigit() or stripped[0] == '-' or stripped[0] == '*' or stripped.startswith('%'):
-                    cited_lines.append(line)
-                    continue
-            
-                sentences = sentence_re_pattern.split(line)
-                cited_sentences = []
+                continue            
 
-                for j, sentence in enumerate(sentences):
-                    if ref_count >= self.max_per_section:
-                        cited_sentences.extend(sentences[j:])
-                        break
-                        
-                    if not sentence.strip() or '\\' in sentence or '{' in sentence or '}' in sentence or sentence[0].isdigit() or sentence[0] == '-' or sentence[0] == '*':
-                        cited_sentences.append(sentence)
-                        continue
-                    if len(sentence.strip().split()) < 5:
-                        cited_sentences.append(sentence)
+            # remove any environment blocks to avoid misreferencing
+            preprocessed = env_pattern.sub(store_env_block, section.content)
+
+            # split section into paragraphs
+            paragraphs = paragraph_pattern.split(preprocessed)
+
+            ref_count = 0
+            # use less references in last section (Conclusion)
+            max_refs_section = self.max_per_section if i != section_amount-1 else self.max_per_section//5          
+            for paragraph_idx, paragraph in enumerate(paragraphs):
+                if not paragraph.strip():
+                    continue
+                
+                # get most relevant references for this paragraph and make it a "sub-database"
+                paragraph_refs = self.agent_ctx.rags.retrieve(RAGType.BibTex, paragraph.strip(), k=30)
+                paragraph_refs_subdatabase = FAISS.from_documents([r.to_document() for r in paragraph_refs], self.agent_ctx.embed_handler.model)
+
+                lines = paragraph.split("\n")
+                cited_lines = []
+
+                for line in lines:
+                    stripped = line.strip()
+                    if not stripped:
                         continue
                     
-                    results: List[BibTexData] = self.agent_ctx.rags.retrieve(RAGType.BibTex, sentence, k=self.max_per_section)
-                    if not results:
-                        cited_sentences.append(sentence)
+                    # skip latex environments
+                    if "@@LATEX_ENV" in stripped:
+                        cited_lines.append(line)
                         continue
                     
-                    valid = set()    
-                    num_references = random.choices(
-                        population=list(probabilities.keys()),
-                        weights=list(probabilities.values()),
-                        k=1
-                    )[0]
-                    num_references = min(num_references, self.max_per_sentence)
-                    
-                    for result in results:
-                        if len(valid) >= num_references:
+                    # skip empty lines or lines that may not be adequate to add references
+                    if stripped.startswith("\\") or stripped[0].isdigit() or stripped[0] == '-' or stripped[0] == '*' or stripped.startswith('%') or stripped.endswith(':'):
+                        cited_lines.append(line)
+                        continue
+                
+                    sentences = sentence_pattern.split(line)
+                    cited_sentences = []
+
+                    for j, sentence in enumerate(sentences):
+                        if ref_count >= max_refs_section:
+                            cited_sentences.extend(sentences[j:])
                             break
-                        
-                        key = result.bibtex_key
-                        if key not in used_keys:
-                            used_keys[key] = 0
-                        elif used_keys[key] >= self.max_same_ref:
+                            
+                        # skip small sentences
+                        if len(sentence.strip().split()) < 5:
+                            cited_sentences.append(sentence)
                             continue
                         
-                        valid.add(key)
-                        ref_count += 1
-                        used_keys[key] += 1
-                    
-                    if valid:
-                        cite_command = f"\\cite{{{', '.join(valid)}}}"
-                        if sentence.endswith(('.', ',', ';', '!', '?')):
-                            sentence = sentence[:-1] + ' ' + cite_command + sentence[-1]
-                        else:
-                            sentence += f" {cite_command}"
-                    
-                    cited_sentences.append(sentence)
-                    
-                    if self.agent_ctx.embed_cooldown:
-                        cooldown_log(self, self.agent_ctx.embed_cooldown)
+                        valid = set()    
+                        num_references = random.choices(
+                            population=list(probabilities.keys()),
+                            weights=list(probabilities.values()),
+                            k=1
+                        )[0]
+                        num_references = min(num_references, self.max_per_sentence)
+            
+                        # retrieve references from sub-database
+                        results = paragraph_refs_subdatabase.similarity_search(sentence, k=num_references+5)
+                        if not results:
+                            cited_sentences.append(sentence)
+                            continue
 
-                cited_lines.append(" ".join(cited_sentences))
+                        results = [BibTexData.from_document(result) for result in results]
+                        for result in results:
+                            if len(valid) >= num_references:
+                                break
+                            
+                            key = result.bibtex_key
+                            if key not in used_keys:
+                                used_keys[key] = 0
+                            elif used_keys[key] >= self.max_same_ref:
+                                continue
+                            
+                            valid.add(key)
+                            ref_count += 1
+                            used_keys[key] += 1
+                        
+                        if valid:
+                            cite_command = f"\\cite{{{', '.join(valid)}}}"
+                            if sentence.endswith(('.', ',', ';', '!', '?')):
+                                sentence = sentence[:-1] + ' ' + cite_command + sentence[-1]
+                            else:
+                                sentence += f" {cite_command}"                        
+                        
+                        cited_sentences.append(sentence)
+                        
+                        if self.agent_ctx.embed_cooldown:
+                            cooldown_log(self, self.agent_ctx.embed_cooldown)
+                    
+                    # join sentences back together
+                    cited_lines.append(". ".join(cited_sentences))
 
-            section.content = "\n".join(cited_lines)
+                # join lines back together into paragraph
+                paragraphs[paragraph_idx] = "\n".join(cited_lines)
+
+            # join paragraphs back together
+            referenced_paragraphs = "\n\n".join(paragraphs)
+
+            # restore environment blocks
+            for i, block in enumerate(section_env_blocks):
+                referenced_paragraphs = referenced_paragraphs.replace(env_placeholder.format(i), block)
+
+            section.content = referenced_paragraphs
             named_log(self, f"==> added {ref_count} references to section ({i+1}/{section_amount}): \"{section.title}\"")
 
         self._dump_used_bib(used_keys)

@@ -254,8 +254,8 @@ class PDFProcessor:
         text_blocks = lp.Layout([b for b in layout if b.type in ["Text", "Title", "List"]])
         figure_blocks = lp.Layout([b for b in layout if b.type == "Figure"])
         
-        # remove text detected within figures
-        text_blocks = lp.Layout([b for b in text_blocks if not any(b.is_in(b_fig) for b_fig in figure_blocks)])
+        # remove text detected within figures by comparing iou
+        text_blocks = lp.Layout([b for b in text_blocks if not any(blocks_iou(b, b_fig)>0.8 for b_fig in figure_blocks)])
         
         layout = text_blocks + figure_blocks
         

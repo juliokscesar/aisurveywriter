@@ -108,6 +108,12 @@ class ReferenceStore(BaseModel):
                 return doc
         return None
 
+    def doc_index(self, path: str) -> int | None:
+        for i, doc in enumerate(self.documents):
+            if path in doc.path:
+                return i
+        return None
+
     def add_references(self, paths: List[str]):
         # get pdf and non pdf separately
         pdf_paths = []

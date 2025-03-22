@@ -109,7 +109,11 @@ class ImageData(BaseRAGData):
         if not doc:
             return DocFigure(id=self.id, image_path=self.basename, caption=self.caption, source_path=self.source_pdf)
         else:
-            return doc.figures[self.id]
+            doc_figure = [fig for fig in doc.figures if os.path.basename(fig.image_path) == self.basename]
+            if not doc_figure:
+                named_log(self, "unable to find document figure:", self.basename)
+                return DocFigure(id=self.id, image_path=self.basename, caption=self.caption, source_path=self.source_pdf)
+            return doc_figure[0]
         
 
 class AgentRAG:
@@ -236,6 +240,8 @@ class AgentRAG:
 
     def retrieve(self, rag: RAGType, query: str, k: int = 10, confidence: Optional[float] = None):
         assert(not self.is_disabled(rag))
+        if not query or not k:
+            return None
         
         if not confidence:
             results = self.faiss_rags[rag].similarity_search(query, k)

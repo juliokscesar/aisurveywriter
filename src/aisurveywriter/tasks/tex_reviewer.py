@@ -18,6 +18,7 @@ class TexReviewer(PipelineTask):
             "figure": re.compile(r"\\begin{figure}.*?\\includegraphics(?:\[.*?\])?{(.*?)}.*?\\end{figure}", re.DOTALL),
             "cite": re.compile(r"\\cite{([^}]+)}"),
             "empty_cite": re.compile(r"\\cite{\s*}"),
+            "invalid_cite_command": re.compile(r"\\cite\w+{(?:.*?)}"),
             "false_reference": re.compile(r"\[(?:(?:\d+),*\s*)*\]"),
             "percent": re.compile(r"(\d+)%"),
             "preamble": [
@@ -27,9 +28,11 @@ class TexReviewer(PipelineTask):
                 re.compile(r"\\geometry{(?:.*?)}"),
             ],
             "mk_code_block": re.compile(r"[`]+[\w]*"),
-            "mk_bold": re.compile(r"\*{2}(.*?)\*{2}"),
-            "mk_italic": re.compile(r"\*{1}(.*?)\*{1}"),
-            "mk_num_list": re.compile(r"^(\d+)[\.-]"),
+            "mk_bold": re.compile(r"\s+\*{2}(.*?)\*{2}(?:\s+|\.+)"),
+            "mk_italic": re.compile(r"\s+\*{1}(.*?)\*{1}(?:\s+|\.+)"),
+            "mk_num_list": re.compile(r"^(\d+)\s*[\.-]"),
+            "begin_not_alter_block": re.compile(r"\\begin{(?:figure)}"),
+            "end_not_alter_block": re.compile(r"\\end{(?:figure)}")
         }
 
     def pipeline_entry(self, input_data: PaperData) -> PaperData:
@@ -110,6 +113,9 @@ class TexReviewer(PipelineTask):
         
         # remove [xxx] references sometimes added by the LLM
         section_content = self._re_patterns["false_reference"].sub("", section_content)
+
+        # remove invalid cite commands (for some reasom some appear with \citep, \citea or whatever)
+        section_content = self._re_patterns["invalid_cite_command"].sub("", section_content)
         
         return section_content
 
@@ -121,11 +127,21 @@ class TexReviewer(PipelineTask):
 
         in_itemize = False
         in_enumerate = False
+        in_not_alter_block = False
         section_lines = section_content.split("\n")    
         converted_lines = []
         for line in section_lines:
             stripped = line.strip()
             if not stripped:
+                converted_lines.append(line)
+                continue
+            
+            if self._re_patterns["begin_not_alter_block"].match(stripped):
+                in_not_alter_block = True
+            elif self._re_patterns["end_not_alter_block"].match(stripped):
+                in_not_alter_block = False
+                
+            if in_not_alter_block:
                 converted_lines.append(line)
                 continue
             
