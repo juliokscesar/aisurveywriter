@@ -115,9 +115,19 @@ class ReferencesBibExtractor:
     def _filter_duplicates_bibtexdb(self, bibtex_db: bibtexparser.bibdatabase.BibDatabase):
         seen_dois = set()
         seen_keys = set()
+        seen_titles = set()
         unique_entries = []
         for entry in bibtex_db.entries:
+            title = entry.get("title", entry.get("booktitle", None))
+            if title:
+                title = title.strip().lower()
+            if title and title in seen_titles:
+                continue
+            seen_titles.add(title)
+            
             doi = entry.get("doi", None)
+            if doi:
+                doi = doi.replace(" ", "").strip().lower()
             if doi and doi in seen_dois:
                 continue
             

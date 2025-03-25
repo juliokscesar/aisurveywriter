@@ -128,7 +128,7 @@ class PaperFigureAdd(PipelineTask):
         return figures
 
     def _include_figures(self, section_content: str, response_figures: FigureAddResponse, used_figures: List[DocFigure], retrieve_k: int = 5) -> str:
-        assert not self.agent_ctx.rags.is_disabled(RAGType.ImageData)
+        assert self.agent_ctx.rags.is_enabled(RAGType.ImageData)
         
         figure_block_fmt = r"""
         \begin{{figure}}[h!]
@@ -182,9 +182,16 @@ class PaperFigureAdd(PipelineTask):
                     if len(authors) > 1:
                         authors_caption = f"{authors[0].strip()}, et al."
                     else:
-                        authors_caption = authors[0].strip() + "."
+                        authors_caption = authors[0].strip()
                     caption = caption.strip() + " " + credits_fmt.format(authors_caption)
                     caption = caption.replace("\n", " ").strip()
+                    if doc_source.bibtex_entry:
+                        caption += f" \\cite{{{doc_source.bibtex_entry["ID"]}}}."
+                    else:
+                        caption += "."
+            
+            # add an index to label to make sure it is unique
+            add_figure.label += str(len(used_figures))
             
             # format latex figure block
             figure_block = figure_block_fmt.format(os.path.basename(fig_result.image_path),

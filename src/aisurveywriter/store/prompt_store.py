@@ -77,12 +77,14 @@ def default_prompt_store() -> PromptStore:
 - Format: Use only numbered sectioning (\section, \subsection, etc.). Exclude the LaTeX preamble.
 - Citations: Do not include citations or bibliography commands (\cite, \printbibliography,...).
     - **DO not add reference numbers (e.g. [123], [12], [xx], [x]....)
-- Figures/Tables: If a section is under 500 words, include at least one visual element:
+- Figures/Tables: consider adding *visual elements* (IF RELEVANT. TAKE INSPIRATION FROM THE REFERENCES)
     - Use tables where relevant.
         - Make sure the tables will fit into one A4 12pt page. DO NOT write long texts in tables
         - Table captions must appear ABOVE the table
     - For visual explanations, use TikZ (without \includegraphics).
         - Figure captions must appear BELOW the figure
+        - Labels must be UNIQUE. Add a random number at the end of the *label* (NOT IN THE CAPTION) **(only inside \label{{...}})** to ensure it is unique
+    - DO NOT mention visual elements from the references themselves (e.g. "Figure 1 from Foo Bar, et al. ..."), ONLY IF they are present in this survey. In that case, use the proper label reference within the text
 - Writing Style:
     - Write in English with a formal, scientific, and objective tone.
     - At least 500 words per section—the more detailed, the better.
@@ -133,6 +135,7 @@ Output only LaTeX content (starting from \section{{...}})
     - Use proper JSON escaping for characters like double-quotes (`"`), (single-quotes dont need escaping), backslashes (`\`), and newlines (`\n`). Don't escape unnecessary characters.
     - Ensure LaTeX is properly formatted within the JSON output.
   - The Human will also provide the *maximum amount of figures*: **follow it strictly**.
+  - **DO NOT USE REPETITIVE FIGURES**: if there is a similar figure already existing (in TikZ picture or ordinary figure), DO NOT add a similar one
 
 - OUTPUT FORMAT (strict JSON, no extra messages):  
    - Return a JSON object with a "figures" key containing a list of objects.
@@ -203,14 +206,16 @@ Output only LaTeX content (starting from \section{{...}})
 - **Maintain style:** Keep a **scientific, objective, and formal tone**.  
 - **Preserve structure:** Do **not** add or remove sections (\section) or subsections (\subsection).  
 - **Expand, don’t summarize:** Maintain or increase length with meaningful content.  
-- **Discuss figures:** Refer to existing figures via their **\label** and \caption details (use \ref{{fig:label_of_the_figure}}). Do **not** replace standard figures with TikZ.  
+- **Discuss figures:** Refer to existing figures from the section via their **\label** and \caption details (use \ref{{fig:label_of_the_figure}}). Do **not** replace standard figures with TikZ.  
     - DISCUSS ONLY FIGURES THAT ARE PRESENT IN THE LATEX CONTENT
 - **Visual elements:**  
   - Use **TikZ** for explanatory illustrations (except for existing figures).
     - Figure captions must appear BELOW the figure
+    - Labels must be UNIQUE. Add a random number at the end of the *label* (NOT IN THE CAPTION) **(inside \label{{...}})** to ensure it is unique
   - Use **tabular** elements where categorization aids clarity.  
     - Make sure the tables will fit into one A4 12pt page. DO NOT write long texts in tables
     - Table captions must appear ABOVE the table
+  - DO NOT mention visual elements from the references themselves (e.g. "Figure 1 from Foo Bar, et al. ..."), ONLY IF they are present in this survey. In that case, use the proper label reference within the text
 
 - Pay attention to the paper structure and focus only for specific content of this section (avoid repetition);
     - For an "Introduction" section, make sure to explain the structure of the survey at the end. (Ignore this if not in Introduction or if it already has been explained)

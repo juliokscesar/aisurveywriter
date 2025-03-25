@@ -18,4 +18,4 @@ def metadata_log(obj, time_elapsed: int, airesponse: AIMessage):
     named_log(obj, f"time elapsed: {time_elapsed} s | usage metadata: {airesponse.usage_metadata}")
 
 def cooldown_log(obj, cooldown: int):
-    countdown_log(f"({obj.__class__.__name__}) ==> cooldown (request limiations):", cooldown)
+    countdown_log(f"({obj.__class__.__name__}) cooldown (request limitations):", cooldown)

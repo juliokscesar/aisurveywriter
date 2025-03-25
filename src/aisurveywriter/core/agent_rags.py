@@ -160,6 +160,9 @@ class AgentRAG:
             create_rag_func = self.create_rags_funcmap[rag_type]
             self.faiss_rags[rag_type] = create_rag_func(references)
     
+    def is_enabled(self, rag_type: RAGType) -> bool:
+        return not self.is_disabled(rag_type)
+    
     def is_disabled(self, rag_type: RAGType):
         return (self.faiss_rags[rag_type] is None)
 
@@ -239,7 +242,7 @@ class AgentRAG:
         return AgentRAG.create_faiss(self._embed, figures_rag_data, save_path)
 
     def retrieve(self, rag: RAGType, query: str, k: int = 10, confidence: Optional[float] = None):
-        assert(not self.is_disabled(rag))
+        assert self.is_enabled(rag)
         if not query or not k:
             return None
         

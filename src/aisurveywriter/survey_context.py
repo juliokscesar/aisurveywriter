@@ -178,8 +178,8 @@ class SurveyContext:
             using_rags &= ~RAGType.ImageData
         if skip_references:
             using_rags &= ~RAGType.BibTex
-        
         self.rags.create_rags(using_rags, self.references)
+
         self.common_agent_ctx = AgentContext(
             prompts=self.prompts,
             sys_instructions=None,
@@ -238,6 +238,8 @@ class SurveyContext:
         if not skip_references:
             # paper referencer doesn't need a prompt
             reference_agent_ctx = self.common_agent_ctx.copy()
+            reference_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator]
+            reference_agent_ctx.llm_cooldown = 6
             self.pipe_steps.extend([
                 ("Reference paper", tks.PaperReferencer(reference_agent_ctx, self.paper, self.save_path.replace(".tex", ".bib"), max_per_section=ref_max_per_section, max_per_sentence=ref_max_per_sentence, max_same_ref=ref_max_same_ref)),
                 ("Save referenced", tks.PaperSaver(self.save_path.replace(".tex", "-ref.tex"), self.tex_template_path))
