@@ -12,34 +12,10 @@ from ..core.paper import PaperData
 from ..utils.logger import named_log, cooldown_log, metadata_log
 from ..utils.helpers import assert_type, time_func
 
-PARAGRAPH_REFERENCE_PROMPT = r"""**CONTEXT**:
-- You are an expert in academic writing, specially in the field of {subject}
-- You are currently writing a comprehensive survey on that subject.
-- Your job is to *add relevant citations* to a paragraph of a section from that survey
-
-**INPUT**:
-- Available references to use (references block), containing:
-    - The title of their work (if available), authors (if available), abstract (if available), and the bibtex key.
-- One paragraph and the title of the section it belongs to (paragraph_info block)
-
-**TASK**:
-- Add relevant references to this paragraph in *adequate* positions
-    - Positions to add references will be adequate if the content at that position talks about a topic which can and should be backed up by other works (e.g. methods of a particular topic, experiments, results, etc.)
-    - DO NOT judge as relevant places where the text isn't necessarily talking about a topic supported/explored by other works (e.g. text describing the strucutre of the paper, etc.)
-- Add these references using \cite{{bibtexkeyname}}, where "bibtexkeyname" is the bibtex key from the chosen reference
-- You do not need to use all references provided, but you must use the most *appropriate and relevant*
-- You can use *up to 4* keys in one citation (with \cite{{key1,key2,key3,key4}}). 
-- **YOU MUST NOT ALTER THE PARAGRAPH CONTENT, ONLY ADD REFERENCES TO IT**
-    - Keep all existing content
-- If the paragraph's content doesn't need citations, then just return it as-it-is.
-- **TO JUDGE APPROPRIATE REFERENCES TO CITE**: first use "abstract" to judge adequate; if not available, the keywords; if not available, the title.
-
-**OUTPUT**:
-- You must return the paragraph with citations keys added in the appropriate position
-- **USE LATEX**
-- Return **only the paragraph with citations**, nothing else"""
 
 class PaperReferencer(PipelineTask):
+    required_input_variables: List[str] = ["subject"]
+    
     def __init__(self, agent_ctx: AgentContext, reviewed_paper: PaperData, save_bib_path: str, max_per_section: int = 90, max_per_sentence: int = 4, confidence: float = 0.9, max_same_ref: int = 10):
         super().__init__(no_divide=True, agent_ctx=agent_ctx)
         self.agent_ctx._working_paper = reviewed_paper
@@ -50,7 +26,7 @@ class PaperReferencer(PipelineTask):
         self.max_same_ref = max_same_ref
         self.confidence = confidence
         
-        self._system_prompt = SystemMessagePromptTemplate.from_template(PARAGRAPH_REFERENCE_PROMPT)
+        self._system_prompt = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.add_references.text)
         self._human_prompt = HumanMessagePromptTemplate.from_template("[begin: references]\n\n"+
                                                                       "{references}\n\n"+
                                                                       "[end: references]\n\n"+
@@ -141,88 +117,6 @@ class PaperReferencer(PipelineTask):
                 # update paragraph in section
                 paragraphs[paragraph_idx] = response.content
                 
-                # paragraph_refs_subdatabase = FAISS.from_documents([r.to_document() for r in paragraph_refs], self.agent_ctx.embed_handler.model)
-
-                # lines = paragraph.split("\n")
-                # cited_lines = []
-
-                # for line in lines:
-                #     stripped = line.strip()
-                #     if not stripped:
-                #         continue
-                    
-                #     # skip latex environments
-                #     if "@@LATEX_ENV" in stripped:
-                #         cited_lines.append(line)
-                #         continue
-                    
-                #     # skip empty lines or lines that may not be adequate to add references
-                #     if stripped.startswith("\\") or stripped[0].isdigit() or stripped[0] == '-' or stripped[0] == '*' or stripped.startswith('%') or stripped.endswith(':'):
-                #         cited_lines.append(line)
-                #         continue
-                
-                #     sentences = sentence_pattern.split(line)
-                #     cited_sentences = []
-
-                #     for j, sentence in enumerate(sentences):
-                #         if ref_count >= max_refs_section:
-                #             cited_sentences.extend(sentences[j:])
-                #             break
-                            
-                #         # skip small sentences
-                #         if len(sentence.strip().split()) < 5:
-                #             cited_sentences.append(sentence)
-                #             continue
-                        
-                #         valid = set()    
-                #         num_references = random.choices(
-                #             population=list(probabilities.keys()),
-                #             weights=list(probabilities.values()),
-                #             k=1
-                #         )[0]
-                #         num_references = min(num_references, self.max_per_sentence)
-            
-                #         # retrieve references from sub-database
-                #         results = paragraph_refs_subdatabase.similarity_search(sentence, k=num_references+5)
-                #         if not results:
-                #             cited_sentences.append(sentence)
-                #             continue
-
-                #         results = [BibTexData.from_document(result) for result in results]
-                #         for result in results:
-                #             if len(valid) >= num_references:
-                #                 break
-                            
-                #             key = result.bibtex_key
-                #             if key not in used_keys:
-                #                 used_keys[key] = 0
-                #             elif used_keys[key] >= self.max_same_ref:
-                #                 continue
-                            
-                #             valid.add(key)
-                #             ref_count += 1
-                #             used_keys[key] += 1
-                        
-                #         if valid:
-                #             cite_command = f"\\cite{{{', '.join(valid)}}}"
-                #             if sentence.endswith(('.', ',', ';', '!', '?')):
-                #                 sentence = sentence[:-1] + ' ' + cite_command + sentence[-1]
-                #             else:
-                #                 sentence += f" {cite_command}"                        
-                        
-                #         cited_sentences.append(sentence)
-                        
-                #         if self.agent_ctx.embed_cooldown:
-                #             cooldown_log(self, self.agent_ctx.embed_cooldown)
-                    
-                #     # join sentences back together
-                #     cited_lines.append(". ".join(cited_sentences))
-
-                # # join lines back together into paragraph
-                # paragraphs[paragraph_idx] = "\n".join(cited_lines)
-
-                
-
             # join paragraphs back together
             referenced_paragraphs = "\n\n".join(paragraphs)
 
@@ -242,6 +136,9 @@ class PaperReferencer(PipelineTask):
             bib_db = bibtexparser.load(f)
         
         used_entries = [entry for entry in bib_db.entries if entry["ID"] in used_keys]
+        # also add all document bibtex entries for the used keys
+        used_entries.extend([doc.bibtex_entry for doc in self.agent_ctx.references.documents if doc.bibtex_entry])
+        
         used_db = bibtexparser.bibdatabase.BibDatabase()
         used_db.entries = used_entries
         

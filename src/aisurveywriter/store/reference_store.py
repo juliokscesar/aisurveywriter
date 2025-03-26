@@ -108,6 +108,12 @@ class ReferenceStore(BaseModel):
                 return doc
         return None
 
+    def doc_from_bibtex_key(self, bibtex_key: str) -> Document | None:
+        for doc in self.documents:
+            if doc.bibtex_entry and bibtex_key in doc.bibtex_entry["ID"]:
+                return doc
+        return None
+
     def doc_index(self, path: str) -> int | None:
         for i, doc in enumerate(self.documents):
             if path in doc.path:

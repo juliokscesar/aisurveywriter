@@ -28,8 +28,8 @@ class TexReviewer(PipelineTask):
                 re.compile(r"\\geometry{(?:.*?)}"),
             ],
             "mk_code_block": re.compile(r"[`]+[\w]*"),
-            "mk_bold": re.compile(r"\s+\*{2}(.*?)\*{2}"),
-            "mk_italic": re.compile(r"\s+\*{1}(.*?)\*{1}"),
+            "mk_bold": re.compile(r"\*{2}(.*?)\*{2}"),
+            "mk_italic": re.compile(r"\*{1}(.*?)\*{1}"),
             "mk_num_list": re.compile(r"^(\d+)\s*[\.-]"),
             "begin_not_alter_block": re.compile(r"\\begin{(?:figure)}"),
             "end_not_alter_block": re.compile(r"\\end{(?:figure)}")

@@ -236,7 +236,8 @@ class SurveyContext:
             ])
             
         if not skip_references:
-            # paper referencer doesn't need a prompt
+            self._check_input_variables(self.prompts.add_references, SurveyAgentType.StructureGenerator, tks.PaperReferencer.required_input_variables)
+            
             reference_agent_ctx = self.common_agent_ctx.copy()
             reference_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator]
             reference_agent_ctx.llm_cooldown = 6

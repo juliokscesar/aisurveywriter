@@ -25,6 +25,7 @@ class PromptStore(BaseModel):
 
     # figures and references steps
     add_figures: PromptInfo
+    add_references: PromptInfo
 
     # review step (separated in "get review points" and "apply review points")
     review_section: PromptInfo
@@ -166,6 +167,33 @@ Output only LaTeX content (starting from \section{{...}})
     ]
 }}```"""
 
+    ADD_REFERENCES_PROMPT = r"""**CONTEXT**:
+- You are an expert in academic writing, specially in the field of {subject}
+- You are currently writing a comprehensive survey on that subject.
+- Your job is to *add relevant citations* to a paragraph of a section from that survey
+
+**INPUT**:
+- Available references to use (references block), containing:
+    - The title of their work (if available), authors (if available), abstract (if available), and the bibtex key.
+- One paragraph and the title of the section it belongs to (paragraph_info block)
+
+**TASK**:
+- Add relevant references to this paragraph in *adequate* positions
+    - Positions to add references will be adequate if the content at that position talks about a topic which can and should be backed up by other works (e.g. methods of a particular topic, experiments, results, etc.)
+    - DO NOT judge as relevant places where the text isn't necessarily talking about a topic supported/explored by other works (e.g. text describing the strucutre of the paper, etc.)
+- Add these references using \cite{{bibtexkeyname}}, where "bibtexkeyname" is the bibtex key from the chosen reference
+- You do not need to use all references provided, but you must use the most *appropriate and relevant*
+- You can use *up to 4* keys in one citation (with \cite{{key1,key2,key3,key4}}). 
+- **YOU MUST NOT ALTER THE PARAGRAPH CONTENT, ONLY ADD REFERENCES TO IT**
+    - Keep all existing content
+- If the paragraph's content doesn't need citations, then just return it as-it-is.
+- **TO JUDGE APPROPRIATE REFERENCES TO CITE**: first use "abstract" to judge adequate; if not available, the keywords; if not available, the title.
+
+**OUTPUT**:
+- You must return the paragraph with citations keys added in the appropriate position
+- **USE LATEX**
+- Return **only the paragraph with citations**, nothing else"""
+
     REVIEW_SECTION_PROMPT = r"""- You are an expert in academic writing, speciallly in the field of "{subject}". Right now, you are working on analysing a Survey paper on this subject.
 
 - The survey is thoroughly based on the provided references.
@@ -186,7 +214,11 @@ Output only LaTeX content (starting from \section{{...}})
 
 - Visual elements: it is essential that you require a discussion of figures present in the text
     - If some figure is present and it's not discussed, require a discussion about it (refer to it using its \label)
-    - DO NOT ask figures to be replaced or removed. Only to be discussed, or, if applicable, to add a new TikZ figure
+    - DO NOT ask figures to be replaced or removed. Only to be discussed, or, if applicable, to add a new TikZ figure. Except:
+        - IF there are duplicate figures (or two figures extremely similar), one must be removed:
+            - If one is a TikZ picture and the other an actual image, ask it to remove the TikZ picture (and all references to the TiKZ picture must be replaced by the corresponding image)
+            - If both are TikZ pictures, ask it to remove the latter
+            - If both are actual images, ask it to remove the latter
 
 - You must then provide points for improvement on the given section, focusing on the aspects above.
 - Use markdown bullet formatting for separating each point clearly and objectively
@@ -251,6 +283,7 @@ Output only LaTeX content (starting from \section{{...}})"""
         generate_struct=PromptInfo.from_template(GENERATE_STRUCT_PROMPT),
         write_section=PromptInfo.from_template(WRITE_SECTION_PROMPT),
         add_figures=PromptInfo.from_template(ADD_FIGURES_PROMPT),
+        add_references=PromptInfo.from_template(ADD_REFERENCES_PROMPT),
         review_section=PromptInfo.from_template(REVIEW_SECTION_PROMPT),
         apply_review_section=PromptInfo.from_template(APPLY_REVIEW_SECTION_PROMPT),
         abstract_and_title=PromptInfo.from_template(REFINE_PROMPT),

@@ -185,10 +185,10 @@ class PaperFigureAdd(PipelineTask):
                         authors_caption = authors[0].strip()
                     caption = caption.strip() + " " + credits_fmt.format(authors_caption)
                     caption = caption.replace("\n", " ").strip()
-                    if doc_source.bibtex_entry:
-                        caption += f" \\cite{{{doc_source.bibtex_entry["ID"]}}}."
-                    else:
-                        caption += "."
+                if doc_source.bibtex_entry:
+                    caption += f" \\cite{{{doc_source.bibtex_entry["ID"]}}}."
+                else:
+                    caption += "."
             
             # add an index to label to make sure it is unique
             add_figure.label += str(len(used_figures))
