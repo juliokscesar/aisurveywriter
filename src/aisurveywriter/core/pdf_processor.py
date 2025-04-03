@@ -223,6 +223,8 @@ class PDFProcessor:
             
             if bibtex_entry:
                 pdf_basename = os.path.basename(pdf_path).removesuffix(".pdf")
+                # clean basename to have only valid characters
+                pdf_basename = re.sub(r"\W|^(?=\d)", "_", pdf_basename)
                 # use authors from bibtex entry if found
                 doc_authors = bibtex_entry.get("author", doc_authors)
                 bibtex_entry["ID"] = f"key_pdf{pdf_basename}"
