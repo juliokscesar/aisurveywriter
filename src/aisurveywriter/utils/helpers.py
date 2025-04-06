@@ -18,7 +18,7 @@ import string
 
 def assert_type(owner, obj, required_type, param_name: str):
     if not isinstance(obj, required_type):
-        raise TypeError(f"{owner.__class__name} requires {param_name} to be of type {required_type}")
+        raise TypeError(f"{owner.__class__name} requires {param_name} to be of type {required_type}, but got {type(obj)}")
 
 def random_str(length: int = 10):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))

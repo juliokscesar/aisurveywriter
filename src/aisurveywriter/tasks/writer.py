@@ -72,7 +72,7 @@ class PaperWriter(PipelineTask):
             return "\n\n".join(self.agent_ctx.references.full_content())
         
         # retrieve relevant blocks for this section from content RAG
-        k = 30
+        k = 35
         query = f"Retrieve contextual, technical, and analytical information on the subject {self.agent_ctx._working_paper.subject} for a section titled \"{section.title}\", description:\n{section.description}"
         relevant: List[GeneralTextData] = self.agent_ctx.rags.retrieve(RAGType.GeneralText, query, k)
         return "\n\n".join([data.text for data in relevant])
