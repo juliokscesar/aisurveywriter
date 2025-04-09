@@ -109,7 +109,7 @@ class ImageData(BaseRAGData):
         if not doc:
             return DocFigure(id=self.id, image_path=self.basename, caption=self.caption, source_path=self.source_pdf)
         else:
-            doc_figure = [fig for fig in doc.figures if os.path.basename(fig.image_path) == self.basename]
+            doc_figure = [fig for fig in doc.figures if os.path.basename(fig.image_path).strip() == self.basename.strip()]
             if not doc_figure:
                 named_log(self, "unable to find document figure:", self.basename)
                 return DocFigure(id=self.id, image_path=self.basename, caption=self.caption, source_path=self.source_pdf)

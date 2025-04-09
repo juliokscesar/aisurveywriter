@@ -13,6 +13,10 @@ class DocFigure(BaseModel):
     caption: Optional[str] = None
     source_path: Optional[str] = None
 
+    def __eq__(self, other):
+        if isinstance(other, DocFigure):
+            return (self.id == other.id) and (self.source_path == other.source_path) and (self.image_path == other.image_path)
+
 class Document(BaseModel):
     path: str
     title: Optional[str] = None

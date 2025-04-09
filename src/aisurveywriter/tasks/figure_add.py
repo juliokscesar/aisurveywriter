@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import shutil
 import re
 from typing import List
@@ -34,9 +35,9 @@ class PaperFigureAdd(PipelineTask):
         self.response_parser = PydanticOutputParser(pydantic_object=FigureAddResponse)
 
         self._system = SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.add_figures.text)
-        self._human = HumanMessagePromptTemplate.from_template("[begin: references_content]\n\n"+
-                                                               "{refcontent}\n\n"+
-                                                               "[end: references_content]\n\n"+
+        self._human = HumanMessagePromptTemplate.from_template("[begin: references_figures]\n\n"+
+                                                               "{ref_figures}\n\n"+
+                                                               "[end: references_figures]\n\n"+
                                                                "**MAXIMUM AMOUNT OF FIGURES**:"+str(max_figures_per_section)+"\n\n"+
                                                                "[begin: section_content]\n"+
                                                                "**TITLE**: {title}\n"+
@@ -60,7 +61,9 @@ class PaperFigureAdd(PipelineTask):
     def add_figures(self):
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
 
-        used_figures: tuple[str, List[DocFigure]] = [] # label in text, docfigure object
+        # keep track of all available figures and used ones
+        available_figures = self.agent_ctx.references.all_figures()
+        used_figures: List[tuple[str, DocFigure]] = [] # label in text, docfigure object
         
         section_amount = len(self.agent_ctx._working_paper.sections)
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
@@ -71,11 +74,11 @@ class PaperFigureAdd(PipelineTask):
                 named_log(self, f"skipping conclusions section")
                 break
             
-            # first, get reference content with used figures removed
-            refcontent = self._refremove_used_figures(used_figures)
+            add_figures = self._llm_add_figures(available_figures, section.title, section.content)
+            content, used_figures = self._include_figures(section.content, add_figures, used_figures, retrieve_k=5)
             
-            add_figures = self._llm_add_figures(refcontent, section.title, section.content, used_figures)
-            content = self._include_figures(section.content, add_figures, used_figures, retrieve_k=5)
+            # update available figures with the new used ones
+            available_figures = [fig for fig in available_figures if fig not in used_figures]
             
             named_log(self, f"finish adding figures in section ({i+1}/{section_amount}), total {len(used_figures)} figures")
             
@@ -84,28 +87,37 @@ class PaperFigureAdd(PipelineTask):
         self.agent_ctx._working_paper.fig_path = self.used_imgs_dest
         return self.agent_ctx._working_paper
 
-    def _refremove_used_figures(self, used_figures: tuple[str, List[DocFigure]]) -> str:
-        """
-        Remove used figures from references to ensure LLM won't use them again
-        """
-        if not used_figures:
-            return self.agent_ctx.references.full_content()
+    def _llm_add_figures(self, available_figures: List[DocFigure], section_title: str, section_content: str) -> FigureAddResponse:
+        # get figures as a dictionary where key "source": list[(figure_id, figure_caption)]
+        src_to_figures: dict[str, tuple[int, str]] = {"UNKNOWN": []}
+        for fig in available_figures:
+            doc_src = self.agent_ctx.references.doc_from_path(fig.source_path)
+            if not doc_src:
+                src_to_figures["UNKNOWN"].append((fig.id, fig.caption))
+                continue
+            if doc_src.title:
+                if doc_src.title not in src_to_figures:
+                    src_to_figures[doc_src.title] = []
+                src_to_figures[doc_src.title].append((fig.id, fig.caption))
+            else:
+                doc_src_stem = Path(doc_src.path).stem
+                if doc_src_stem not in src_to_figures:
+                    src_to_figures[doc_src_stem] = []
+                src_to_figures[doc_src_stem].append((fig.id, fig.caption))
         
-        docs_contents = copy.deepcopy(self.agent_ctx.references.docs_contents())
-        for label, figure in used_figures:
-            # identify in the text by using the figure document id (e.g. Fig. 1, Figure 2, ...)
-            doc_figureid = figure.id
-            fig_pattern = re.compile(self.figure_caption_pattern_format.format(doc_figureid), re.IGNORECASE)
-            
-            # remove all occurences of Figure X. if figure X is used
-            doc_idx = self.agent_ctx.references.doc_index(figure.source_path)
-            docs_contents[doc_idx] = fig_pattern.sub("", docs_contents[doc_idx])
-
-        return "\n\n".join(docs_contents)
-    
-    def _llm_add_figures(self, refcontent: str, section_title: str, section_content: str, used_figures: List[DocFigure]) -> FigureAddResponse:
+        # format available figures to prompt
+        # as a block {source: title or file name} ID: N \n CAPTION: ... \n {end source: title or file name}   
+        ref_figures_str = ""
+        for src in src_to_figures:
+            if not src_to_figures[src]:
+                continue
+            ref_figures_str += f"__begin source: {src!r}__\n\n"
+            for fig_id, fig_caption in src_to_figures[src]:
+                ref_figures_str += f"FIGURE_ID: {fig_id}\nFIGURE_CAPTION: {fig_caption}\n\n"
+            ref_figures_str += f"__end source: {src!r}__\n\n"
+        
         elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
-            "refcontent": refcontent,
+            "ref_figures": ref_figures_str,
             "subject": self.agent_ctx._working_paper.subject,
             "title": section_title,
             "content": section_content,
@@ -142,13 +154,13 @@ class PaperFigureAdd(PipelineTask):
         content_altered = section_content
         for add_figure in response_figures.figures:
             # find figure by matching caption
-            results = self.agent_ctx.rags.retrieve(RAGType.ImageData, add_figure.caption, k=retrieve_k)
+            # get only one result. because if we dont get a perfect match than it's probably an allucination or duplicate
+            results = self.agent_ctx.rags.retrieve(RAGType.ImageData, add_figure.caption, k=1)
             if not results:
                 named_log(self, "unable to match a figure with caption:", add_figure.caption)
                 continue
-            results = [result for result in results if result.basename not in used_imgs]
-            if not results:
-                named_log(self, "unable to match an unused figure for caption:", add_figure.caption)
+            if results[0].basename in used_imgs:
+                named_log(self, "unable to match unused figure with caption:", add_figure.caption)
                 continue
             used_imgs.add(results[0].basename)
             fig_result: DocFigure = results[0].to_doc_figure(self.agent_ctx.references)
@@ -209,7 +221,7 @@ class PaperFigureAdd(PipelineTask):
             # register used figure (label, DocFigure)
             used_figures.append((add_figure.label, fig_result))
         
-        return content_altered
+        return content_altered, used_figures
  
             
     def pipeline_entry(self, input_data: PaperData) -> PaperData:

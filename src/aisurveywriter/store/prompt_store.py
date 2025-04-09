@@ -76,6 +76,7 @@ def default_prompt_store() -> PromptStore:
 
     WRITE_SECTION_PROMPT = r"""**Follow these strict guidelines for LaTeX academic writing:**
 - Format: Use only numbered sectioning (\section, \subsection, etc.). Exclude the LaTeX preamble.
+    - Remember to write LaTeX escaped characters, equations, and any related text that should be escaped/formatted with LaTeX
 - Citations: Do not include citations or bibliography commands (\cite, \printbibliography,...).
     - **DO not add reference numbers (e.g. [123], [12], [xx], [x]....)
 - Figures/Tables: consider adding *visual elements* (IF RELEVANT. TAKE INSPIRATION FROM THE REFERENCES)
@@ -111,11 +112,12 @@ Output only LaTeX content (starting from \section{{...}})
     ADD_FIGURES_PROMPT = r"""- You are an academic expert in "{subject}" and are writing a comprehensive survey paper.  
 
 - INPUT:  
-  - Reference content (reference_content block).  
+  - Available figures from references (references_figures block)
   - A LaTeX section of the paper (section_content block).  
 
 - TASK:  
-  - Identify figures in the references (those labeled as "Fig. ..." or "Figure ...").
+  - Choose the most adequate figure(s) from the available ones (choose their captions).
+    - Judge the most adequate based on textual context of the section, and if a visual element is helpful/interesting.
   - Provide places in the LaTeX section to include figures. That is:
       - Specify an "add_after" key, which is a portion of the LaTeX section that the figure will be included right *after* (text must be identical and from within the original LaTeX section content).
       - Specify a "caption" key, which is the caption for the figure to be included (must be identical to the original).
@@ -238,6 +240,7 @@ Output only LaTeX content (starting from \section{{...}})
 - **Maintain style:** Keep a **scientific, objective, and formal tone**.  
 - **Preserve structure:** Do **not** add or remove sections (\section) or subsections (\subsection).  
 - **Expand, don’t summarize:** Maintain or increase length with meaningful content.  
+- Remember to write LaTeX escaped characters, equations, and any related text that should be escaped/formatted with LaTeX
 - **Discuss figures:** Refer to existing figures from the section via their **\label** and \caption details (use \ref{{fig:label_of_the_figure}}). Do **not** replace standard figures with TikZ.  
     - DISCUSS ONLY FIGURES THAT ARE PRESENT IN THE LATEX CONTENT
 - **Visual elements:**  

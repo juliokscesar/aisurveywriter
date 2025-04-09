@@ -86,28 +86,30 @@ class SurveyContext:
             self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
         self.paper.fig_path = self.images_dir
 
+        lp_config = "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config"
+        lp_settings = LayoutParserSettings(config_path=lp_config, tesseract_executable=tesseract_executable)
         if reference_store_path:
             self.references = ReferenceStore.from_local(reference_store_path)
+            self.references.lp_settings = lp_settings
             named_log(self, "loaded reference store from", reference_store_path, f"total of {len(self.references.documents)} references")
         else:
             reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
-            lp_config = "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config"
-            lp_settings = LayoutParserSettings(config_path=lp_config, tesseract_executable=tesseract_executable)
             self.references = ReferenceStore.create_store(ref_paths, lp_settings, self.images_dir,
-                                                          save_local=reference_store_path, 
-                                                          title_extractor_llm=None)
+                                                save_local=reference_store_path, 
+                                                title_extractor_llm=None)
             named_log(self, "saved reference store to", reference_store_path, f"total of {len(self.references.documents)} references")
         self.references.bibtex_db_path = bibdb_path
         self.references.images_dir = self.images_dir
         
         # check if there are any new paths and add them to the store if so
-        new_paths = [path for path in ref_paths if not os.path.normpath(path) in self.references.paths]
-        if new_paths:
-            self.references.add_references(new_paths)
-            if reference_store_path:
-                stem = Path(reference_store_path).stem
-                new_store_path = reference_store_path.replace(stem, stem+"-new")
-                self.references.save_local(new_store_path)
+        # *******FIX THIS********
+        # new_paths = [path for path in ref_paths if not os.path.normpath(path) in self.references.paths]
+        # if new_paths:
+        #     self.references.add_references(new_paths)
+        #     if reference_store_path:
+        #         stem = Path(reference_store_path).stem
+        #         new_store_path = reference_store_path.replace(stem, stem+"-new")
+        #         self.references.save_local(new_store_path)
         
         if isinstance(llms, LLMHandler):
             self.llms = {agent: llms for agent in SurveyAgentType}
