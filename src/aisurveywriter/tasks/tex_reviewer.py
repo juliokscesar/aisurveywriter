@@ -20,7 +20,7 @@ class TexReviewer(PipelineTask):
             "empty_cite": re.compile(r"\\cite{\s*}"),
             "invalid_cite_command": re.compile(r"\\cite\w+{(?:.*?)}"),
             "false_reference": re.compile(r"\[(?:(?:\d+),*\s*)*\]"),
-            "percent": re.compile(r"(\d+)%"),
+            "percent": re.compile(r"(?<!\\)([\w\.]+)%"),
             "preamble": [
                 re.compile(r"\\usepackage{[\w]+}"),
                 re.compile(r"\\(begin|end){document}"),
