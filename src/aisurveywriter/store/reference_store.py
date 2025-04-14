@@ -147,7 +147,7 @@ class ReferenceStore(BaseModel):
         self.documents.extend(pdf_documents)
     
         # process non pdfs
-        nonpdf_documents = ReferenceStore.load_nonpdf_references(non_pdf_paths, None)
+        nonpdf_documents = ReferenceStore.load_nonpdf(non_pdf_paths, None)
         self.documents.extend(nonpdf_documents)
 
         # reload cache
@@ -164,7 +164,7 @@ class ReferenceStore(BaseModel):
         return store
 
     @staticmethod
-    def load_nonpdf_references(paths: List[str], title_extractor_llm: Optional[LLMHandler] = None):
+    def load_nonpdf(paths: List[str], title_extractor_llm: Optional[LLMHandler] = None):
         non_pdf_documents: List[Document] = []
         title_pattern = re.compile(r"^(?:title)\s*[:\.-]*\s*(.+?)[\n]", re.IGNORECASE)
         for path in paths:
@@ -176,7 +176,7 @@ class ReferenceStore(BaseModel):
                 content = f.read()
             
             # try some approaches to extract title from unknown type of file
-            portion = content[int(len(content) * 0.2)] # use only first 20% of the content
+            portion = content
             title = None
             if title_match := title_pattern.search(portion): # try with regex
                 title = title_match.group(1)
@@ -232,7 +232,7 @@ class ReferenceStore(BaseModel):
             reference_store = ReferenceStore(pdf_documents, images_dir=images_output_dir)
         else:
             # process non-pdfs
-            non_pdf_documents: List[Document] = ReferenceStore.load_nonpdf_references(non_pdf_paths, title_extractor_llm)
+            non_pdf_documents: List[Document] = ReferenceStore.load_nonpdf(non_pdf_paths, title_extractor_llm)
             reference_store = ReferenceStore(pdf_documents + non_pdf_documents, images_dir=images_output_dir)
 
         if save_local:

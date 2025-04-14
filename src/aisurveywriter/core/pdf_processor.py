@@ -185,7 +185,7 @@ class PDFProcessor:
                     doc_page, page_figures, title_layout = self._parse_page_image(page_image, pdf_path, page_num, return_layout=True)
                     title_blocks = [b for b in title_layout if b.type == "Title"]
                     if title_blocks:
-                        doc_title = title_blocks[0].text
+                        doc_title = title_blocks[0].text.replace("\n", " ").strip()
                         # assume our authors names are on text block closest and below to the title
                         min_distance = float("inf")
                         authors_block = None
@@ -203,7 +203,7 @@ class PDFProcessor:
                                 break
                         
                         if authors_block:
-                            doc_authors = authors_block.text
+                            doc_authors = authors_block.text.replace("\n", " ").strip()
                             
                 else:    
                     doc_page, page_figures = self._parse_page_image(page_image, pdf_path, page_num)
