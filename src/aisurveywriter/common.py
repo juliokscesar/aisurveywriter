@@ -42,7 +42,7 @@ def generate_paper_survey(
     
     temperature: float = 0.65,
     
-    embed_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+    embed_model: str = "Snowflake/snowflake-arctic-embed-l-v2.0",
     embed_model_type: str = "huggingface",
     
     custom_prompt_store: Optional[PromptStore] = None,

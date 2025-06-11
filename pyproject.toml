@@ -22,7 +22,7 @@ dependencies = [
     "langchain-ollama",
     "langchain-community",
     "langchain-huggingface",
-    "detectron2@git+https://github.com/facebookresearch/detectron2.git@main",
+    "detectron2@git+https://github.com/facebookresearch/detectron2.git@v0.5#egg=detectron2",
     "layoutparser",
     "layoutparser[ocr]",
     "pdf2image",
@@ -30,6 +30,9 @@ dependencies = [
     "pymupdf",
     "pillow",
     "bibtexparser",
+    "scipy",
+    "transformers",
+    "sentence-transformers",
     "gradio",
 ]
 requires-python = ">=3.12"

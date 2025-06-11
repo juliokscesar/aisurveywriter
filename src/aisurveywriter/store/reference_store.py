@@ -11,7 +11,7 @@ from ..core.document import Document, DocFigure, DocPage
 from ..core.llm_handler import LLMHandler
 from ..core.lp_handler import LayoutParserSettings
 from ..utils.logger import named_log, global_log
-from ..utils.helpers import get_bibtex_entry
+from ..utils.helpers import get_bibtex_entry, is_pdf
 
 class ReferenceStore(BaseModel):
     documents: List[Document]
@@ -215,12 +215,13 @@ class ReferenceStore(BaseModel):
     @staticmethod
     def create_store(reference_paths: List[str], lp_settings: LayoutParserSettings, 
                      images_output_dir: str = "output", save_local: Optional[str] = None, 
-                    title_extractor_llm: Optional[LLMHandler] = None):
+                     title_extractor_llm: Optional[LLMHandler] = None):
         # separate between pdf and non-pdf files
         pdf_paths: List[str] = []
         non_pdf_paths: List[str] = []
         for path in reference_paths:
-            if path.endswith(".pdf"):
+            # if path.endswith(".pdf"):
+            if is_pdf(path):
                 pdf_paths.append(path)
             else:
                 non_pdf_paths.append(path)

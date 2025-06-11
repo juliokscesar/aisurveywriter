@@ -213,12 +213,19 @@ class AgentRAG:
 
 
     def create_content_rag(self, references: ReferenceStore):
-        nobib_contents = references.docs_contents()
+        nobib_contents = references.docs_contents()  # list[str]
         splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=0)
-        docs = splitter.create_documents(nobib_contents)
-        docs = splitter.split_documents(docs)
-        
-        content_data = [GeneralTextData(text=doc.page_content) for doc in docs]
+
+        content_data = []
+        for i, content in enumerate(nobib_contents):
+            source_pdf = references.paths[i]
+            docs = splitter.create_documents([content], metadatas=[{"source_pdf": source_pdf}])
+            
+            for doc in docs:
+                content_data.append(
+                    GeneralTextData(text=doc.page_content, source_pdf=doc.metadata["source_pdf"])
+                )
+
         save_path = os.path.join(self.output_dir, "content-rag.faiss")
         return AgentRAG.create_faiss(self._embed, content_data, save_path=save_path)
         
@@ -248,7 +255,8 @@ class AgentRAG:
         
         if not confidence:
             results = self.faiss_rags[rag].similarity_search(query, k)
-            return [self.rag_type_data[rag].from_document(doc) for doc in results]
+            doc_results = [self.rag_type_data[rag].from_document(doc) for doc in results]
+            return doc_results
     
         assert(0.0 < confidence < 1.0)
         results = self.faiss_rags[rag].similarity_search_with_score(query, k)

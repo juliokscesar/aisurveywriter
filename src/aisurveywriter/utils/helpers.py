@@ -16,6 +16,11 @@ from PIL import Image
 import random
 import string
 
+def is_pdf(path: str) -> bool:
+    with open(path, "rb") as f:
+        header = f.read(4)
+    return header == b"%PDF"
+
 def assert_type(owner, obj, required_type, param_name: str):
     if not isinstance(obj, required_type):
         raise TypeError(f"{owner.__class__name} requires {param_name} to be of type {required_type}, but got {type(obj)}")
