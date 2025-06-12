@@ -229,7 +229,7 @@ class ReferenceStore(BaseModel):
         # process pdfs first
         pdf_processor = PDFProcessor(pdf_paths, lp_settings, images_output_dir)
         pdf_documents = pdf_processor.parse_pdfs()
-        if not non_pdf_paths:
+        if len(non_pdf_paths) == 0:
             reference_store = ReferenceStore(pdf_documents, images_dir=images_output_dir)
         else:
             # process non-pdfs
