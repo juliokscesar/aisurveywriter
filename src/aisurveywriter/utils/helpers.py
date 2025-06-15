@@ -82,7 +82,7 @@ def sort_stem(item):
     s = Path(item).stem
     return s
 
-def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False):
+def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False, recursive=False):
     files = []
     for path in args:
         if os.path.isfile(path):
@@ -92,11 +92,19 @@ def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False)
             files.append(path)
 
         elif os.path.isdir(path):
-            for (root, _, filenames) in os.walk(path):
-                if skip_ext is not None:
-                    files.extend([os.path.abspath(os.path.join(root, file)) for file in filenames if file_ext(file) not in skip_ext])
-                else:
-                    files.extend([os.path.abspath(os.path.join(root, file)) for file in filenames])
+            if recursive:
+                for (root, _, filenames) in os.walk(path):
+                    if skip_ext is not None:
+                        files.extend([os.path.abspath(os.path.join(root, file)) for file in filenames if file_ext(file) not in skip_ext])
+                    else:
+                        files.extend([os.path.abspath(os.path.join(root, file)) for file in filenames])
+            else:
+                for item in os.lisdir(path):
+                    item_path = os.path.join(path, item)
+                    if os.path.isfile(item_path):
+                        if skip_ext is not None and file_ext(item_path) in skip_ext:
+                                continue
+                        files.append(item_path)
         
         else:
             raise RuntimeError(f"{path} is an invalid file source")

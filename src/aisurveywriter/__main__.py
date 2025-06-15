@@ -9,13 +9,13 @@ from aisurveywriter.store.prompt_store import PromptStore
 def parse_args():
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--credentials", required=True, type=str, help="YAML file containing your API keys")
+    parser.add_argument("--credentials", type=str, default="credentials.yaml", help="YAML file containing your API keys")
     # load everything from a config yaml
     parser.add_argument("--config", "-c", type=str, default=None, help="Path to YAML config file. If provided, all other arguments will be ignored")
     
     # load everything by hand
-    parser.add_argument("references_dir", help="Path to directory containg all PDF references")
-    parser.add_argument("subject", help="Main subject of the survey. Can be the Title too")
+    parser.add_argument("--references-dir", type=str, required=True, help="Path to directory containg all PDF references")
+    parser.add_argument("--subject", type=str, required=True, help="Main subject of the survey. Can be the Title too")
     parser.add_argument("--save-dir", type=str, default="./out", help="Path to output directory")
     parser.add_argument("--llm", "-l", choices=["openai", "google"], default="google", help="Specify LLM to use. Either 'google', 'openai' or 'ollama'. Default is google")
     parser.add_argument("--llm-model", "-m", dest="llm_model", default="gemini-2.0-flash", help="Specific LLM model to use. Default is gemini-2.0-flash")

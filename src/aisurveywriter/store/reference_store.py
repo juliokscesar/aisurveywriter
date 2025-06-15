@@ -163,6 +163,32 @@ class ReferenceStore(BaseModel):
             store: ReferenceStore = pickle.load(f)
         return store
 
+    def update_references(self, paths: List[str]):
+        if len(self.paths) >= len(paths):
+            # remove references that are not in the new paths
+            diff = set(self.paths) - set(paths)
+            if not diff:
+                return
+            
+            # remove references
+            self.paths = [p for p in self.paths if p not in diff]
+            
+            idx_to_remove = sorted([i for i, doc in enumerate(self.documents) if doc.path in diff],
+                                   reverse=True)
+            for i in idx_to_remove:
+                self.documents.pop(i)
+                # clear cache
+                if self._cache["doc_full_contents"]:
+                    self._cache["doc_full_contents"].pop(i)
+                if self._cache["doc_nobib_contents"]:
+                    self._cache["doc_nobib_contents"].pop(i)
+                if self._cache["doc_bib_sections"]:
+                    self._cache["doc_bib_sections"].pop(i)
+        else:
+            # add new references
+            diff = set(paths) - set(self.paths)
+            self.add_references(paths)
+
     @staticmethod
     def load_nonpdf(paths: List[str], title_extractor_llm: Optional[LLMHandler] = None):
         non_pdf_documents: List[Document] = []

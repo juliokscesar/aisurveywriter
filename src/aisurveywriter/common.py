@@ -86,8 +86,8 @@ def generate_paper_survey(
     
     agent_llms = {
         SurveyAgentType.StructureGenerator: LLMConfig(model=structure_model, model_type=structure_model_type, temperature=temperature),
-        SurveyAgentType.Writer: LLMHandler(model=writer_model, model_type=writer_model_type, temperature=temperature),
-        SurveyAgentType.Reviewer: LLMHandler(model=reviewer_model, model_type=reviewer_model_type, temperature=temperature),
+        SurveyAgentType.Writer: LLMConfig(model=writer_model, model_type=writer_model_type, temperature=temperature),
+        SurveyAgentType.Reviewer: LLMConfig(model=reviewer_model, model_type=reviewer_model_type, temperature=temperature),
     }
 
     config = SurveyContextConfig(
@@ -134,11 +134,11 @@ def generate_paper_survey(
     res = survey_ctx.generate()
     return res
 
-def generate_survey_from_config(credentials_path: str, config_path: str):
+def generate_survey_from_config(credentials_path: str, config_path: str, **pipeline_kwargs):
     setup_credentials(credentials_path)
-    config = load_pydantic_yaml(config_path, SurveyContextConfig)
+    config = SurveyContextConfig.load_yaml(config_path)
     
-    survey_ctx = SurveyContext.from_config(config)
+    survey_ctx = SurveyContext(config, **pipeline_kwargs)
     survey_ctx.config.save_yaml(os.path.join(survey_ctx.output_dir, "survey_config.yaml"))
 
     res = survey_ctx.generate()

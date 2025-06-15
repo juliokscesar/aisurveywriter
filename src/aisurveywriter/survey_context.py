@@ -1,5 +1,5 @@
 from typing import List, Optional, Union, Tuple
-from enum import Enum, auto
+from enum import ReprEnum, auto
 from pydantic import BaseModel, Field
 import os
 from pathlib import Path
@@ -18,17 +18,24 @@ import aisurveywriter.tasks as tks
 from .utils.logger import named_log
 from .utils.helpers import time_func, load_pydantic_yaml, save_pydantic_yaml
 
-class SurveyAgentType(Enum):
-    StructureGenerator = auto()
-    Writer = auto()
-    Reviewer = auto()
+class SurveyAgentType(str, ReprEnum):
+    StructureGenerator: str = "structure_generator"
+    Writer: str = "writer"
+    Reviewer: str = "reviewer"
+    
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self.value)
+
 
 class SurveyContextConfig(BaseModel):
     subject: str
     ref_paths: List[str]
     
     # Keep llms as SurveyAgentType -> LLMConfig
-    llms: dict[SurveyAgentType, LLMConfig] = Field(default_factory=dict)
+    llms: dict[Union[str, SurveyAgentType], LLMConfig] = Field(default_factory=dict)
     
     embed_model: str = "Snowflake/snowflake-arctic-embed-l-v2.0"
     embed_model_type: str = "huggingface"
@@ -68,7 +75,15 @@ class SurveyContextConfig(BaseModel):
     embed_request_cooldown_sec: int = 0
 
     def save_yaml(self, path: str):
+        self.llms = {str(k): v for k, v in self.llms.items()}  # Convert SurveyAgentType to str for YAML serialization
         save_pydantic_yaml(self, path)
+    
+    @staticmethod
+    def load_yaml(path: str):
+        config = load_pydantic_yaml(path, SurveyContextConfig)
+        config.llms = {SurveyAgentType(k): v for k, v in config.llms.items()}  # Convert str back to SurveyAgentType
+        return config
+        
 
 
 class SurveyContext:
@@ -104,18 +119,22 @@ class SurveyContext:
             self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
         self.paper.fig_path = self.images_dir
 
+        # Initialize Layout Parser settings
         lp_config = "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config"
         lp_settings = LayoutParserSettings(config_path=lp_config, tesseract_executable=config.tesseract_executable)
-        if reference_store_path:
-            self.references = ReferenceStore.from_local(reference_store_path)
+        
+        # Load or create reference store
+        if self.config.reference_store_path:
+            self.references = ReferenceStore.from_local(self.config.reference_store_path)
+            self.references.update_references(self.config.ref_paths)
             self.references.lp_settings = lp_settings
-            named_log(self, "loaded reference store from", reference_store_path, f"total of {len(self.references.documents)} references")
+            named_log(self, "loaded reference store from", self.config.reference_store_path, f"total of {len(self.references.documents)} references")
         else:
-            reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
-            self.references = ReferenceStore.create_store(config.ref_paths, lp_settings, self.images_dir,
-                                                save_local=reference_store_path, 
+            self.config.reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
+            self.references = ReferenceStore.create_store(self.config.ref_paths, lp_settings, self.images_dir,
+                                                save_local=self.config.reference_store_path, 
                                                 title_extractor_llm=None)
-            named_log(self, "saved reference store to", reference_store_path, f"total of {len(self.references.documents)} references")
+            named_log(self, "saved reference store to", self.config.reference_store_path, f"total of {len(self.references.documents)} references")
         self.references.bibtex_db_path = config.bibdb_path
         self.references.images_dir = self.images_dir
         
@@ -293,14 +312,14 @@ class SurveyContext:
     def generate(self) -> PaperData:
         assert self._is_initialized()
         
-        named_log(self, "==> BEGIN SURVEY GENERATION PIPELINE")
-        named_log(self, "==> pipeline description:")
+        named_log(self, "BEGIN SURVEY GENERATION PIPELINE")
+        named_log(self, "pipeline description:")
         print(self.pipeline.describe_steps())
         
         elapsed, final_paper = time_func(self.pipeline.run, initial_data=self.paper)
         
-        named_log(self, "==> FINISH SURVEY GENERATION PIPELINE")
-        named_log(self, f"==> time taken: {elapsed} s")
+        named_log(self, "FINISH SURVEY GENERATION PIPELINE")
+        named_log(self, f"time taken: {elapsed} s")
         
         return final_paper
         
