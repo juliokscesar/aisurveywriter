@@ -1,152 +1,169 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 from enum import Enum, auto
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 import os
 from pathlib import Path
+import yaml
 
 from .core.paper import PaperData
 from .core.agent_context import AgentContext
 from .core.agent_rags import AgentRAG, RAGType
 from .store.reference_store import ReferenceStore
-from .core.llm_handler import LLMHandler
+from .core.llm_handler import LLMHandler, LLMConfig
 from .core.lp_handler import LayoutParserSettings
 from .core.text_embedding import EmbeddingsHandler
-from .store.prompt_store import PromptStore, PromptInfo
+from .store.prompt_store import PromptStore, PromptInfo, default_prompt_store
 from .core.pipeline import PaperPipeline
 import aisurveywriter.tasks as tks
 from .utils.logger import named_log
-from .utils.helpers import time_func
+from .utils.helpers import time_func, load_pydantic_yaml, save_pydantic_yaml
 
 class SurveyAgentType(Enum):
     StructureGenerator = auto()
     Writer = auto()
     Reviewer = auto()
 
+class SurveyContextConfig(BaseModel):
+    subject: str
+    ref_paths: List[str]
+    
+    # Keep llms as SurveyAgentType -> LLMConfig
+    llms: dict[SurveyAgentType, LLMConfig] = Field(default_factory=dict)
+    
+    embed_model: str = "Snowflake/snowflake-arctic-embed-l-v2.0"
+    embed_model_type: str = "huggingface"
+    
+    prompt_store_path: Optional[str] = None
+    tex_template_path: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../templates/paper_template.tex"))
+    save_path: str = "survey_out"
+    
+    reference_store_path: Optional[str] = None
+    tesseract_executable: str = "tesseract"
+    
+    no_ref_faiss: bool = False
+    no_review: bool = False
+    no_figures: bool = False
+    no_reference: bool = False
+    no_abstract: bool = False
+    no_tex_review: bool = False
+    
+    ref_max_per_section: int = 90
+    ref_max_per_sentence: int = 4
+    ref_max_same_ref: int = 10
+    fig_max_figures: int = 30
+    
+    structure_json_path: Optional[str] = None
+    prewritten_tex_path: Optional[str] = None
+    
+    bibdb_path: Optional[str] = None
+    faissbib_path: Optional[str] = None
+
+    images_dir: Optional[str] = None
+    faissfig_path: Optional[str] = None
+
+    faisscontent_path: Optional[str] = None
+    faiss_confidence: float = 0.90
+
+    llm_request_cooldown_sec: int = 30
+    embed_request_cooldown_sec: int = 0
+
+    def save_yaml(self, path: str):
+        save_pydantic_yaml(self, path)
+
+
 class SurveyContext:
     def __init__(
         self, 
-        subject: str, 
-        ref_paths: List[str], 
-        llms: Union[LLMHandler, dict[SurveyAgentType, LLMHandler]],
-        embed: EmbeddingsHandler,
-        prompts: PromptStore,
-        tex_template_path: str,
-        save_path: str = "survey_out",
-
-        reference_store_path: str = None,
-        tesseract_executable: str = "tesseract",
-        
-        no_ref_faiss = False,
-        no_review = False,
-        no_figures = False,
-        no_reference = False,
-        no_abstract = False,
-        no_tex_review = False,
-        
-        structure_json_path: Optional[str] = None,
-        prewritten_tex_path: Optional[str] = None,
-        
-        bibdb_path: Optional[str] = None,
-        faissbib_path: Optional[str] = None,
-        faissfig_path: Optional[str] = None,
-        faisscontent_path: Optional[str] = None,
-        faiss_confidence: float = 0.75,
-        
-        images_dir: Optional[str] = None,
-        
-        llm_request_cooldown_sec: int = 30,
-        embed_request_cooldown_sec: int = 0,
-
-        ref_max_per_section: int = 90,
-        ref_max_per_sentence: int = 4,
-        ref_max_same_ref: int = 10,
-        
-        fig_max_figures: int = 30,
-        
+        config: Union[SurveyContextConfig, str],
         **pipeline_kwargs,
     ):
-        save_path = os.path.abspath(save_path)
-        if not save_path.endswith(".tex"):
-            os.makedirs(save_path, exist_ok=True)
-            save_path = os.path.join(save_path, "survey.tex")
+        # Load configuration
+        if isinstance(config, str):
+            config = load_pydantic_yaml(config, SurveyContextConfig)
+        self.config = config
+
+        # add .tex to save_path if not provided
+        if not config.save_path.endswith(".tex"):
+            os.makedirs(config.save_path, exist_ok=True)
+            config.save_path = os.path.join(config.save_path, "survey.tex")
         
-        self.save_path = save_path
-        self.output_dir = os.path.dirname(save_path)
-        self.tex_template_path = tex_template_path
+        
+        self.save_path = config.save_path
+        self.output_dir = os.path.dirname(config.save_path)
+        self.tex_template_path = config.tex_template_path
         
         # Initialize paper and load structure and pre-written .tex if provided
-        self.paper = PaperData(subject=subject, sections=None)
-        if structure_json_path:
-            self.paper.load_structure(structure_json_path)
-        if prewritten_tex_path:
-            self.paper.load_tex(prewritten_tex_path)
+        self.paper = PaperData(subject=config.subject, sections=None)
+        if config.structure_json_path:
+            self.paper.load_structure(config.structure_json_path)
+        if config.prewritten_tex_path:
+            self.paper.load_tex(config.prewritten_tex_path)
         
-        self.images_dir = images_dir
+        self.images_dir = config.images_dir
         if not self.images_dir:
             self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
         self.paper.fig_path = self.images_dir
 
         lp_config = "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config"
-        lp_settings = LayoutParserSettings(config_path=lp_config, tesseract_executable=tesseract_executable)
+        lp_settings = LayoutParserSettings(config_path=lp_config, tesseract_executable=config.tesseract_executable)
         if reference_store_path:
             self.references = ReferenceStore.from_local(reference_store_path)
             self.references.lp_settings = lp_settings
             named_log(self, "loaded reference store from", reference_store_path, f"total of {len(self.references.documents)} references")
         else:
             reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
-            self.references = ReferenceStore.create_store(ref_paths, lp_settings, self.images_dir,
+            self.references = ReferenceStore.create_store(config.ref_paths, lp_settings, self.images_dir,
                                                 save_local=reference_store_path, 
                                                 title_extractor_llm=None)
             named_log(self, "saved reference store to", reference_store_path, f"total of {len(self.references.documents)} references")
-        self.references.bibtex_db_path = bibdb_path
+        self.references.bibtex_db_path = config.bibdb_path
         self.references.images_dir = self.images_dir
         
-        # check if there are any new paths and add them to the store if so
-        # *******FIX THIS********
-        # new_paths = [path for path in ref_paths if not os.path.normpath(path) in self.references.paths]
-        # if new_paths:
-        #     self.references.add_references(new_paths)
-        #     if reference_store_path:
-        #         stem = Path(reference_store_path).stem
-        #         new_store_path = reference_store_path.replace(stem, stem+"-new")
-        #         self.references.save_local(new_store_path)
+        # Create LLM handlers
+        llms_config = config.llms
+        self.llms = {agent_type: None for agent_type in SurveyAgentType}
+        self._llm_cooldown = config.llm_request_cooldown_sec
         
-        if isinstance(llms, LLMHandler):
-            self.llms = {agent: llms for agent in SurveyAgentType}
-        else:
-            for agent in SurveyAgentType:
-                if agent not in llms:
-                    raise ValueError(f"Missing LLMHandler for agent {agent}")
-            self.llms = llms
+        # load configuration for each LLM
+        for agent_type, llm_config in llms_config.items():
+            agent_type = SurveyAgentType(agent_type)
+            self.llms[agent_type] = LLMHandler.from_config(llm_config)
         
-        self.embed = embed
+        # load Text Embedding Model
+        self.embed = EmbeddingsHandler(name=config.embed_model, model_type=config.embed_model_type)
+        self._embed_cooldown = config.embed_request_cooldown_sec
 
-        self.prompts = prompts
+
+        if config.prompt_store_path:
+            with open(config.prompt_store_path, "r", encoding="utf-8") as f:
+                self.prompts = PromptStore.model_validate_json(f.read())
+        else:
+            self.prompts = default_prompt_store()
         
-        self._llm_cooldown = llm_request_cooldown_sec
-        self._embed_cooldown = embed_request_cooldown_sec
-        
-        self.rags = AgentRAG(self.embed, self.llms[SurveyAgentType.StructureGenerator], faissbib_path, faissfig_path, faisscontent_path, request_cooldown_sec=6, output_dir=self.output_dir, confidence=faiss_confidence)
+        self.confidence = config.faiss_confidence
+        self.rags = AgentRAG(self.embed, self.llms[SurveyAgentType.StructureGenerator], 
+                             config.faissbib_path, config.faissfig_path, config.faisscontent_path, 
+                             request_cooldown_sec=6, output_dir=self.output_dir, 
+                             confidence=self.confidence)
                 
-        self.confidence = faiss_confidence
         
         self.pipe_steps: List[tks.PipelineTask] = None
         self.pipeline: PaperPipeline = None
         self._create_pipeline(
-            no_content_rag=no_ref_faiss, 
-            skip_struct=(structure_json_path and structure_json_path.strip()),
-            skip_fill=(prewritten_tex_path and prewritten_tex_path.strip()),
-            skip_figures=no_figures,
-            skip_references=no_reference,
-            skip_review=no_review,
-            skip_abstract=no_abstract,
-            skip_tex_review=no_tex_review,
+            no_content_rag=config.no_ref_faiss, 
+            skip_struct=(config.structure_json_path and config.structure_json_path.strip()),
+            skip_fill=(config.prewritten_tex_path and config.prewritten_tex_path.strip()),
+            skip_figures=config.no_figures,
+            skip_references=config.no_reference,
+            skip_review=config.no_review,
+            skip_abstract=config.no_abstract,
+            skip_tex_review=config.no_tex_review,
             
-            ref_max_per_section=ref_max_per_section,
-            ref_max_per_sentence=ref_max_per_sentence,
-            ref_max_same_ref=ref_max_same_ref,
+            ref_max_per_section=config.ref_max_per_section,
+            ref_max_per_sentence=config.ref_max_per_sentence,
+            ref_max_same_ref=config.ref_max_same_ref,
             
-            fig_max_figures=fig_max_figures,
+            fig_max_figures=config.fig_max_figures,
             
             **pipeline_kwargs,
         )

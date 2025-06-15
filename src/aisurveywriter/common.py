@@ -3,12 +3,13 @@ import os
 import queue
 import re
 
-import aisurveywriter.core.file_handler as fh
-from aisurveywriter.survey_context import SurveyContext, SurveyAgentType
-from aisurveywriter.core.llm_handler import LLMHandler
-from aisurveywriter.core.text_embedding import EmbeddingsHandler
+from .core.file_handler import read_credentials
+from .survey_context import SurveyContext, SurveyAgentType, SurveyContextConfig
+from .core.llm_handler import LLMHandler, LLMConfig
+from .core.text_embedding import EmbeddingsHandler
 
-from aisurveywriter.store.prompt_store import PromptStore, default_prompt_store
+from .store.prompt_store import PromptStore, default_prompt_store
+from .utils.helpers import load_pydantic_yaml
 
 def tex_filter_survey(tex_content: str):
     tex_content = re.sub(r"[`]+[\w]*", "", tex_content)
@@ -20,7 +21,7 @@ def tex_filter_survey(tex_content: str):
     return tex_content
 
 def setup_credentials(credentials_path: str):
-    credentials = fh.read_credentials(credentials_path)
+    credentials = read_credentials(credentials_path)
     if credentials["google_key"]:
         os.environ["GOOGLE_API_KEY"] = credentials["google_key"]
     if credentials["openai_key"]:
@@ -45,7 +46,7 @@ def generate_paper_survey(
     embed_model: str = "Snowflake/snowflake-arctic-embed-l-v2.0",
     embed_model_type: str = "huggingface",
     
-    custom_prompt_store: Optional[PromptStore] = None,
+    custom_prompt_store: Optional[str] = None,
     tex_template_path: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../templates/paper_template.tex")),
 
     local_reference_store: Optional[str] = None,
@@ -84,25 +85,61 @@ def generate_paper_survey(
     setup_credentials(credentials_yaml_path)
     
     agent_llms = {
-        SurveyAgentType.StructureGenerator: LLMHandler(structure_model, structure_model_type, temperature=temperature),
-        SurveyAgentType.Writer: LLMHandler(writer_model, writer_model_type, temperature=temperature),
-        SurveyAgentType.Reviewer: LLMHandler(reviewer_model, reviewer_model_type, temperature=temperature),
+        SurveyAgentType.StructureGenerator: LLMConfig(model=structure_model, model_type=structure_model_type, temperature=temperature),
+        SurveyAgentType.Writer: LLMHandler(model=writer_model, model_type=writer_model_type, temperature=temperature),
+        SurveyAgentType.Reviewer: LLMHandler(model=reviewer_model, model_type=reviewer_model_type, temperature=temperature),
     }
 
-    embed = EmbeddingsHandler(embed_model, embed_model_type)
-
-    prompts = custom_prompt_store
-    if not prompts:
-        prompts = default_prompt_store()
-
-    survey_ctx = SurveyContext(
-        subject, ref_paths, agent_llms, embed, prompts, tex_template_path,
-        save_path, local_reference_store, tesseract_executable, no_ref_faiss, 
-        no_review, no_figures, no_reference, no_abstract, no_tex_review, 
-        pregen_struct_json_path, prewritten_tex_path, bibdb_path, faissbib_path, 
-        faissfig_path, faisscontent_path, faiss_confidence, images_dir,
-        llm_request_cooldown_sec, embed_request_cooldown_sec, ref_max_per_section, 
-        ref_max_per_sentence, ref_max_same_ref, status_queue=pipeline_status_queue
+    config = SurveyContextConfig(
+        subject=subject,
+        ref_paths=ref_paths,
+        llms=agent_llms,
+        embed_model=embed_model,
+        embed_model_type=embed_model_type,
+        prompt_store_path=custom_prompt_store,
+        tex_template_path=tex_template_path,
+        
+        save_path=save_path,
+        reference_store_path=local_reference_store,
+        
+        tesseract_executable=tesseract_executable,
+        
+        no_ref_faiss=no_ref_faiss,
+        no_review=no_review,
+        no_figures=no_figures,
+        no_reference=no_reference,
+        no_abstract=no_abstract,
+        no_tex_review=no_tex_review,
+        
+        ref_max_per_section=ref_max_per_section,
+        ref_max_per_sentence=ref_max_per_sentence,
+        ref_max_same_ref=ref_max_same_ref,
+        fig_max_figures=fig_max_figures,
+        
+        structure_json_path=pregen_struct_json_path,
+        prewritten_tex_path=prewritten_tex_path,
+        bibdb_path=bibdb_path,
+        
+        faissbib_path=faissbib_path,
+        images_dir=images_dir,
+        faissfig_path=faissfig_path,
+        faisscontent_path=faisscontent_path,
+        faiss_confidence=faiss_confidence,
+        llm_request_cooldown_sec=llm_request_cooldown_sec,
+        embed_request_cooldown_sec=embed_request_cooldown_sec
     )
-    return survey_ctx.generate()
 
+    survey_ctx = SurveyContext(config, status_queue=pipeline_status_queue)
+    survey_ctx.config.save_yaml(os.path.join(survey_ctx.output_dir, "survey_config.yaml"))
+    res = survey_ctx.generate()
+    return res
+
+def generate_survey_from_config(credentials_path: str, config_path: str):
+    setup_credentials(credentials_path)
+    config = load_pydantic_yaml(config_path, SurveyContextConfig)
+    
+    survey_ctx = SurveyContext.from_config(config)
+    survey_ctx.config.save_yaml(os.path.join(survey_ctx.output_dir, "survey_config.yaml"))
+
+    res = survey_ctx.generate()
+    return res

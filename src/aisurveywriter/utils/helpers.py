@@ -15,6 +15,22 @@ from io import BytesIO
 from PIL import Image
 import random
 import string
+import yaml
+from pydantic import BaseModel
+
+
+def load_pydantic_yaml(path: str, model: BaseModel):
+    """
+    Load a YAML file and return a Pydantic model.
+    """
+    with open(path, "r", encoding="utf-8") as file:
+        data = yaml.safe_load(file)
+    obj = model(**data)
+    return obj
+
+def save_pydantic_yaml(obj: BaseModel, path: str):
+    with open(path, "w", encoding="utf-8") as file:
+        yaml.safe_dump(obj.model_dump(), file, allow_unicode=True)
 
 def is_pdf(path: str) -> bool:
     with open(path, "rb") as f:

@@ -2,7 +2,7 @@ from enum import Enum, auto
 from typing import Optional, Union
 import re
 from time import sleep
-
+from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, AIMessage
 from langchain.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
@@ -28,8 +28,17 @@ class LLMType(Enum):
             case _:
                 raise ValueError(f"{s!r} is not a valid LLMType")
 
+
+class LLMConfig(BaseModel):
+    model: str
+    model_type: str
+    temperature: float = 0.5
+
+
 class LLMHandler:
     def __init__(self, model: str, model_type: Union[LLMType, str], temperature: float = 0.5):
+        self.config = LLMConfig(model=model, model_type=model_type, temperature=temperature)
+        
         self.name = model
         if isinstance(model_type, str):
             model_type = LLMType.from_str(model_type)
@@ -46,6 +55,11 @@ class LLMHandler:
 
         self.prompt = None
         self._chain = None
+    
+    @staticmethod
+    def from_config(config: LLMConfig):
+        return LLMHandler(model=config.model, model_type=config.model_type, temperature=config.temperature)
+    
     
     def init_chain(self, ctxmsg: SystemMessage, prompt: str):
         if ctxmsg:

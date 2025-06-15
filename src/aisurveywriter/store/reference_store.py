@@ -220,7 +220,8 @@ class ReferenceStore(BaseModel):
         pdf_paths: List[str] = []
         non_pdf_paths: List[str] = []
         for path in reference_paths:
-            # if path.endswith(".pdf"):
+            if os.path.basename(path).startswith('.'): # skip hidden files
+                continue
             if is_pdf(path):
                 pdf_paths.append(path)
             else:

@@ -2,19 +2,24 @@ import os
 import argparse
 import re
 
-from aisurveywriter import generate_paper_survey
+from aisurveywriter import generate_paper_survey, generate_survey_from_config
 from aisurveywriter.utils import get_all_files_from_paths
 from aisurveywriter.store.prompt_store import PromptStore
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    
+    parser.add_argument("--credentials", required=True, type=str, help="YAML file containing your API keys")
+    # load everything from a config yaml
+    parser.add_argument("--config", "-c", type=str, default=None, help="Path to YAML config file. If provided, all other arguments will be ignored")
+    
+    # load everything by hand
     parser.add_argument("references_dir", help="Path to directory containg all PDF references")
     parser.add_argument("subject", help="Main subject of the survey. Can be the Title too")
     parser.add_argument("--save-dir", type=str, default="./out", help="Path to output directory")
     parser.add_argument("--llm", "-l", choices=["openai", "google"], default="google", help="Specify LLM to use. Either 'google', 'openai' or 'ollama'. Default is google")
     parser.add_argument("--llm-model", "-m", dest="llm_model", default="gemini-2.0-flash", help="Specific LLM model to use. Default is gemini-2.0-flash")
     parser.add_argument("--temperature", type=float, default=0.65, help="Temperature to use with LLM models. This will be the same across all LLM agents.")
-    parser.add_argument("--credentials", default="credentials.yaml", help="YAML file containing your API keys")
     parser.add_argument("--structure", "-s", default=None, type=str, help="JSON file containing the structure to use. If provided, this will skip the structure generation process.")
     parser.add_argument("--paper", "-p", default=None, help="Path to .TEX paper to use. If provided, won't write one from the structure, and will skip directly to reviewing it (unless --no-review) is provided")
     parser.add_argument("--embed-model", "-e", default="Snowflake/snowflake-arctic-embed-l-v2.0", help="Text embedding model name. Default is Snowflake/snowflake-arctic-embed-l-v2.0")
@@ -45,57 +50,54 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # load prompt store content if provided
-    custom_prompt_store = None
-    if args.prompt_store:
-        with open(args.prompt_store, "r", encoding="utf-8") as f:
-            custom_prompt_store = PromptStore.model_validate_json(f.read())
+    if args.config:
+        generate_survey_from_config(args.credentials, args.config)
+    else:
+        generate_paper_survey(
+            subject=args.subject,
+            ref_paths=get_all_files_from_paths(args.references_dir, stem_sort=True),
+            save_path=os.path.abspath(args.save_dir),
+            
+            writer_model=args.llm_model,
+            writer_model_type=args.llm,
+            reviewer_model=args.llm_model,
+            reviewer_model_type=args.llm,
 
-    generate_paper_survey(
-        subject=args.subject,
-        ref_paths=get_all_files_from_paths(args.references_dir, stem_sort=True),
-        save_path=os.path.abspath(args.save_dir),
-        
-        writer_model=args.llm_model,
-        writer_model_type=args.llm,
-        reviewer_model=args.llm_model,
-        reviewer_model_type=args.llm,
+            temperature=args.temperature,
+            
+            embed_model=args.embed_model,
+            embed_model_type=args.embed_type,
 
-        temperature=args.temperature,
-        
-        embed_model=args.embed_model,
-        embed_model_type=args.embed_type,
+            custom_prompt_store=args.prompt_store,
+            tex_template_path=args.tex_template,
+            
+            local_reference_store=args.reference_store,
+            tesseract_executable=args.tesseract,
+            
+            no_ref_faiss=args.no_ref_rag,
+            no_review=args.no_review,
+            no_figures=args.no_figures,
+            no_reference=args.no_reference,
+            no_abstract=args.no_abstract,
+            no_tex_review=args.no_tex_review,
+            
+            pregen_struct_json_path=args.structure,
+            prewritten_tex_path=args.paper,
+            
+            bibdb_path=args.bibdb,
+            faissbib_path=args.faissbib,
+            faissfig_path=args.faissfig,
+            faisscontent_path=args.faissref,
+            
+            images_dir=os.path.abspath(args.images) if args.images else None,
 
-        custom_prompt_store=custom_prompt_store,
-        tex_template_path=args.tex_template,
-        
-        local_reference_store=args.reference_store,
-        tesseract_executable=args.tesseract,
-        
-        no_ref_faiss=args.no_ref_rag,
-        no_review=args.no_review,
-        no_figures=args.no_figures,
-        no_reference=args.no_reference,
-        no_abstract=args.no_abstract,
-        no_tex_review=args.no_tex_review,
-        
-        pregen_struct_json_path=args.structure,
-        prewritten_tex_path=args.paper,
-        
-        bibdb_path=args.bibdb,
-        faissbib_path=args.faissbib,
-        faissfig_path=args.faissfig,
-        faisscontent_path=args.faissref,
-        
-        images_dir=os.path.abspath(args.images) if args.images else None,
+            llm_request_cooldown_sec=args.cooldown,
+            embed_request_cooldown_sec=args.embed_cooldown,
 
-        llm_request_cooldown_sec=args.cooldown,
-        embed_request_cooldown_sec=args.embed_cooldown,
-
-        ref_max_per_section=args.ref_max_section,
-        ref_max_per_sentence=args.ref_max_sentence,
-        ref_max_same_ref=args.ref_max_same,
-    )
+            ref_max_per_section=args.ref_max_section,
+            ref_max_per_sentence=args.ref_max_sentence,
+            ref_max_same_ref=args.ref_max_same,
+        )
 
 
 if __name__ == "__main__":

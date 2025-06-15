@@ -2,11 +2,14 @@ from time import sleep
 
 from langchain_core.messages import AIMessage
 
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def global_log(*msgs):
-    print(*msgs)
+    logging.info(*msgs)
 
 def named_log(obj, *msgs):
-    print(f"({obj.__class__.__name__})", *msgs)
+    logging.info(f"({obj.__class__.__name__})", *msgs)
 
 def countdown_log(msg: str, sec: int):
     for t in range(1, sec+1):
