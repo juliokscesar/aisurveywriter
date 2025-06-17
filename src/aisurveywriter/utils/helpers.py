@@ -99,7 +99,7 @@ def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False,
                     else:
                         files.extend([os.path.abspath(os.path.join(root, file)) for file in filenames])
             else:
-                for item in os.lisdir(path):
+                for item in os.listdir(path):
                     item_path = os.path.join(path, item)
                     if os.path.isfile(item_path):
                         if skip_ext is not None and file_ext(item_path) in skip_ext:
