@@ -1,0 +1,54 @@
+bibdb_path: out/refextract-bibdb.bib
+embed_model: Snowflake/snowflake-arctic-embed-l-v2.0
+embed_model_type: huggingface
+embed_request_cooldown_sec: 0
+faiss_confidence: 0.7
+faissbib_path: out/refextract-bibdb.faiss/
+faisscontent_path: out/content-rag.faiss/
+faissfig_path: out/figures-rag.faiss/
+fig_max_figures: 30
+images_dir: /home/juliocesar/dev/aisurveywriter/out/images
+llm_request_cooldown_sec: 30
+llms:
+  reviewer:
+    model: gemini-2.0-flash
+    model_type: google
+    temperature: 0.65
+  structure_generator:
+    model: gemini-2.0-flash
+    model_type: google
+    temperature: 0.65
+  writer:
+    model: gemini-2.0-flash
+    model_type: google
+    temperature: 0.65
+no_abstract: false
+no_figures: false
+no_ref_faiss: false
+no_reference: false
+no_review: false
+no_tex_review: false
+prewritten_tex_path: null
+prompt_store_path: null
+ref_max_per_section: 100
+ref_max_per_sentence: 4
+ref_max_same_ref: 12
+ref_paths:
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S003132031630245X-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S0031320319304893-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S0031320321000042-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S0031320323005009-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S003132032300657X-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S0031320324002504-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S0167865513000536-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S0957417423001288-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S0957417423034802-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/1-s2.0-S2352938525001211-main.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/radiation-04-00005-v2.pdf
+- /home/juliocesar/dev/aisurveywriter/pdfs/s11263-018-1125-z.pdf
+reference_store_path: out/refstore.pkl
+save_path: /home/juliocesar/dev/aisurveywriter/out/survey.tex
+structure_json_path: null
+subject: Texture analysis and classification
+tesseract_executable: tesseract
+tex_template_path: /home/juliocesar/dev/aisurveywriter/templates/paper_template.tex
