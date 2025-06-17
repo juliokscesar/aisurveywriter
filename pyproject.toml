@@ -22,7 +22,7 @@ dependencies = [
     "langchain-ollama",
     "langchain-community",
     "langchain-huggingface",
-    "detectron2@git+https://github.com/facebookresearch/detectron2.git@v0.5#egg=detectron2",
+    "detectron2@git+https://github.com/facebookresearch/detectron2.git@ff53992b1985b63bd3262b5a36167098e3dada02",
     "layoutparser",
     "layoutparser[ocr]",
     "pdf2image",
