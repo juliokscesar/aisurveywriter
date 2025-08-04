@@ -1,0 +1,110 @@
+subject: "Langmuir-Blodgett Films"
+references_dir: "/home/juliocesar/dev/aisurveywriter/refexamples/test"
+
+### Save and output configurations
+save_path: "./out" # can be just the directory name, or the full path to .tex desination
+
+### Options to use files from pre-generated survey
+reference_store_path: ""
+
+structure_json_path: "" # if provided, the Structure Generation step is skipped
+prewritten_tex_path: "" # if provided, the Fill Sections step is skipped
+
+faiss_content_path: ""
+
+extracted_images_dir: ""
+faiss_fig_path: ""
+
+bibtex_db_path: ""
+faiss_bib_path: ""
+
+### LLMs agents configuration
+writer:
+  model: "gemini-2.5-flash"
+  type: "google"
+  cooldown: 10
+  temperature: 0.65
+
+structure_generator:
+  model: "gemini-2.5-flash"
+  type: "google"
+  cooldown: 10
+  temperature: 0.65
+
+reviewer:
+  model: "gemini-2.5-flash"
+  type: "google"
+  cooldown: 10
+  temperature: 0.65
+
+bib_extractor: # prefer a low-cost model for this task. It will receive a lot of ~700 tokens requests
+  model: "gemini-2.0-flash"
+  type: "google"
+  cooldown: 5
+  temperature: 0.8
+
+
+#### Tasks configuration
+task_structure_generation:
+  skip: false # if a pregenerated structure is given, this will be skipped anyway
+  llm_agent: "structure_generator"
+
+
+task_sections_fill: 
+  skip: false # if a prewritten tex is given, this will be skipped anyway
+  llm_agent: "writer"
+
+
+task_add_figures:
+  skip: false
+  llm_agent: "writer"
+  similarity_threshold: 0.75
+  max_figures: 30
+  max_figures_per_section: 3
+
+
+task_review_sections:
+  skip: false
+  llm_agent: "reviewer"
+
+
+task_add_references:
+  skip: false
+  llm_agent: "writer"
+  agent_configs:
+    cooldown: 6
+  retrieval_k_per_paragraph: 50
+  similarity_threshold: 0.8
+  max_references_per_section: 50
+  max_same_reference: 10
+
+
+task_abstract_and_title:
+  skip: false
+  llm_agent: "writer"
+
+
+task_tex_review:
+  skip: false
+
+
+### Text embedding configuration
+embed_model: "Snowflake/snowflake-arctic-embed-l-v2.0"
+embed_model_type: "huggingface"
+embed_request_cooldown: 0
+
+### PDF parser options
+pdf_parser_method: "layout_parser"
+
+layout_parser_config: "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config"
+tesseract_executable: "tesseract" # this should be the command you use to run tesseract on CLI
+
+
+### Prompt store
+prompt_store_path: "" # empty means it will use the default prompts (hardcoded)
+
+
+### TEX template
+tex_template_path: "./templates/paper_template.tex"
+
+

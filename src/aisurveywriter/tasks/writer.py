@@ -43,7 +43,7 @@ class PaperWriter(PipelineTask):
         for i, section in enumerate(self.agent_ctx._working_paper.sections):
             assert(section.description is not None)
 
-            named_log(self, f"==> start writing content for section ({i+1}/{section_amount}): \"{section.title}\"")
+            named_log(self, f"start writing content for section ({i+1}/{section_amount}): \"{section.title}\"")
             
             elapsed, response = time_func(self.agent_ctx.llm_handler.invoke, {
                 "refcontent": self._get_reference_content(section),
@@ -57,7 +57,7 @@ class PaperWriter(PipelineTask):
             section.content = re.sub(r"[`]+[\w]*", "", response.content)
             total_words += len(section.content.split())
 
-            named_log(self, f"==> finished writing section ({i+1}/{section_amount}) | total word count: {total_words}")
+            named_log(self, f"finished writing section ({i+1}/{section_amount}) | total word count: {total_words}")
             metadata_log(self, elapsed, response)
             if self.agent_ctx.llm_cooldown:
                 cooldown_log(self, self.agent_ctx.llm_cooldown)

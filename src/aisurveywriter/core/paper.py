@@ -3,8 +3,8 @@ from typing import Union, List, Optional
 import re
 import json
 import os
+import yaml
 
-from .file_handler import read_yaml
 from ..utils.logger import named_log
 
 @dataclass
@@ -24,7 +24,8 @@ class PaperData:
     
     @staticmethod
     def from_structure_yaml(subject: str, path: str):
-        sections = read_yaml(path)["sections"]
+        with open(path, "r", encoding="utf-8") as f:
+            sections = yaml.safe_load(f)["sections"]
         paper = PaperData(
             subject=subject,
             sections=[SectionData(s["title"], s["description"]) for s in sections]              

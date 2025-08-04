@@ -22,7 +22,7 @@ class PaperStructureGenerator(PipelineTask):
         self.save_json_path = save_json_path
         
     def generate(self, save_json_path: Optional[str] = None) -> dict[str,List[dict[str,str]]]:
-        named_log(self, f"==> start generating structure for paper on subject {self.agent_ctx._working_paper.subject!r}")
+        named_log(self, f"start generating structure for paper on subject {self.agent_ctx._working_paper.subject!r}")
         
         self.agent_ctx.llm_handler.init_chain_messages(
             SystemMessagePromptTemplate.from_template(self.agent_ctx.prompts.generate_struct.text),
@@ -38,7 +38,7 @@ class PaperStructureGenerator(PipelineTask):
             resp_json = resp_json[resp_json.find("{"):resp_json.rfind("}")+1]
             structure = json.loads(resp_json)
         except Exception as e:
-            named_log(self, f"==> failed to parse JSON from LLM response. Raising exception")
+            named_log(self, f"failed to parse JSON from LLM response. Raising exception")
             raise e
             
         metadata_log(self, elapsed, response)
@@ -49,7 +49,7 @@ class PaperStructureGenerator(PipelineTask):
             with open(save_json_path, "w", encoding="utf-8") as f:
                 json.dump(structure, f, indent=2)
 
-        named_log(self, f"==> finish generating structure")
+        named_log(self, f"finish generating structure")
         return structure
 
 
