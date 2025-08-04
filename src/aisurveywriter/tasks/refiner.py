@@ -24,7 +24,7 @@ class PaperRefiner(PipelineTask):
     def refine(self) -> PaperData:
         self.agent_ctx.llm_handler.init_chain_messages(self._system, self._human)
 
-        named_log(self, f"==> asking LLM to produce title and abstract")
+        named_log(self, f"asking LLM to produce title and abstract")
 
         # we only want to maintain the survey content itself, without latex commands
         # which also helps reduce token usage
@@ -39,7 +39,7 @@ class PaperRefiner(PipelineTask):
             "content": paper_content,
         })
         
-        named_log(self, f"==> got title and abstract from LLM")
+        named_log(self, f"got title and abstract from LLM")
         metadata_log(self, elapsed, response)
         if self.agent_ctx.llm_cooldown:
             cooldown_log(self, self.agent_ctx.llm_cooldown)
@@ -65,7 +65,7 @@ class PaperRefiner(PipelineTask):
             ))
             self.agent_ctx._working_paper.title = resp["title"]
         except:
-            named_log(self, f"==> failed to parse JSON from LLM response. Adding abstract section as it is")
+            named_log(self, f"failed to parse JSON from LLM response. Adding abstract section as it is")
             self.agent_ctx._working_paper.sections.insert(0, SectionData(
                 title="Abstract",
                 description="paper abstract",

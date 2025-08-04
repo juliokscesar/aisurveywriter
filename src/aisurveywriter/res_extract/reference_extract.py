@@ -39,11 +39,11 @@ REFERENCE_EXTRACTOR_HUMAN_PROMPT = """Extract from the given references:
 \"\"\""""
 
 class ReferencesBibExtractor:
-    def __init__(self, llm: LLMHandler, references: ReferenceStore, system_prompt: str = REFERENCE_EXTRACTOR_SYSTEM_PROMPT, human_prompt: str = REFERENCE_EXTRACTOR_HUMAN_PROMPT, n_batches: int = 10, request_cooldown_sec: int = 30):
+    def __init__(self, llm: LLMHandler, references: ReferenceStore, system_prompt: str = REFERENCE_EXTRACTOR_SYSTEM_PROMPT, human_prompt: str = REFERENCE_EXTRACTOR_HUMAN_PROMPT, max_batch_character_size: int = 400, request_cooldown_sec: int = 30):
         self.llm = llm
         self._cooldown = request_cooldown_sec
         self.parser = PydanticOutputParser(pydantic_object=BibExtractorOutput)
-        self.n_batches = max(1, n_batches)
+        self.max_batch_character_size = max(1, max_batch_character_size)
         
         self._system = SystemMessagePromptTemplate.from_template(system_prompt)
         self._human = HumanMessagePromptTemplate.from_template(human_prompt)
@@ -57,7 +57,8 @@ class ReferencesBibExtractor:
     def extract(self):
         bib_sections = self.references.bibliography_sections()
         
-        chunk_sz = sum(len(bib) for bib in bib_sections) // self.n_batches
+        # chunk_sz = sum(len(bib) for bib in bib_sections) // self.n_batches
+        chunk_sz = self.max_batch_character_size
         chunk_overlap = int(chunk_sz * 0.05)
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_sz,
@@ -66,11 +67,10 @@ class ReferencesBibExtractor:
 
         bib_docs = text_splitter.create_documents(bib_sections)
         n_chunks = len(bib_docs)
-
         bib_info: List[BibliographyInfo] = []
         
         for i, bib_doc in enumerate(bib_docs):
-            named_log(self, f"==> start extracting title and author from batch {i+1}/{n_chunks}")
+            named_log(self, f"start extracting title and author from batch {i+1}/{n_chunks}")
             
             elapsed, response = time_func(self.llm.invoke, {
                 "references": bib_doc.page_content,
@@ -78,8 +78,8 @@ class ReferencesBibExtractor:
             try:
                 bib_output: BibExtractorOutput = self.parser.invoke(response)
                 bib_info.extend(bib_output.bibliography)
-                named_log(self, f"==> finish extracting title and author from batch {i+1}/{n_chunks}")
-                named_log(self, f"==> got {len(bib_output.bibliography)} references | total: {len(bib_info)}")
+                named_log(self, f"finish extracting title and author from batch {i+1}/{n_chunks}")
+                named_log(self, f"got {len(bib_output.bibliography)} references | total: {len(bib_info)}")
             except Exception as e:
                 named_log(self, f"unable to get references from batch {i+1}. Exception raised: {e}")
             
@@ -91,21 +91,22 @@ class ReferencesBibExtractor:
 
     def to_bibtex_db(self, bib_info: List[BibliographyInfo], filter_duplicates = True, save_path: Optional[str] = None):
         bibtex_db = bibtexparser.bibdatabase.BibDatabase()
-        for ref in bib_info:
+        for i, ref in enumerate(bib_info):
+            named_log(self, f"getting reference BibTex info from CrossRef ({i+1}/{len(bib_info)})")
             try:
                 entry = get_bibtex_entry(ref.title, ref.authors)
                 if not entry:
-                    named_log(self, f"==> no bibtex entry for: {ref}")
+                    named_log(self, f"no bibtex entry for: {ref}")
                     continue
                 
                 entry["ID"] = f"key{len(bibtex_db.entries)}"
                 bibtex_db.entries.append(entry)
             except Exception as e:
-                named_log(self, f"==> bibtex entry raised exception for {ref!r}: {e}")
+                named_log(self, f"bibtex entry raised exception for {ref!r}: {e}")
         
         if filter_duplicates:
             bibtex_db, amount = self._filter_duplicates_bibtexdb(bibtex_db)
-            named_log(self, f"==> removed {amount} duplicated bibtex entries")
+            named_log(self, f"removed {amount} duplicated bibtex entries")
         if save_path:
             with open(save_path, "w") as bibfile:
                 bibtexparser.dump(bibtex_db, bibfile)

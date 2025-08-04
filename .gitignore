@@ -2,6 +2,7 @@ __pycache__
 driver
 .venv
 .gradio
+.vscode
 drivers/
 refexamples
 *.pdf

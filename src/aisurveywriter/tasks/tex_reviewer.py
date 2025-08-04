@@ -78,7 +78,7 @@ class TexReviewer(PipelineTask):
 
     def _remove_invalid_figures(self, section_content: str, img_dir: str) -> str:
         if not os.path.isdir(img_dir):
-            named_log(self, "==> invalid image directory:", img_dir)
+            named_log(self, "invalid image directory:", img_dir)
             return section_content
         
         def replace_invalid_figure(match):

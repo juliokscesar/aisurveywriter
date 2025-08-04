@@ -45,9 +45,9 @@ class LLMHandler:
         self.model_type = model_type
         match model_type:
             case LLMType.OpenAI:
-                self.model = ChatOpenAI(model=model, temperature=temperature, max_tries=3, request_timeout=120)
+                self.model = ChatOpenAI(model=model, temperature=temperature, max_retries=3, timeout=120)
             case LLMType.Google:
-                self.model = ChatGoogleGenerativeAI(model=model, temperature=temperature, max_tries=3, request_timeout=120)
+                self.model = ChatGoogleGenerativeAI(model=model, temperature=temperature, max_retries=3, timeout=120)
             case LLMType.Ollama:
                 self.model = ChatOllama(model=model, temperature=temperature)
             case _:

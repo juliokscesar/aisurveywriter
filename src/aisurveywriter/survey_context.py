@@ -1,310 +1,292 @@
-from typing import List, Optional, Union, Tuple
-from enum import ReprEnum, auto
-from pydantic import BaseModel, Field
+from typing import Union, List
 import os
-from pathlib import Path
 import yaml
 
-from .core.paper import PaperData
-from .core.agent_context import AgentContext
-from .core.agent_rags import AgentRAG, RAGType
-from .store.reference_store import ReferenceStore
-from .core.llm_handler import LLMHandler, LLMConfig
-from .core.lp_handler import LayoutParserSettings
-from .core.text_embedding import EmbeddingsHandler
-from .store.prompt_store import PromptStore, PromptInfo, default_prompt_store
 from .core.pipeline import PaperPipeline
+from .core.llm_handler import LLMHandler
+from .core.agent_rags import AgentRAG, RAGType
+from .core.agent_context import AgentContext
+from .core.text_embedding import EmbeddingsHandler
+from .core.lp_handler import LayoutParserSettings
+from .core.paper import PaperData
 import aisurveywriter.tasks as tks
+from .store import ReferenceStore, PromptStore, PromptInfo, default_prompt_store
+from .utils.helpers import get_all_files_from_paths, time_func
 from .utils.logger import named_log
-from .utils.helpers import time_func, load_pydantic_yaml, save_pydantic_yaml
-
-class SurveyAgentType(str, ReprEnum):
-    StructureGenerator: str = "structure_generator"
-    Writer: str = "writer"
-    Reviewer: str = "reviewer"
-    
-    def __str__(self):
-        return self.value
-
-    def __repr__(self):
-        return str(self.value)
-
-
-class SurveyContextConfig(BaseModel):
-    subject: str
-    ref_paths: List[str]
-    
-    # Keep llms as SurveyAgentType -> LLMConfig
-    llms: dict[Union[str, SurveyAgentType], LLMConfig] = Field(default_factory=dict)
-    
-    embed_model: str = "Snowflake/snowflake-arctic-embed-l-v2.0"
-    embed_model_type: str = "huggingface"
-    
-    prompt_store_path: Optional[str] = None
-    tex_template_path: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../templates/paper_template.tex"))
-    save_path: str = "survey_out"
-    
-    reference_store_path: Optional[str] = None
-    tesseract_executable: str = "tesseract"
-    
-    no_ref_faiss: bool = False
-    no_review: bool = False
-    no_figures: bool = False
-    no_reference: bool = False
-    no_abstract: bool = False
-    no_tex_review: bool = False
-    
-    ref_max_per_section: int = 90
-    ref_max_per_sentence: int = 4
-    ref_max_same_ref: int = 10
-    fig_max_figures: int = 30
-    
-    structure_json_path: Optional[str] = None
-    prewritten_tex_path: Optional[str] = None
-    
-    bibdb_path: Optional[str] = None
-    faissbib_path: Optional[str] = None
-
-    images_dir: Optional[str] = None
-    faissfig_path: Optional[str] = None
-
-    faisscontent_path: Optional[str] = None
-    faiss_confidence: float = 0.90
-
-    llm_request_cooldown_sec: int = 30
-    embed_request_cooldown_sec: int = 0
-
-    def save_yaml(self, path: str):
-        self.llms = {str(k): v for k, v in self.llms.items()}  # Convert SurveyAgentType to str for YAML serialization
-        save_pydantic_yaml(self, path)
-    
-    @staticmethod
-    def load_yaml(path: str):
-        config = load_pydantic_yaml(path, SurveyContextConfig)
-        config.llms = {SurveyAgentType(k): v for k, v in config.llms.items()}  # Convert str back to SurveyAgentType
-        return config
-        
-
 
 class SurveyContext:
-    def __init__(
-        self, 
-        config: Union[SurveyContextConfig, str],
-        **pipeline_kwargs,
-    ):
-        # Load configuration
-        if isinstance(config, str):
-            config = load_pydantic_yaml(config, SurveyContextConfig)
-        self.config = config
-
-        # add .tex to save_path if not provided
-        if not config.save_path.endswith(".tex"):
-            os.makedirs(config.save_path, exist_ok=True)
-            config.save_path = os.path.join(config.save_path, "survey.tex")
-        
-        
-        self.save_path = config.save_path
-        self.output_dir = os.path.dirname(config.save_path)
-        self.tex_template_path = config.tex_template_path
-        
-        # Initialize paper and load structure and pre-written .tex if provided
-        self.paper = PaperData(subject=config.subject, sections=None)
-        if config.structure_json_path:
-            self.paper.load_structure(config.structure_json_path)
-        if config.prewritten_tex_path:
-            self.paper.load_tex(config.prewritten_tex_path)
-        
-        self.images_dir = config.images_dir
-        if not self.images_dir:
-            self.images_dir = os.path.join(self.output_dir, "images") # rag creates this directory if none was provided
-        self.paper.fig_path = self.images_dir
-
-        # Initialize Layout Parser settings
-        lp_config = "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config"
-        lp_settings = LayoutParserSettings(config_path=lp_config, tesseract_executable=config.tesseract_executable)
-        
-        # Load or create reference store
-        if self.config.reference_store_path:
-            self.references = ReferenceStore.from_local(self.config.reference_store_path)
-            self.references.update_references(self.config.ref_paths)
-            self.references.lp_settings = lp_settings
-            named_log(self, "loaded reference store from", self.config.reference_store_path, f"total of {len(self.references.documents)} references")
-        else:
-            self.config.reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
-            self.references = ReferenceStore.create_store(self.config.ref_paths, lp_settings, self.images_dir,
-                                                save_local=self.config.reference_store_path, 
-                                                title_extractor_llm=None)
-            named_log(self, "saved reference store to", self.config.reference_store_path, f"total of {len(self.references.documents)} references")
-        self.references.bibtex_db_path = config.bibdb_path
-        self.references.images_dir = self.images_dir
-        
-        # Create LLM handlers
-        llms_config = config.llms
-        self.llms = {agent_type: None for agent_type in SurveyAgentType}
-        self._llm_cooldown = config.llm_request_cooldown_sec
-        
-        # load configuration for each LLM
-        for agent_type, llm_config in llms_config.items():
-            agent_type = SurveyAgentType(agent_type)
-            self.llms[agent_type] = LLMHandler.from_config(llm_config)
-        
-        # load Text Embedding Model
-        self.embed = EmbeddingsHandler(name=config.embed_model, model_type=config.embed_model_type)
-        self._embed_cooldown = config.embed_request_cooldown_sec
-
-
-        if config.prompt_store_path:
-            with open(config.prompt_store_path, "r", encoding="utf-8") as f:
-                self.prompts = PromptStore.model_validate_json(f.read())
-        else:
-            self.prompts = default_prompt_store()
-        
-        self.confidence = config.faiss_confidence
-        self.rags = AgentRAG(self.embed, self.llms[SurveyAgentType.StructureGenerator], 
-                             config.faissbib_path, config.faissfig_path, config.faisscontent_path, 
-                             request_cooldown_sec=6, output_dir=self.output_dir, 
-                             confidence=self.confidence)
-                
-        
-        self.pipe_steps: List[tks.PipelineTask] = None
-        self.pipeline: PaperPipeline = None
-        self._create_pipeline(
-            no_content_rag=config.no_ref_faiss, 
-            skip_struct=(config.structure_json_path and config.structure_json_path.strip()),
-            skip_fill=(config.prewritten_tex_path and config.prewritten_tex_path.strip()),
-            skip_figures=config.no_figures,
-            skip_references=config.no_reference,
-            skip_review=config.no_review,
-            skip_abstract=config.no_abstract,
-            skip_tex_review=config.no_tex_review,
-            
-            ref_max_per_section=config.ref_max_per_section,
-            ref_max_per_sentence=config.ref_max_per_sentence,
-            ref_max_same_ref=config.ref_max_same_ref,
-            
-            fig_max_figures=config.fig_max_figures,
-            
-            **pipeline_kwargs,
-        )
+    def __init__(self, config: Union[str, dict], **pipeline_kwargs):
+        self.config = self.load_config(config)
     
-    def _create_pipeline(
-        self,
-        no_content_rag=False,
-        skip_struct=False, 
-        skip_fill=False, 
-        skip_figures=False, 
-        skip_references=False,
-        skip_review=False, 
-        skip_abstract=False,
-        skip_tex_review=False,
+        # Initialize subject and references paths
+        self.subject = self.config.get("subject").strip()
+        if not self.subject:
+            raise RuntimeError("Please provide a subject in configuration")
         
-        ref_max_per_section: int = 90,
-        ref_max_per_sentence: int = 4,
-        ref_max_same_ref: int = 10,
+        self.references_dir = self.config.get("references_dir").strip()
+        if not self.references_dir or not os.path.isdir(self.references_dir):
+            raise RuntimeError("Please provide a valid directory containing references")
         
-        fig_max_figures: int = 30,
+        save_path = self.config.get("save_path", "out")
         
-        **pipeline_kwargs,
-    ):
-        self.pipe_steps = []
-
-        # first ensure all rags are loaded/created
-        using_rags = RAGType.All
-        if no_content_rag or (skip_fill and skip_review):
-            using_rags &= ~RAGType.GeneralText
-        if skip_figures:
-            using_rags &= ~RAGType.ImageData
-        if skip_references:
-            using_rags &= ~RAGType.BibTex
-        self.rags.create_rags(using_rags, self.references)
-
-        self.common_agent_ctx = AgentContext(
-            prompts=self.prompts,
-            sys_instructions=None,
-            llm_handler=self.llms[SurveyAgentType.Writer],
-            embed_handler=self.embed,
-            llm_cooldown=self._llm_cooldown,
-            embed_cooldown=self._embed_cooldown,
-            references=self.references,
-            rags=self.rags,
-            output_dir=self.output_dir,
-        )
-        self.common_agent_ctx._working_paper = self.paper
-
-        self.pipe_steps: List[tks.PipelineTask] = []
-        if not skip_struct:
-            self._check_input_variables(self.prompts.generate_struct, SurveyAgentType.StructureGenerator, tks.PaperStructureGenerator.required_input_variables)
-                        
-            struct_agent_ctx = self.common_agent_ctx.copy()
-            struct_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator]
-            struct_json_path = os.path.join(self.output_dir, "structure.json")
-            self.pipe_steps.append(
-                ("Generate Structure", tks.PaperStructureGenerator(struct_agent_ctx, self.paper, struct_json_path))
-            )
-
-        if not skip_fill:
-            self._check_input_variables(self.prompts.write_section, SurveyAgentType.Writer, tks.PaperWriter.required_input_variables)
+        # assume path given is a directory if no .tex on the end
+        if not save_path.endswith(".tex"):
+            save_path = os.path.join(save_path, "survey.tex")
+        
+        self.save_path = save_path
+        self.output_dir = os.path.dirname(save_path)
+        os.makedirs(self.output_dir, exist_ok=True)
+        
+        self.extracted_images_dir = os.path.join(self.output_dir, "ref_images")
+        
+        self.tex_template_path = self.config.get("tex_template_path", None)
+        if not self.tex_template_path:
+            raise RuntimeError("No tex template given in config")
+        if not os.path.isfile(self.tex_template_path):
+            raise FileNotFoundError(f"Couldn't find TEX template: {self.tex_template_path}")
+        
+        
+        self.references_paths = get_all_files_from_paths(self.references_dir, skip_ext=["png", "jpg", "jpeg"],
+                                                         stem_sort=True)
+        if not self.references_paths:
+            raise RuntimeError(f"No references found in {self.references_dir}")
+        
+        pdf_parser_method = self.config.get("pdf_parser_method", "layout_parser")
+        if pdf_parser_method == "layout_parser":
+            lp_config = self.config.get("layout_parser_config", "lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config")
+            if not lp_config:
+                raise RuntimeError("Please provide a valid config for Layout Parser")
+            tesseract = self.config.get("tesseract_executable", "tessseract")
+            lp_settings = LayoutParserSettings(config_path=lp_config, tesseract_executable=tesseract)
+        else:
+            raise RuntimeError(f"Invalid PDF parser method:", pdf_parser_method)
+    
+        # Initialize (or load) reference store
+        reference_store_path = self.config.get("reference_store_path", None)
+        if reference_store_path:
+            if not os.path.isfile(reference_store_path):
+                raise FileNotFoundError(f"Invalid or missing reference store file:", reference_store_path)
             
-            write_agent_ctx = self.common_agent_ctx.copy()
-            write_agent_ctx.llm_handler = self.llms[SurveyAgentType.Writer]
+            try:
+                reference_store = ReferenceStore.from_local(reference_store_path)
+                reference_store.lp_settings = lp_settings
+                reference_store.update_references(self.references_paths)
+                named_log(self, "loaded reference store from", reference_store_path)
+            except Exception as e:
+                import traceback;
+                named_log(self, "Unable to load reference store and/or update references:", traceback.format_exc(e))
+                raise e
+        else:
+            reference_store_path = os.path.join(self.output_dir, "refstore.pkl")
+            try:
+                reference_store = ReferenceStore.create_store(self.references_paths, lp_settings, self.extracted_images_dir, reference_store_path)
+                named_log(self, "saved reference store to", reference_store_path)
+            except Exception as e:
+                import traceback;
+                named_log(self, "Unable to create a Reference Store:", traceback.format_exc(e))
+                raise e
+        
+        self.reference_store = reference_store
+        self.reference_store_path = reference_store_path
+        
+        self.reference_store.images_dir = self.extracted_images_dir
+        
+        # Load specified bibliography DB if given
+        bibtex_db_path = self.config.get("bibtex_db_path", None)
+        if bibtex_db_path and os.path.isfile(bibtex_db_path):
+            self.reference_store.bibtex_db_path = bibtex_db_path
+        
+        
+        # Initialize Paper data
+        self.paper = PaperData(self.subject, sections=None)
+        
+        structure_json_path = self.config.get("structure_json_path", None)
+        if structure_json_path and os.path.isfile(structure_json_path):
+            self.paper.load_structure(structure_json_path)
+            
+            # Skip structure generation
+            self.config["task_structure_generation"]["skip"] = True
+        
+        prewritten_tex_path = self.config.get("prewritten_tex_path", None)
+        if prewritten_tex_path and os.path.isfile(prewritten_tex_path):
+            self.paper.load_tex(prewritten_tex_path)
+            
+            # Skip writing step
+            self.config["sections_fill"]["skip"] = True
+        
+        # Initialize LLM agents
+        self.llm_agents = {
+            "writer": None, 
+            "structure_generator": None,
+            "reviewer": None,
+            "bib_extractor": None,
+        }
+        
+        for agent_name in self.llm_agents:
+            agent_config = self.config.get(agent_name, None)
+            if not agent_config:
+                raise RuntimeError("Missing configuration for agent: " + agent_name)
+        
+            self.llm_agents[agent_name] = LLMHandler(agent_config["model"], agent_config["type"], agent_config["temperature"])
+        
+        # Initialize Text Embedding model
+        self.embed = EmbeddingsHandler(self.config["embed_model"], self.config["embed_model_type"])
+        
+        
+        # Get prompts
+        prompt_store_path = self.config.get("prompt_store_path", None)
+        if prompt_store_path:
+            if not os.path.isfile(prompt_store_path):
+                raise FileExistsError("Prompt store file doesn't exist:", prompt_store_path)
+            with open(prompt_store_path, "r", encoding="utf-8") as f:
+                prompt_store = PromptStore.model_validate_json(f.read())
+        else:
+            prompt_store = default_prompt_store()
+        self.prompts = prompt_store
+        
+        # Initialize RAGs    
+        self.rags = AgentRAG(
+            self.embed, 
+            self.llm_agents["bib_extractor"],
+            self.config.get("faiss_bib_path", None),
+            self.config.get("faiss_fig_path", None),
+            self.config.get("faiss_content_path", None),
+            request_cooldown_sec=self.config["bib_extractor"]["cooldown"],
+        )
+        
+        # Create pipeline
+        self.pipe_steps = None
+        self.pipeline = None
+        self._create_pipeline(**pipeline_kwargs)
+        
+    def _create_pipeline(self, **pipeline_kwargs):
+        self.pipe_steps = []
+        
+        using_rags = RAGType.All
+        if self.config["task_sections_fill"]["skip"] and self.config["task_review_sections"]["skip"]:
+            using_rags &= ~RAGType.GeneralText
+        if self.config["task_add_figures"]["skip"]:
+            using_rags &= ~RAGType.ImageData
+        if self.config["task_add_references"]["skip"]:
+            using_rags &= ~RAGType.BibTex
+        
+        self.rags.create_rags(using_rags, self.reference_store)
+        
+        self.common_agent_ctx = AgentContext(
+            self.prompts, None, self.llm_agents["writer"], self.embed,
+            0, self.config.get("embed_cooldown", 0), self.reference_store, 
+            self.rags, self.output_dir, self.paper
+        )
+        
+        if not self.config["task_structure_generation"]["skip"]:
+            task_agent = self.config["task_structure_generation"].get("llm_agent", "strucutre_generator")
+            self._check_input_variables(self.prompts.generate_struct, task_agent, tks.PaperStructureGenerator.required_input_variables)
+            
+            struct_agent_ctx = self._get_task_agent_ctx("task_structure_generation")
+            structure_json_path = os.path.join(self.output_dir, "structure.json")
+            self.pipe_steps.append(
+                ("Generate Structure", tks.PaperStructureGenerator(struct_agent_ctx, self.paper, structure_json_path))
+            )
+            
+        if not self.config["task_sections_fill"]["skip"]:
+            task_agent = self.config["task_sections_fill"].get("llm_agent", "writer")
+            self._check_input_variables(self.prompts.write_section, task_agent, tks.PaperWriter.required_input_variables)
+            
+            filler_agent_ctx = self._get_task_agent_ctx("task_sections_fill")
             self.pipe_steps.extend([
-                ("Write paper", tks.PaperWriter(write_agent_ctx, self.paper)),
-                ("Save scratch", tks.PaperSaver(self.save_path.replace(".tex", "-scratch.tex"), self.tex_template_path)),
+                ("Write Paper", tks.PaperWriter(filler_agent_ctx, self.paper)),
+                ("Save scratch", tks.PaperSaver(self.save_path.replace(".tex", "-scratch.tex"), self.tex_template_path))
             ])
             
-        if not skip_figures:
-            self._check_input_variables(self.prompts.add_figures, SurveyAgentType.StructureGenerator, tks.PaperFigureAdd.required_input_variables)
-
-            figures_agent_ctx = self.common_agent_ctx.copy()
-            figures_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator] # use llm from structure generation because we use the entire reference content
+        if not self.config["task_add_figures"]["skip"]:
+            task_agent = self.config["task_add_figures"].get("llm_agent", "writer")
+            self._check_input_variables(self.prompts.add_figures, task_agent, tks.PaperFigureAdd.required_input_variables)
+            
+            figure_add_agent_ctx = self._get_task_agent_ctx("task_add_figures")
+            
+            sim_thresh = self.config["task_add_figures"].get("similarity_threshold", 0.75)
+            max_figures = self.config["task_add_figures"].get("max_figures", 30)
+            max_figures_per_section = self.config["task_add_figures"].get("max_figures_per_section", 3)
+            
             self.pipe_steps.extend([
-                ("Add figures", tks.PaperFigureAdd(figures_agent_ctx, self.paper, self.images_dir, self.confidence, max_figures=fig_max_figures)),
+                ("Add Figures", tks.PaperFigureAdd(
+                    figure_add_agent_ctx, self.paper, self.extracted_images_dir,
+                    sim_thresh, max_figures, max_figures_per_section
+                )),
                 ("Save with figures", tks.PaperSaver(self.save_path.replace(".tex", "-figures.tex"), self.tex_template_path))
             ])
+    
+        if not self.config["task_review_sections"]["skip"]:
+            task_agent = self.config["task_review_sections"].get("llm_agent", "reviewer")
+            self._check_input_variables(self.prompts.review_section, task_agent, tks.PaperReviewer.required_input_variables)
+            self._check_input_variables(self.prompts.apply_review_section, task_agent, tks.PaperReviewer.required_input_variables)
             
-        if not skip_review:
-            self._check_input_variables(self.prompts.review_section, SurveyAgentType.Reviewer, tks.PaperReviewer.required_input_variables)
-            self._check_input_variables(self.prompts.apply_review_section, SurveyAgentType.Reviewer, tks.PaperReviewer.required_input_variables)
-
-            review_agent_ctx = self.common_agent_ctx.copy()
-            review_agent_ctx.llm_handler = self.llms[SurveyAgentType.Reviewer]
+            reviewer_agent_ctx = self._get_task_agent_ctx("task_review_sections")
+            
             self.pipe_steps.extend([
-                ("Review paper", tks.PaperReviewer(review_agent_ctx, self.paper)),
+                ("Review paper", tks.PaperReviewer(reviewer_agent_ctx, self.paper)),
                 ("Save reviewed", tks.PaperSaver(self.save_path.replace(".tex", "-review.tex"), self.tex_template_path)),
             ])
             
-        if not skip_references:
-            self._check_input_variables(self.prompts.add_references, SurveyAgentType.StructureGenerator, tks.PaperReferencer.required_input_variables)
+        if not self.config["task_add_references"]["skip"]:
+            task_agent = self.config["task_add_references"].get("llm_agent", "writer")
+            self._check_input_variables(self.prompts.add_references, task_agent, tks.PaperReferencer.required_input_variables)
             
-            reference_agent_ctx = self.common_agent_ctx.copy()
-            reference_agent_ctx.llm_handler = self.llms[SurveyAgentType.StructureGenerator]
-            reference_agent_ctx.llm_cooldown = 6
+            reference_agent_ctx = self._get_task_agent_ctx("task_add_references")
+            
+            # TODO: edit PaperReferencer to take retrieval_k as param
+            retrieval_k = self.config["task_add_references"].get("retrieval_k_per_paragraph", 50)
+            sim_thresh = self.config["task_add_references"].get("similarity_threshold", 0.8)
+            max_refs_per_section = self.config["task_add_references"].get("max_references_per_section", 50)
+            max_same_ref = self.config["task_add_references"].get("max_same_reference", 10)
+            
             self.pipe_steps.extend([
-                ("Reference paper", tks.PaperReferencer(reference_agent_ctx, self.paper, self.save_path.replace(".tex", ".bib"), max_per_section=ref_max_per_section, max_per_sentence=ref_max_per_sentence, max_same_ref=ref_max_same_ref)),
+                ("Reference paper", tks.PaperReferencer(reference_agent_ctx, self.paper, self.save_path.replace(".tex", ".bib"), max_refs_per_section, max_same_ref=max_same_ref)),
                 ("Save referenced", tks.PaperSaver(self.save_path.replace(".tex", "-ref.tex"), self.tex_template_path))
             ])
-
-        if not skip_abstract:
-            self._check_input_variables(self.prompts.abstract_and_title, SurveyAgentType.Writer, tks.PaperRefiner.required_input_variables)
             
-            refine_agent_ctx = self.common_agent_ctx.copy()
-            refine_agent_ctx.llm_handler = self.llms[SurveyAgentType.Writer] # use struct gen LLM becase of tokens
+        if not self.config["task_abstract_and_title"]["skip"]:
+            task_agent = self.config["task_abstract_and_title"].get("llm_agent", "writer")
+            self._check_input_variables(self.prompts.abstract_and_title, task_agent, tks.PaperRefiner.required_input_variables)
+            
+            refiner_agent_ctx = self._get_task_agent_ctx("task_abstract_and_title")
             self.pipe_steps.extend([
-                ("Refine paper (abstract and title)", tks.PaperRefiner(refine_agent_ctx, self.paper)),
+                ("Refine paper (abstract and title)", tks.PaperRefiner(refiner_agent_ctx, self.paper)),
                 ("Save refined", tks.PaperSaver(self.save_path.replace(".tex", "-refined.tex"), self.tex_template_path)),
             ])
-
-        if not skip_tex_review:
-            # tex review doesn't need a prompt
-            tex_review_agent_ctx = self.common_agent_ctx.copy()
-            self.pipe_steps.append(("Tex Review", tks.TexReviewer(tex_review_agent_ctx, self.paper)))
-        
+            
+        if not self.config["task_tex_review"]["skip"]:
+            tex_review_ctx = self._get_task_agent_ctx("task_tex_review")
+            self.pipe_steps.append(("Tex Review", tks.TexReviewer(tex_review_ctx, self.paper)))
+     
         self.pipe_steps.append(("Save final paper", tks.PaperSaver(self.save_path, self.tex_template_path)))
         self.pipeline = PaperPipeline(self.pipe_steps, **pipeline_kwargs)
+     
+    
+    def _get_task_agent_ctx(self, task_key: str) -> AgentContext:
+        llm_agent = self.config[task_key].get("llm_agent", "writer")
+        cooldown = self.config[llm_agent].get("cooldown", 0)
+        
+        task_agent_configs = self.config[task_key].get("agent_configs", {})
+        cooldown = task_agent_configs.get("cooldown", cooldown)
+        
+        task_agent_ctx = self.common_agent_ctx.copy()
+        task_agent_ctx.llm_handler = self.llm_agents[llm_agent]
+        task_agent_ctx.cooldown = cooldown
+        
+        return task_agent_ctx
+    
+    
+    def load_config(self, config: Union[str, dict]) -> dict:
+        if isinstance(config, str):
+            with open(config, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+                
+        return config
 
-    def _check_input_variables(self, prompt: PromptInfo, agent_type: SurveyAgentType, required_input_variables: List[str]):
-        missing = set(prompt.input_variables) - set(required_input_variables)
-        assert len(missing) == 0, f"Missing or additional input variables in prompt for {agent_type}: {missing}"
+    def _check_input_variables(self, prompt: PromptInfo, agent_name: str, required_input_variables: List[str]):
+        missing = set(prompt.input_variables) - set(required_input_variables) if len(prompt.input_variables) > len(required_input_variables) else set(required_input_variables) - set(prompt.input_variables)
+        assert len(missing) == 0, f"Missing or additional input variables in prompt for {agent_name}: {missing}"
         
     def _is_initialized(self):
         return (self.pipeline is not None)
