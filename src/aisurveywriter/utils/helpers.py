@@ -16,8 +16,12 @@ from PIL import Image
 import random
 import string
 import yaml
+import json
 from pydantic import BaseModel
 
+def save_pydantic_json(obj: BaseModel, path: str):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj.model_dump(), f, indent=2)
 
 def load_pydantic_yaml(path: str, model: BaseModel):
     """

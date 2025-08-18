@@ -1,6 +1,8 @@
 from typing import Union, List
 import os
 import yaml
+import json
+import pydantic
 
 from .core.pipeline import PaperPipeline
 from .core.llm_handler import LLMHandler
@@ -11,7 +13,7 @@ from .core.lp_handler import LayoutParserSettings
 from .core.paper import PaperData
 import aisurveywriter.tasks as tks
 from .store import ReferenceStore, PromptStore, PromptInfo, default_prompt_store
-from .utils.helpers import get_all_files_from_paths, time_func
+from .utils.helpers import get_all_files_from_paths, time_func, save_pydantic_json
 from .utils.logger import named_log
 
 class SurveyContext:
@@ -45,6 +47,22 @@ class SurveyContext:
         if not os.path.isfile(self.tex_template_path):
             raise FileNotFoundError(f"Couldn't find TEX template: {self.tex_template_path}")
         
+        # Get prompts
+        prompt_store_path = self.config.get("prompt_store_path", None)
+        if prompt_store_path:
+            if not os.path.isfile(prompt_store_path):
+                raise FileExistsError("Prompt store file doesn't exist:", prompt_store_path)
+            with open(prompt_store_path, "r", encoding="utf-8") as f:
+                prompt_store = PromptStore.model_validate_json(f.read())
+        else:
+            prompt_store = default_prompt_store()
+        self.prompts = prompt_store
+
+        if self.config.get("save_prompt_store", False):
+            prompt_store_save_path = os.path.join(self.output_dir, "prompt_store.json")
+            save_pydantic_json(prompt_store, prompt_store_save_path)
+        
+        import pdb; pdb.set_trace()
         
         self.references_paths = get_all_files_from_paths(self.references_dir, skip_ext=["png", "jpg", "jpeg"],
                                                          stem_sort=True)
@@ -96,7 +114,6 @@ class SurveyContext:
         if bibtex_db_path and os.path.isfile(bibtex_db_path):
             self.reference_store.bibtex_db_path = bibtex_db_path
         
-        
         # Initialize Paper data
         self.paper = PaperData(self.subject, sections=None)
         
@@ -131,18 +148,6 @@ class SurveyContext:
         
         # Initialize Text Embedding model
         self.embed = EmbeddingsHandler(self.config["embed_model"], self.config["embed_model_type"])
-        
-        
-        # Get prompts
-        prompt_store_path = self.config.get("prompt_store_path", None)
-        if prompt_store_path:
-            if not os.path.isfile(prompt_store_path):
-                raise FileExistsError("Prompt store file doesn't exist:", prompt_store_path)
-            with open(prompt_store_path, "r", encoding="utf-8") as f:
-                prompt_store = PromptStore.model_validate_json(f.read())
-        else:
-            prompt_store = default_prompt_store()
-        self.prompts = prompt_store
         
         # Initialize RAGs    
         self.rags = AgentRAG(

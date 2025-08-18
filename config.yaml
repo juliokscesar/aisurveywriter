@@ -1,5 +1,5 @@
-subject: "Langmuir-Blodgett Films"
-references_dir: "/home/juliocesar/dev/aisurveywriter/refexamples/test"
+subject: ""
+references_dir: ""
 
 ### Save and output configurations
 save_path: "./out" # can be just the directory name, or the full path to .tex desination
@@ -102,6 +102,7 @@ tesseract_executable: "tesseract" # this should be the command you use to run te
 
 ### Prompt store
 prompt_store_path: "" # empty means it will use the default prompts (hardcoded)
+save_prompt_store: false # save prompt store used to output directory
 
 
 ### TEX template

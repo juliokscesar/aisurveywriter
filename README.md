@@ -29,6 +29,16 @@ And then you can run it using
 python -m aisurveywriter
 ```
 
+**If you get the error when trying to run the pipeline:**
+```
+AttributeError: module layoutparser has no attribute TesseractAgent
+```
+
+Just upgrade layoutparser:
+```
+pip install -U layoutparser layoutparser[ocr]
+```
+
 ### Example usage (CLI)
 The only two positional arguments are "references_dir" and "subject", respectively, and the two most useful optional arguments are "--llm-model (-m)" and "--llm (-l)". 
 
