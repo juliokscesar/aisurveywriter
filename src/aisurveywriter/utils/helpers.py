@@ -78,16 +78,12 @@ def file_ext(file_path: str) -> str:
     _, ext = os.path.splitext(file_path)
     return ext
 
-def sort_stem(item):
-    s = Path(item).stem
-    return s
 
 def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False, recursive=False):
     files = []
     for path in args:
         if os.path.isfile(path):
-            if skip_ext is not None:
-                if file_ext(path) in skip_ext:
+            if skip_ext is not None and file_ext(path) not in skip_ext:
                     continue
             files.append(path)
 
@@ -109,7 +105,7 @@ def get_all_files_from_paths(*args, skip_ext: List[str] = None, stem_sort=False,
         else:
             raise RuntimeError(f"{path} is an invalid file source")
     if stem_sort:
-        files = sorted(files, key=sort_stem)
+        files = sorted(files, key=lambda s: Path(item).stem)
     return files
 
 
