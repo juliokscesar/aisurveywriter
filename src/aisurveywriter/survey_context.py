@@ -62,8 +62,7 @@ class SurveyContext:
             prompt_store_save_path = os.path.join(self.output_dir, "prompt_store.json")
             save_pydantic_json(prompt_store, prompt_store_save_path)
         
-        import pdb; pdb.set_trace()
-        
+    
         self.references_paths = get_all_files_from_paths(self.references_dir, skip_ext=["png", "jpg", "jpeg"],
                                                          stem_sort=True)
         if not self.references_paths:

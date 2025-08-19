@@ -29,7 +29,7 @@ And then you can run it using
 python -m aisurveywriter
 ```
 
-**If you get the error when trying to run the pipeline:**
+**If you get this error when trying to run the pipeline:**
 ```
 AttributeError: module layoutparser has no attribute TesseractAgent
 ```
